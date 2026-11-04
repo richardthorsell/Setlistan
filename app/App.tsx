@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
-import { type Card, type Section, type SetStat, label, matches, norm, parsePaste, quickIds, ranges, slug } from "@/lib/checklist";
+import { type Card, type Section, type SetStat, type Sport, SPORTS, label, matches, norm, parsePaste, quickIds, ranges, slug, sportLabel } from "@/lib/checklist";
 import AuthBox from "./AuthBox";
 import AdminPanel from "./AdminPanel";
 
@@ -65,7 +65,8 @@ export default function App() {
   const [fetchLog, setFetchLog] = useState<LogLine[] | null>(null);
   const [fetching, setFetching] = useState(false);
   const [fetchDone, setFetchDone] = useState<string | null>(null);
-  const [paste, setPaste] = useState<{ name: string; text: string } | null>(null);
+  const [paste, setPaste] = useState<{ name: string; text: string; sport: Sport } | null>(null);
+  const [sport, setSport] = useState<Sport | "">("");
   const [confirmDel, setConfirmDel] = useState(false);
   const [copyText, setCopyText] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -294,7 +295,7 @@ export default function App() {
     const ctl = new AbortController();
     abortRef.current = ctl;
     try {
-      const res = await fetch("/api/fetch", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query: query.trim() }), signal: ctl.signal });
+      const res = await fetch("/api/fetch", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query: query.trim(), sport: sport || undefined }), signal: ctl.signal });
       if (!res.ok || !res.body) {
         const j = await res.json().catch(() => ({}));
         setFetchLog((l) => [...(l || []), { m: j.error || `Fel ${res.status}`, k: "err" }]);
@@ -334,7 +335,7 @@ export default function App() {
     const name = paste.name.trim() || "Mitt set";
     const id = `${slug(name)}-${Date.now().toString(36)}`;
     try {
-      let r = await supabase.from("sets").insert({ id, name, keywords: name, source: "inklistrad" });
+      let r = await supabase.from("sets").insert({ id, name, keywords: name, source: "inklistrad", sport: paste.sport });
       if (r.error) throw r.error;
       for (const [i, s] of secs.entries()) {
         const { data, error } = await supabase.from("sections").insert({ set_id: id, code: s.code, name: s.name, position: i }).select("id").single();
@@ -378,6 +379,9 @@ export default function App() {
   );
   const tagEls = (c: Card) => c.tags.map((t) => <span key={t} className={`tag ${t === "RC" ? "rc" : "fs"}`}>{t}</span>);
   const mine = current && user && (role !== null || (current.created_by === user.id && !current.verified));
+  const sportsInUse = SPORTS.map((s) => ({ ...s, n: sets.filter((x) => x.sport === s.id).length })).filter((s) => s.n > 0);
+  const shelfSets = sport ? sets.filter((s) => s.sport === sport) : sets;
+  const origin = (s: SetStat) => (s.verified ? "Verifierad lista" : s.source === "inklistrad" ? "Inklistrad" : "Hämtad");
 
   return (
     <div className="wrap">
@@ -424,7 +428,7 @@ export default function App() {
               if (e.key === "Enter") hits.length ? openSet(hits[0].id) : startFetch(q);
             }}
           />
-          <button className="btn big" type="button" onClick={() => { setFetchLog(null); setPaste({ name: q.trim(), text: "" }); }}>Klistra in lista</button>
+          <button className="btn big" type="button" onClick={() => { setFetchLog(null); setPaste({ name: q.trim(), text: "", sport: sport || "fotboll" }); }}>Klistra in lista</button>
         </div>
         {q.trim() && (
           <div className="results">
@@ -432,17 +436,17 @@ export default function App() {
               <button key={s.id} className="result" type="button" onClick={() => openSet(s.id)}>
                 <div className="meta">
                   <strong>{s.name}</strong>
-                  <span>{s.card_count} kort · {s.section_count} delset · {counts[s.id] || 0} avprickade</span>
+                  <span>{sportLabel(s.sport)} · {s.card_count} kort · {s.section_count} delset · {counts[s.id] || 0} avprickade</span>
                 </div>
-                <span className={`pill ${s.verified ? "src" : ""}`}>{s.verified ? "Verifierad lista" : "Hämtad"}</span>
+                <span className={`pill ${s.verified ? "src" : ""}`}>{origin(s)}</span>
               </button>
             ))}
             <div className="nomatch">
               <div>
-                <strong>{hits.length ? "Inte rätt set?" : "Inget set i biblioteket matchar."}</strong> Claude kan leta upp checklistan på nätet och lägga in den i biblioteket. Du kan också klistra in en adress till en checklista i sökfältet.
+                <strong>{hits.length ? "Inte rätt set?" : "Inget set i biblioteket matchar."}</strong> Vi kan leta upp checklistan på nätet och lägga in den i biblioteket. Du kan också klistra in en adress till en checklista i sökfältet.
               </div>
               <div className="row">
-                <button className="btn primary" type="button" disabled={fetching} onClick={() => startFetch(q)}>Hämta “{q.trim()}” med Claude</button>
+                <button className="btn primary" type="button" disabled={fetching} onClick={() => startFetch(q)}>Hämta “{q.trim()}”</button>
                 {!user && <span className="note">Kräver inloggning, max 5 hämtningar per dygn.</span>}
               </div>
             </div>
@@ -466,7 +470,12 @@ export default function App() {
         <section className="panel">
           <h3>Klistra in checklista</h3>
           {!user && <div className="note warn">Logga in för att spara inklistrade set i biblioteket.</div>}
-          <input type="text" placeholder="Setets namn, t.ex. Topps Chrome Premier League 25/26" value={paste.name} onChange={(e) => setPaste({ ...paste, name: e.target.value })} />
+          <div className="row">
+            <input type="text" className="grow" placeholder="Setets namn, t.ex. Topps Chrome Premier League 25/26" value={paste.name} onChange={(e) => setPaste({ ...paste, name: e.target.value })} />
+            <select className="sport-select" aria-label="Sport" value={paste.sport} onChange={(e) => setPaste({ ...paste, sport: e.target.value as Sport })}>
+              {SPORTS.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+            </select>
+          </div>
           <textarea
             placeholder={"En rad per kort. Exempel:\n1 Max Dowman, Arsenal\n23 Jaden Dixon - Arsenal RC\nBM 1 | Max Dowman | Arsenal\n### Gold Lion\nGL 4 Morgan Rogers, Aston Villa"}
             value={paste.text}
@@ -486,14 +495,27 @@ export default function App() {
       )}
 
       <section>
-        <div className="label" style={{ marginBottom: 10 }}>Biblioteket</div>
+        <div className="shelf-head">
+          <div className="label">Biblioteket</div>
+          <div className="sports" role="tablist" aria-label="Sport">
+            <button type="button" role="tab" aria-selected={sport === ""} onClick={() => setSport("")}>Alla <small>{sets.length}</small></button>
+            {sportsInUse.map((s) => (
+              <button key={s.id} type="button" role="tab" aria-selected={sport === s.id} onClick={() => setSport(s.id)}>
+                {s.label} <small>{s.n}</small>
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="shelf">
-          {sets.map((s) => {
+          {shelfSets.map((s) => {
             const n = counts[s.id] || 0;
             const p = s.card_count ? Math.round((n / s.card_count) * 100) : 0;
             return (
               <button key={s.id} className={`shelf-item ${s.id === openId ? "active" : ""}`} type="button" onClick={() => openSet(s.id)}>
-                <span className={`pill ${s.verified ? "src" : ""}`}>{s.verified ? "Verifierad lista" : s.source === "inklistrad" ? "Inklistrad" : "Hämtad av Claude"}</span>
+                <span className="row">
+                  <span className={`pill ${s.verified ? "src" : ""}`}>{origin(s)}</span>
+                  {!sport && <span className="pill">{sportLabel(s.sport)}</span>}
+                </span>
                 <strong>{s.short_name || s.name}</strong>
                 <div className="bar"><i style={{ width: `${p}%` }} /></div>
                 <span className="sub mono">{n} / {s.card_count} · {p} %</span>
@@ -508,7 +530,9 @@ export default function App() {
         <section className="set" id="set">
           <div className="set-head">
             <div>
-              <div className="label">{current.verified ? "Verifierad checklista" : current.source === "inklistrad" ? "Inklistrad checklista" : `Hämtad av Claude${current.source ? " från " + current.source.replace(/^https?:\/\//, "").split("/")[0] : ""}`}</div>
+              <div className="label">
+                {sportLabel(current.sport)} · {current.verified ? "Verifierad checklista" : current.source === "inklistrad" ? "Inklistrad checklista" : `Hämtad${current.source ? " från " + current.source.replace(/^https?:\/\//, "").split("/")[0] : ""}`}
+              </div>
               <h2>{current.name}</h2>
               <div className="sub">{sections.length} delset · {total} kort{current.notes ? ` · ${current.notes}` : ""}</div>
             </div>
