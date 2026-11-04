@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { SetStat } from "@/lib/checklist";
+import { type SetStat, SPORTS } from "@/lib/checklist";
 
 type Overview = { users: number; collectors: number; owned: number; sets: number; fetches_24h: number };
 type Job = { id: number; query: string; status: string; error: string | null; set_id: string | null; created_at: string };
@@ -60,6 +60,12 @@ export default function AdminPanel({
     await onChanged();
     say("Namnet är ändrat");
   };
+  const setSport = async (s: SetStat, sport: string) => {
+    const { error } = await supabase.from("sets").update({ sport }).eq("id", s.id);
+    if (error) return say("Kunde inte byta sport.");
+    await onChanged();
+    say("Sporten är ändrad");
+  };
   const remove = async (id: string) => {
     const { error } = await supabase.from("sets").delete().eq("id", id);
     setConfirmId(null);
@@ -106,6 +112,9 @@ export default function AdminPanel({
         {sets.map((s) => (
           <div key={s.id} className="admin-row">
             <input aria-label={`Namn på ${s.name}`} defaultValue={s.name} onBlur={(e) => rename(s, e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()} />
+            <select aria-label={`Sport för ${s.name}`} value={s.sport} onChange={(e) => setSport(s, e.target.value)}>
+              {SPORTS.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
+            </select>
             <span className="note mono">{s.card_count} kort</span>
             <label className="check">
               <input type="checkbox" checked={s.verified} onChange={(e) => setVerified(s, e.target.checked)} /> Verifierad
