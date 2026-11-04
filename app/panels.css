@@ -9,6 +9,7 @@
 .sports button:hover { border-color: var(--accent); }
 .sports button[aria-selected="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 .sports button[aria-selected="true"] small { color: inherit; opacity: .7; }
+.sports button.empty-sport:not([aria-selected="true"]) { color: var(--muted); border-style: dashed; }
 .grow { flex: 1 1 200px; min-width: 0; }
 .sport-select { height: 40px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--bg); padding: 0 10px; }
 
