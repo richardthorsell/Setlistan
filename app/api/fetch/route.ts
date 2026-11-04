@@ -8,6 +8,8 @@ export const maxDuration = 300;
 
 const DAILY_LIMIT = 5;
 const MAX_TURNS = 16;
+// Vercel stops the function at maxDuration; stop Claude earlier so the set is always finalized.
+const BUDGET_MS = 240_000;
 
 const SaveSection = z.object({
   code: z.string().max(12).default(""),
@@ -109,6 +111,14 @@ export async function POST(req: Request) {
   const { count } = await supabase.from("fetch_jobs").select("id", { count: "exact", head: true }).eq("user_id", user.id).gte("created_at", since);
   if (!role && (count ?? 0) >= DAILY_LIMIT) return Response.json({ error: `Du har hämtat ${DAILY_LIMIT} set senaste dygnet. Försök igen i morgon.` }, { status: 429 });
 
+  // A fetch cut off by the platform leaves its set at "fetching"; release this user's stale ones.
+  await supabase
+    .from("sets")
+    .update({ status: "ready", notes: "Hämtningen avbröts innan den blev klar; vissa delset kan saknas." })
+    .eq("created_by", user.id)
+    .eq("status", "fetching")
+    .lt("created_at", new Date(Date.now() - 10 * 60 * 1000).toISOString());
+
   const setId = `${slug(query)}-${Date.now().toString(36)}`;
   const { data: job } = await supabase.from("fetch_jobs").insert({ query, set_id: setId }).select("id").single();
   const { error: setErr } = await supabase.from("sets").insert({ id: setId, name: query, keywords: query, status: "fetching", sport: sportHint ?? "ovrigt" });
@@ -119,7 +129,7 @@ export async function POST(req: Request) {
 
 ${isUrl ? "Fetch that page with web_fetch and take the cards from it." : "Use web_search to find a page with the full checklist (for example checklistinsider.com, cardsmithsbreaks.com, cartophilic-info-exch.blogspot.com, beckett.com, cardboardconnection.com or tcdb.com), then read it with web_fetch."}
 
-Save the cards with save_section: the base set first (code ""), then each insert set under its number prefix. Leave out autographs, relics and parallels. Each card: no (the number within its subset), name, team (club or country), rc (true for rookie cards). Take every card from the page; never invent or guess cards. If you cannot find a reliable checklist, save nothing.
+Save the cards with save_section: the base set first (code ""), then each insert set under its number prefix. Leave out autographs, relics and parallels. Each card: no (the number within its subset), name, team (club or country), rc (true for rookie cards). Take every card from the page; never invent or guess cards. If you cannot find a reliable checklist, save nothing. You have about four minutes in total, so go straight to the best checklist page and save as you go.
 
 When you are done, call finish with the set's full name, its sport${sportHint ? ` (the user is browsing "${sportHint}", use it unless the set clearly belongs to another sport)` : ""}, the source URL and a short note in Swedish.`;
 
@@ -132,6 +142,9 @@ When you are done, call finish with the set's full name, its sport${sportHint ? 
       let totalCards = 0;
       let meta: z.infer<typeof Finish> | null = null;
       let failure: string | null = null;
+      const ctl = new AbortController();
+      const timer = setTimeout(() => ctl.abort(), BUDGET_MS);
+      req.signal.addEventListener("abort", () => ctl.abort());
 
       const saveSection = async (input: unknown) => {
         const parsed = SaveSection.safeParse(input);
@@ -180,7 +193,7 @@ When you are done, call finish with the set's full name, its sport${sportHint ? 
             tools,
             messages,
           };
-          const s = client.beta.messages.stream(params as unknown as Anthropic.Beta.Messages.MessageCreateParamsStreaming, { signal: req.signal });
+          const s = client.beta.messages.stream(params as unknown as Anthropic.Beta.Messages.MessageCreateParamsStreaming, { signal: ctl.signal });
           let message: Anthropic.Beta.Messages.BetaMessage;
           try {
             message = await s.finalMessage();
@@ -231,7 +244,9 @@ When you are done, call finish with the set's full name, its sport${sportHint ? 
         }
       } catch (err) {
         failure =
-          err instanceof Anthropic.RateLimitError
+          ctl.signal.aborted && !req.signal.aborted
+            ? "Tiden tog slut. Det som hann sparas finns med, men vissa delset kan saknas."
+            : err instanceof Anthropic.RateLimitError
             ? "Claude är överbelastad just nu. Försök igen om en stund."
             : err instanceof Anthropic.APIError
               ? `Claude svarade med fel ${err.status}.`
@@ -240,6 +255,7 @@ When you are done, call finish with the set's full name, its sport${sportHint ? 
                 : "Något gick fel under hämtningen.";
         console.error("fetch failed", err);
       }
+      clearTimeout(timer);
 
       if (totalCards === 0) {
         await supabase.from("sets").delete().eq("id", setId);
