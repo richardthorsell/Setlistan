@@ -11,7 +11,23 @@ export type SetStat = {
   created_at: string;
   card_count: number;
   section_count: number;
+  sport: Sport;
 };
+
+export const SPORTS = [
+  { id: "fotboll", label: "Fotboll" },
+  { id: "ishockey", label: "Ishockey" },
+  { id: "basket", label: "Basket" },
+  { id: "amerikansk-fotboll", label: "Amerikansk fotboll" },
+  { id: "baseboll", label: "Baseboll" },
+  { id: "motorsport", label: "Motorsport" },
+  { id: "tennis", label: "Tennis" },
+  { id: "golf", label: "Golf" },
+  { id: "kampsport", label: "Kampsport" },
+  { id: "ovrigt", label: "Övrigt" },
+] as const;
+export type Sport = (typeof SPORTS)[number]["id"];
+export const sportLabel = (id: string) => SPORTS.find((s) => s.id === id)?.label ?? "Övrigt";
 export type Card = { id: number; section_id: number; no: number; name: string; team: string; tags: string[] };
 export type Section = { id: number; code: string; name: string; position: number; cards: Card[] };
 export type PastedSection = { code: string; name: string; cards: { no: number; name: string; team: string; tags: string[] }[] };
