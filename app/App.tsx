@@ -379,7 +379,7 @@ export default function App() {
   );
   const tagEls = (c: Card) => c.tags.map((t) => <span key={t} className={`tag ${t === "RC" ? "rc" : "fs"}`}>{t}</span>);
   const mine = current && user && (role !== null || (current.created_by === user.id && !current.verified));
-  const sportsInUse = SPORTS.map((s) => ({ ...s, n: sets.filter((x) => x.sport === s.id).length })).filter((s) => s.n > 0);
+  const sportsInUse = SPORTS.map((s) => ({ ...s, n: sets.filter((x) => x.sport === s.id).length }));
   const shelfSets = sport ? sets.filter((s) => s.sport === sport) : sets;
   const origin = (s: SetStat) => (s.verified ? "Verifierad lista" : s.source === "inklistrad" ? "Inklistrad" : "Hämtad");
 
@@ -500,7 +500,7 @@ export default function App() {
           <div className="sports" role="tablist" aria-label="Sport">
             <button type="button" role="tab" aria-selected={sport === ""} onClick={() => setSport("")}>Alla <small>{sets.length}</small></button>
             {sportsInUse.map((s) => (
-              <button key={s.id} type="button" role="tab" aria-selected={sport === s.id} onClick={() => setSport(s.id)}>
+              <button key={s.id} type="button" role="tab" className={s.n ? "" : "empty-sport"} aria-selected={sport === s.id} onClick={() => setSport(s.id)}>
                 {s.label} <small>{s.n}</small>
               </button>
             ))}
@@ -523,6 +523,9 @@ export default function App() {
             );
           })}
           {!sets.length && <div className="empty">Läser biblioteket …</div>}
+          {sets.length > 0 && !shelfSets.length && (
+            <div className="empty">Inga {sportLabel(sport).toLowerCase()}set än. Sök på ett set ovan och tryck Hämta, så hamnar det här.</div>
+          )}
         </div>
       </section>
 
