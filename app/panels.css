@@ -1,0 +1,20 @@
+/* Sign-in and admin panels. */
+.auth { max-width: 520px; }
+.auth-form { display: flex; flex-direction: column; gap: 10px; }
+.auth-form label { display: flex; flex-direction: column; gap: 4px; }
+.auth-form input, .admin input, .admin select {
+  height: 40px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--bg); padding: 0 12px; min-width: 0;
+}
+.account .btn[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+
+.stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.stats > div { display: flex; flex-direction: column; padding: 10px 12px; border-radius: 10px; background: var(--sunk); }
+.stats b { font-family: var(--f-display); font-size: 30px; font-weight: 900; line-height: 1; }
+.stats span { font-size: 12.5px; color: var(--muted); }
+
+.admin-table { display: flex; flex-direction: column; border: 1.5px solid var(--line); border-radius: 10px; overflow: hidden; }
+.admin-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 8px 10px; border-top: 1px solid var(--line); }
+.admin-row:first-child { border-top: 0; }
+.admin-row input:not([type="checkbox"]) { flex: 1 1 240px; height: 36px; }
+.admin .grow { flex: 1 1 200px; min-width: 0; overflow-wrap: anywhere; }
+.check { display: inline-flex; gap: 6px; align-items: center; font-size: 13.5px; }
