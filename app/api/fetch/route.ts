@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { SPORTS } from "@/lib/checklist";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -23,8 +24,10 @@ const SaveSection = z.object({
     .min(1)
     .max(1000),
 });
+const SPORT_IDS = SPORTS.map((s) => s.id) as [string, ...string[]];
 const Finish = z.object({
   name: z.string().min(1).max(200),
+  sport: z.enum(SPORT_IDS).optional(),
   source: z.string().max(500).optional().default(""),
   notes: z.string().max(600).optional().default(""),
 });
@@ -66,6 +69,7 @@ const tools = [
       type: "object",
       properties: {
         name: { type: "string", description: "The set's full name, e.g. 'Topps Chrome Premier League 2025/26'." },
+        sport: { type: "string", enum: SPORTS.map((s) => s.id), description: "The set's sport; 'ovrigt' for non-sport sets." },
         source: { type: "string", description: "URL of the checklist page used." },
         notes: { type: "string", description: "One or two sentences in Swedish on what is missing or uncertain." },
       },
@@ -89,6 +93,7 @@ function slug(s: string) {
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   const query = typeof body?.query === "string" ? body.query.trim() : "";
+  const sportHint = SPORTS.find((s) => s.id === body?.sport)?.id;
   if (query.length < 3 || query.length > 300) return Response.json({ error: "Skriv namnet på ett set (3–300 tecken)." }, { status: 400 });
   if (!process.env.ANTHROPIC_API_KEY) return Response.json({ error: "Tjänsten saknar API-nyckel för Claude." }, { status: 500 });
 
@@ -106,7 +111,7 @@ export async function POST(req: Request) {
 
   const setId = `${slug(query)}-${Date.now().toString(36)}`;
   const { data: job } = await supabase.from("fetch_jobs").insert({ query, set_id: setId }).select("id").single();
-  const { error: setErr } = await supabase.from("sets").insert({ id: setId, name: query, keywords: query, status: "fetching" });
+  const { error: setErr } = await supabase.from("sets").insert({ id: setId, name: query, keywords: query, status: "fetching", sport: sportHint ?? "ovrigt" });
   if (setErr) return Response.json({ error: "Kunde inte skapa setet i databasen." }, { status: 500 });
 
   const isUrl = /^https?:\/\/\S+$/i.test(query);
@@ -116,7 +121,7 @@ ${isUrl ? "Fetch that page with web_fetch and take the cards from it." : "Use we
 
 Save the cards with save_section: the base set first (code ""), then each insert set under its number prefix. Leave out autographs, relics and parallels. Each card: no (the number within its subset), name, team (club or country), rc (true for rookie cards). Take every card from the page; never invent or guess cards. If you cannot find a reliable checklist, save nothing.
 
-When you are done, call finish with the set's full name, the source URL and a short note in Swedish.`;
+When you are done, call finish with the set's full name, its sport${sportHint ? ` (the user is browsing "${sportHint}", use it unless the set clearly belongs to another sport)` : ""}, the source URL and a short note in Swedish.`;
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
@@ -163,7 +168,7 @@ When you are done, call finish with the set's full name, the source URL and a sh
         const client = new Anthropic();
         const messages: Anthropic.Beta.Messages.BetaMessageParam[] = [{ role: "user", content: prompt }];
         let jsonRetries = 0;
-        send({ t: "log", m: "Claude letar efter checklistan …" });
+        send({ t: "log", m: "Letar efter checklistan …" });
 
         for (let turn = 0; turn < MAX_TURNS && !meta; turn++) {
           const params = {
@@ -246,6 +251,7 @@ When you are done, call finish with the set's full name, the source URL and a sh
           .update({
             status: "ready",
             name: meta?.name || query,
+            sport: meta?.sport || sportHint || "ovrigt",
             source: meta?.source || "",
             source_urls: meta?.source ? [meta.source] : [],
             notes: meta?.notes || failure || "",
