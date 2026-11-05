@@ -13,6 +13,8 @@ type Props = {
   setSport: (s: Sport | "") => void;
   onOpen: (id: string) => void;
   onToggleFav: (id: string) => void;
+  onSuggest: (query: string) => void;
+  suggested: Set<string>;
 };
 
 const nameOf = (s: SetStat) => s.short_name || s.name;
@@ -25,7 +27,7 @@ const Star = ({ on }: { on: boolean }) => (
 );
 
 // The library: your favourites as cards, and a dropdown with search and sport filter for everything else.
-export default function SetPicker({ sets, counts, openId, favs, sport, setSport, onOpen, onToggleFav }: Props) {
+export default function SetPicker({ sets, counts, openId, favs, sport, setSport, onOpen, onToggleFav, onSuggest, suggested }: Props) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const box = useRef<HTMLDivElement>(null);
@@ -97,6 +99,16 @@ export default function SetPicker({ sets, counts, openId, favs, sport, setSport,
               })}
               {!list.length && <div className="empty">Inga album matchar.</div>}
             </div>
+            {q.trim() && (
+              <div className="nomatch">
+                <div>
+                  <strong>{list.length ? "Saknas det du söker?" : "Inget album matchar."}</strong> Föreslå setet så lägger administratörerna in det.
+                </div>
+                <button className="btn primary small" type="button" disabled={suggested.has(q.trim().toLowerCase())} onClick={() => onSuggest(q)}>
+                  {suggested.has(q.trim().toLowerCase()) ? "Förslaget är skickat" : `Föreslå “${q.trim()}”`}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
