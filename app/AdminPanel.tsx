@@ -105,7 +105,7 @@ export default function AdminPanel({
           <div><b className="mono">{overview.sets}</b><span>set i biblioteket</span></div>
           <div><b className="mono">{overview.fetches_24h}</b><span>hämtningar senaste dygnet</span></div>
           <div><b className="mono">${Number(overview.fetch_cost_month).toFixed(2)}</b><span>hämtkostnad denna månad</span></div>
-          <div><b className="mono">{overview.tradera_calls_24h}/80</b><span>Tradera-anrop senaste dygnet</span></div>
+          <div><b className="mono">{overview.tradera_calls_24h}/5000</b><span>Tradera-anrop senaste dygnet</span></div>
         </div>
       )}
 
