@@ -4,8 +4,8 @@ export const runtime = "nodejs";
 export const maxDuration = 20;
 
 // Sold items from Traderas REST API v4 (beta): POST /v4/search/advanced with itemStatus "Ended".
-// Tradera allows only about 100 calls per 24 h for the whole app, so results are cached for 24 h and
-// every call is reserved against a per-user and a global quota in the database (see tradera_reserve).
+// Tradera allows 10,000 calls per method and 24 h. Results are cached for 24 h and every call is reserved
+// against a per-user and a global quota in the database (see tradera_reserve) to keep abuse bounded.
 const URL_ADVANCED = "https://api.tradera.com/v4/search/advanced";
 const TTL_MS = 24 * 3600 * 1000;
 const PAGE_SIZE = 40;
@@ -98,9 +98,12 @@ export async function GET(req: Request) {
     return Response.json({ items: clean(p.items, searchUrl), stats: cleanStats(p.stats), seen: nz(p.seen) ?? 0, total: cached.total, cached: true, searchUrl });
   }
 
-  const appId = process.env.TRADERA_APP_ID;
-  const appKey = process.env.TRADERA_APP_KEY;
+  const appId = process.env.TRADERA_APP_ID?.trim();
+  const appKey = process.env.TRADERA_APP_KEY?.trim();
   if (!appId || !appKey) return Response.json({ error: "Traderas API är inte kopplat än.", searchUrl }, { status: 503 });
+  // The app id is a whole number and the app key a GUID. Say so if they look wrong or swapped (the values are never shown).
+  if (!/^\d+$/.test(appId)) return Response.json({ error: "TRADERA_APP_ID i Vercel ska vara bara siffror (AppId). Kontrollera att AppId och nyckel inte är ombytta.", searchUrl }, { status: 500 });
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(appKey)) return Response.json({ error: "TRADERA_APP_KEY i Vercel ska vara en GUID, till exempel aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee.", searchUrl }, { status: 500 });
 
   const { data: slot } = await supabase.rpc("tradera_reserve", { p_key: key });
   if (slot === "user_limit") return Response.json({ error: "Du har gjort dina Tradera-sökningar för idag.", searchUrl }, { status: 429 });
