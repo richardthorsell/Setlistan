@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import "./panels.css";
+import { useT } from "@/lib/i18n";
 
 type Item = { id: string; title: string; price: number | null; buyNow: number | null; bids: number | null; ends: string; url: string; thumb: string };
 type Stats = { count: number; median: number | null; min: number | null; max: number | null };
@@ -19,6 +20,7 @@ const kr = (n: number | null) => (n === null ? "" : `${Math.round(n).toLocaleStr
 // Shows what a card has sold for on Tradera. Opening the panel from a card searches straight away;
 // answers are cached for 24 h, so a repeat costs no call to Tradera.
 export default function TraderaPanel({ scope, signedIn, onClose }: { scope: TraderaScope; signedIn: boolean; onClose: () => void }) {
+  const t = useT();
   const [mode, setMode] = useState<"set" | "all" | "own">("set");
   const [q, setQ] = useState(scope.narrow);
   const [busy, setBusy] = useState(false);
@@ -41,13 +43,13 @@ export default function TraderaPanel({ scope, signedIn, onClose }: { scope: Trad
         setErr({ m: j.error || `Fel ${r.status}`, url: j.searchUrl });
       } else setRes(j as Result);
     } catch {
-      setErr({ m: "Det gick inte att nå Tradera just nu." });
+      setErr({ m: t("Det gick inte att nå Tradera just nu.") });
     } finally {
       setBusy(false);
     }
   }, [scope.set, scope.card]);
 
-  const pick = (m: "set" | "all") => {
+  const pick =(m: "set" | "all") => {
     const next = m === "set" ? scope.narrow : scope.broad;
     setMode(m);
     setQ(next);
@@ -71,25 +73,25 @@ export default function TraderaPanel({ scope, signedIn, onClose }: { scope: Trad
 
   return (
     <div className="t-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <section className="panel tradera" role="dialog" aria-modal="true" aria-label="Sålda kort på Tradera">
+      <section className="panel tradera" role="dialog" aria-modal="true" aria-label={t("Sålda kort på Tradera")}>
         <div className="row" style={{ justifyContent: "space-between" }}>
-          <h3>Sålt på Tradera</h3>
-          <button className="btn small ghost" type="button" onClick={onClose}>Stäng</button>
+          <h3>{t("Sålt på Tradera")}</h3>
+          <button className="btn small ghost" type="button" onClick={onClose}>{t("Stäng")}</button>
         </div>
         <div className="t-context">
-          <span className="label">Gäller</span>
+          <span className="label">{t("Gäller")}</span>
           {scope.card && <b>{scope.card}</b>}
           <span>{scope.set}</span>
         </div>
         <div className="row">
-          <div className="seg" role="group" aria-label="Avgränsning">
-            <button type="button" aria-pressed={mode === "set"} disabled={busy || !signedIn} onClick={() => pick("set")}>Detta set</button>
-            <button type="button" aria-pressed={mode === "all"} disabled={busy || !signedIn} onClick={() => pick("all")}>Alla set</button>
+          <div className="seg" role="group" aria-label={t("Avgränsning")}>
+            <button type="button" aria-pressed={mode === "set"} disabled={busy || !signedIn} onClick={() => pick("set")}>{t("Detta set")}</button>
+            <button type="button" aria-pressed={mode === "all"} disabled={busy || !signedIn} onClick={() => pick("all")}>{t("Alla set")}</button>
           </div>
           <span className="note grow">
-            {mode === "set" && "Söker på spelaren och setets namn. Annonser nämner inte alltid setet, så prova Alla set om du får få träffar."}
-            {mode === "all" && "Söker bara på spelaren och märket, så träffarna kan gälla andra set eller år."}
-            {mode === "own" && "Egen sökning."}
+            {mode === "set" && t("Söker på spelaren och setets namn. Annonser nämner inte alltid setet, så prova Alla set om du får få träffar.")}
+            {mode === "all" && t("Söker bara på spelaren och märket, så träffarna kan gälla andra set eller år.")}
+            {mode === "own" && t("Egen sökning.")}
           </span>
         </div>
         <form
@@ -107,32 +109,32 @@ export default function TraderaPanel({ scope, signedIn, onClose }: { scope: Trad
               setQ(e.target.value);
               setMode("own");
             }}
-            aria-label="Sökord på Tradera"
+            aria-label={t("Sökord på Tradera")}
             maxLength={100}
           />
-          <button className="btn primary small" type="submit" disabled={busy || !signedIn}>{busy ? "Söker …" : "Sök"}</button>
-          <a className="btn small" href={err?.url || res?.searchUrl || fallback} target="_blank" rel="noopener noreferrer">Visa till salu på Tradera</a>
+          <button className="btn primary small" type="submit" disabled={busy || !signedIn}>{busy ? t("Söker …") : t("Sök")}</button>
+          <a className="btn small" href={err?.url || res?.searchUrl || fallback} target="_blank" rel="noopener noreferrer">{t("Visa till salu på Tradera")}</a>
         </form>
-        {!signedIn && <div className="note">Logga in för att se sålda kort här. Du kan alltid öppna sökningen direkt på Tradera.</div>}
-        {busy && <div className="note">Hämtar sålda annonser …</div>}
+        {!signedIn && <div className="note">{t("Logga in för att se sålda kort här. Du kan alltid öppna sökningen direkt på Tradera.")}</div>}
+        {busy && <div className="note">{t("Hämtar sålda annonser …")}</div>}
         {err && <div className="note warn">{err.m}</div>}
         {res && res.stats.count > 0 && (
           <div className="t-stats">
-            <b className="mono">{kr(res.stats.median)}</b> i mediansumma · lägst {kr(res.stats.min)} · högst {kr(res.stats.max)} · {res.stats.count} sålda
+            <b className="mono">{kr(res.stats.median)}</b>{" "}{t("i mediansumma · lägst")}{" "}{kr(res.stats.min)}{" "}{t("· högst")}{" "}{kr(res.stats.max)} · {res.stats.count} {t("sålda")}
           </div>
         )}
         {res && !res.items.length && !busy && (
-          <div className="note">Inga sålda auktioner hittades. Prova Alla set eller ett kortare sökord, till exempel bara spelarens namn.</div>
+          <div className="note">{t("Inga sålda auktioner hittades. Prova Alla set eller ett kortare sökord, till exempel bara spelarens namn.")}</div>
         )}
         {res && res.items.length > 0 && (
           <div className="t-list">
             {res.items.map((i) => (
               <a key={i.id || i.title} className="t-item" href={i.url} target="_blank" rel="noopener noreferrer">
                 {i.thumb ? <img src={i.thumb} alt="" width={56} height={56} loading="lazy" /> : <span className="t-ph" />}
-                <span className="t-title">{i.title || "Utan titel"}</span>
+                <span className="t-title">{i.title || t("Utan titel")}</span>
                 <span className="t-meta mono">
-                  {i.price !== null && <b>Såld för {kr(i.price)}</b>}
-                  {i.bids !== null && <span>{i.bids} bud</span>}
+                  {i.price !== null && <b>{t("Såld för")}{" "}{kr(i.price)}</b>}
+                  {i.bids !== null && <span>{i.bids} {t("bud")}</span>}
                   {when(i.ends) && <span>{when(i.ends)}</span>}
                 </span>
               </a>
@@ -140,9 +142,8 @@ export default function TraderaPanel({ scope, signedIn, onClose }: { scope: Trad
           </div>
         )}
         {res && (
-          <div className="note">
-            Av {res.seen} avslutade annonser hade {res.stats.count} bud och räknas som sålda. Annonser utan bud (osålda eller fasta priser) visas inte.
-            {res.stale ? " Tradera kunde inte nås eller kvoten är slut, så detta är ett äldre sparat svar." : res.cached ? " Sparat svar från de senaste tre dygnen." : ""}
+          <div className="note">{t("Av")}{" "}{res.seen} {t("avslutade annonser hade")} {res.stats.count} {t("bud och räknas som sålda. Annonser utan bud (osålda eller fasta priser) visas inte.")}
+            {res.stale ? " " + t("Tradera kunde inte nås eller kvoten är slut, så detta är ett äldre sparat svar.") : res.cached ? " " + t("Sparat svar från de senaste tre dygnen.") : ""}
           </div>
         )}
       </section>
