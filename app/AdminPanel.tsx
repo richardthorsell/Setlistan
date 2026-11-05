@@ -17,6 +17,7 @@ type ImportSet = {
   notes: string;
   keywords: string;
   sections: { code: string; name: string; cards: { no: number; name: string; team: string; tags: string[] }[] }[];
+  parallels?: { section_code: string; name: string; print_run: number | null; position: number }[];
 };
 type Admin = { email: string; role: "admin" | "superuser"; added_at: string };
 
@@ -80,6 +81,11 @@ export default function AdminPanel({
         let ok = true;
         for (let i = 0; i < rows.length && ok; i += 500) {
           const r = await supabase.from("cards").insert(rows.slice(i, i + 500));
+          if (r.error) ok = false;
+        }
+        const pars = (s.parallels ?? []).map((p) => ({ set_id: s.id, section_id: byCode.get(p.section_code) ?? null, name: p.name, print_run: p.print_run, position: p.position }));
+        for (let i = 0; i < pars.length && ok; i += 500) {
+          const r = await supabase.from("parallels").insert(pars.slice(i, i + 500));
           if (r.error) ok = false;
         }
         if (!ok) {
