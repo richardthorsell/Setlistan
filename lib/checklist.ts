@@ -42,6 +42,17 @@ export const norm = (s: string) =>
 
 export const slug = (s: string) => norm(s).replace(/ /g, "-").slice(0, 60) || "set";
 
+// Words of a text, with years written as two digits so "2026/27" and "26/27" are the same.
+export const tokens = (s: string) =>
+  norm(s)
+    .split(" ")
+    .filter(Boolean)
+    .map((w) => (/^20\d\d$/.test(w) ? w.slice(2) : w));
+
+export type Parallel = { id: number; section_id: number | null; name: string; print_run: number | null; position: number };
+export const parallelLabel = (p: { name: string; print_run: number | null }) =>
+  p.print_run === 1 ? `${p.name} 1/1` : p.print_run ? `${p.name} /${p.print_run}` : p.name;
+
 export const label = (sec: { code: string }, c: { no: number }) => (sec.code ? `${sec.code} ${c.no}` : String(c.no));
 
 export function matches(set: SetStat, query: string) {
