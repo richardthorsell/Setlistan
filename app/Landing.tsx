@@ -5,6 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import AuthBox from "./AuthBox";
 import { WaitlistBox } from "./BetaPanels";
 import { MockMissing, MockSearch, MockSet, MockTick, MockTradera } from "./Visuals";
+import { SiteFooter } from "./LegalPage";
 import "./panels.css";
 import "./landing.css";
 
@@ -64,6 +65,8 @@ export default function Landing({ supabase, message }: { supabase: SupabaseClien
           <button className="btn primary" type="button" onClick={() => { setPanel("wait"); window.scrollTo({ top: 0, behavior: "smooth" }); }}>Gå med i väntelistan</button>
         </div>
       </section>
+
+      <SiteFooter />
     </div>
   );
 }
