@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { type SetStat, SPORTS } from "@/lib/checklist";
+import { type SetStat, SPORTS, matches } from "@/lib/checklist";
 
 type Overview = { users: number; collectors: number; owned: number; sets: number; fetches_24h: number; fetch_cost_month: number; tradera_calls_24h: number };
 type Job = { id: number; query: string; status: string; error: string | null; set_id: string | null; created_at: string; cost_usd: number };
@@ -19,6 +19,7 @@ type ImportSet = {
   sections: { code: string; name: string; cards: { no: number; name: string; team: string; tags: string[] }[] }[];
   parallels?: { section_code: string; name: string; print_run: number | null; position: number }[];
 };
+type Sug = { id: string; email: string | null; query: string; status: "ny" | "klar" | "avvisad"; created_at: string };
 type Admin = { email: string; role: "admin" | "superuser"; added_at: string };
 
 const when = (iso: string) => new Date(iso).toLocaleString("sv-SE", { dateStyle: "short", timeStyle: "short" });
@@ -45,6 +46,52 @@ export default function AdminPanel({
   const [newEmail, setNewEmail] = useState("");
   const [newRole, setNewRole] = useState<"admin" | "superuser">("admin");
 
+  // Set suggestions from users: new ones first.
+  const [sugs, setSugs] = useState<Sug[]>([]);
+  const [showDone, setShowDone] = useState(false);
+  const setSug = async (id: string, status: Sug["status"]) => {
+    const { error } = await supabase.from("set_suggestions").update({ status, handled_at: status === "ny" ? null : new Date().toISOString() }).eq("id", id);
+    if (error) return say("Kunde inte ändra förslaget.");
+    await load();
+  };
+  const delSug = async (id: string) => {
+    const { error } = await supabase.from("set_suggestions").delete().eq("id", id);
+    if (error) return say("Kunde inte ta bort förslaget.");
+    await load();
+  };
+  const sugNew = sugs.filter((x) => x.status === "ny");
+  // Library to-do list (not verified) with bulk verification, and the archive of verified sets.
+  const [libQ, setLibQ] = useState("");
+  const [libSport, setLibSport] = useState("");
+  const [sel, setSel] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [confirmBulk, setConfirmBulk] = useState(false);
+  const fits = (s: SetStat) => (!libSport || s.sport === libSport) && (!libQ.trim() || matches(s, libQ));
+  const todo = sets.filter((s) => !s.verified && fits(s));
+  const archive = sets.filter((s) => s.verified && fits(s));
+  const todoTotal = sets.filter((s) => !s.verified).length;
+  const SHOW_MAX = 150;
+  const toggleSel = (id: string) =>
+    setSel((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const bulkSet = async (ids: string[], verified: boolean) => {
+    if (!ids.length) return;
+    setBulkBusy(true);
+    let failed = 0;
+    for (let i = 0; i < ids.length; i += 100) {
+      const { error } = await supabase.from("sets").update({ verified }).in("id", ids.slice(i, i + 100));
+      if (error) failed += Math.min(100, ids.length - i);
+    }
+    setSel(new Set());
+    setConfirmBulk(false);
+    await onChanged();
+    setBulkBusy(false);
+    say(failed ? `${failed} set kunde inte ändras.` : verified ? `${ids.length} set verifierade och flyttade till arkivet` : `${ids.length} set flyttade tillbaka från arkivet`);
+  };
   const [importMsg, setImportMsg] = useState("");
   const [importing, setImporting] = useState(false);
 
@@ -143,6 +190,8 @@ export default function AdminPanel({
   };
 
   const load = useCallback(async () => {
+    const sg = await supabase.from("set_suggestions").select("id, email, query, status, created_at").order("created_at", { ascending: false }).limit(200);
+    setSugs((sg.data as Sug[]) || []);
     const nw = await supabase.from("app_updates").select("id, title, created_at").order("created_at", { ascending: false }).limit(20);
     setNews((nw.data as { id: string; title: string; created_at: string }[]) || []);
     const [w, f] = await Promise.all([
@@ -227,18 +276,72 @@ export default function AdminPanel({
         </div>
       )}
 
-      <div className="label">Biblioteket</div>
+      <div className="label">Önskade set ({sugNew.length} nya)</div>
+      {sugNew.length ? (
+        <div className="admin-table">
+          {sugNew.map((x) => (
+            <div key={x.id} className="admin-row">
+              <span className="mono note">{when(x.created_at)}</span>
+              <span className="grow"><b>{x.query}</b>{x.email ? ` · ${x.email}` : ""}</span>
+              <button className="btn small" type="button" onClick={() => setSug(x.id, "klar")}>Klart</button>
+              <button className="btn small ghost" type="button" onClick={() => setSug(x.id, "avvisad")}>Avvisa</button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="note">Inga nya förslag. Användarna föreslår set när de inte hittar det de söker.</div>
+      )}
+      {sugs.length > sugNew.length && (
+        <>
+          <button className="btn small ghost" type="button" onClick={() => setShowDone((v) => !v)}>{showDone ? "Dölj hanterade" : `Visa hanterade (${sugs.length - sugNew.length})`}</button>
+          {showDone && (
+            <div className="admin-table">
+              {sugs.filter((x) => x.status !== "ny").map((x) => (
+                <div key={x.id} className="admin-row">
+                  <span className="mono note">{when(x.created_at)}</span>
+                  <span className="grow">{x.query}{x.email ? ` · ${x.email}` : ""}</span>
+                  <span className="pill">{x.status === "klar" ? "Klart" : "Avvisad"}</span>
+                  <button className="btn small ghost" type="button" onClick={() => setSug(x.id, "ny")}>Öppna igen</button>
+                  <button className="btn small ghost danger" type="button" onClick={() => delSug(x.id)}>Ta bort</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      <div className="label">Biblioteket · att granska ({todoTotal})</div>
+      <div className="row">
+        <input className="grow" type="search" placeholder="Sök set, till exempel Prizm eller Bundesliga" aria-label="Sök bland seten" value={libQ} onChange={(e) => setLibQ(e.target.value)} />
+        <select aria-label="Sport" value={libSport} onChange={(e) => setLibSport(e.target.value)}>
+          <option value="">Alla sporter</option>
+          {SPORTS.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
+        </select>
+      </div>
+      <div className="bulkbar">
+        <label className="check">
+          <input type="checkbox" checked={todo.length > 0 && todo.every((s) => sel.has(s.id))} onChange={(e) => setSel(e.target.checked ? new Set(todo.map((s) => s.id)) : new Set())} /> Markera alla ({todo.length})
+        </label>
+        {confirmBulk ? (
+          <>
+            <span>Verifiera {sel.size} set och flytta dem till arkivet?</span>
+            <button className="btn small primary" type="button" disabled={bulkBusy} onClick={() => bulkSet([...sel], true)}>{bulkBusy ? "Verifierar …" : "Ja, verifiera"}</button>
+            <button className="btn small ghost" type="button" onClick={() => setConfirmBulk(false)}>Avbryt</button>
+          </>
+        ) : (
+          <button className="btn small primary" type="button" disabled={!sel.size || bulkBusy} onClick={() => setConfirmBulk(true)}>Verifiera markerade ({sel.size})</button>
+        )}
+      </div>
       <div className="admin-table">
-        {sets.map((s) => (
+        {todo.slice(0, SHOW_MAX).map((s) => (
           <div key={s.id} className="admin-row">
+            <input type="checkbox" checked={sel.has(s.id)} onChange={() => toggleSel(s.id)} aria-label={`Markera ${s.name}`} />
             <input aria-label={`Namn på ${s.name}`} defaultValue={s.name} onBlur={(e) => rename(s, e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()} />
             <select aria-label={`Sport för ${s.name}`} value={s.sport} onChange={(e) => setSport(s, e.target.value)}>
               {SPORTS.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
             </select>
             <span className="note mono">{s.card_count} kort</span>
-            <label className="check">
-              <input type="checkbox" checked={s.verified} onChange={(e) => setVerified(s, e.target.checked)} /> Verifierad
-            </label>
+            <button className="btn small" type="button" onClick={() => setVerified(s, true)}>Verifiera</button>
             {confirmId === s.id ? (
               <span className="row">
                 <button className="btn small danger" type="button" onClick={() => remove(s.id)}>Ta bort för gott</button>
@@ -249,7 +352,25 @@ export default function AdminPanel({
             )}
           </div>
         ))}
+        {!todo.length && <div className="admin-row note">{todoTotal ? "Inga set matchar." : "Allt är verifierat. Snyggt!"}</div>}
       </div>
+      {todo.length > SHOW_MAX && <div className="note">Visar {SHOW_MAX} av {todo.length}. Markera alla verifierar samtliga {todo.length}, även de som inte syns. Sök för att begränsa.</div>}
+
+      <details className="archive">
+        <summary>Arkivet: verifierade set ({sets.filter((s) => s.verified).length})</summary>
+        <div className="note">Verifierade set är klara att använda. Ta ur arkivet om något behöver ses över igen.</div>
+        <div className="admin-table">
+          {archive.slice(0, SHOW_MAX).map((s) => (
+            <div key={s.id} className="admin-row">
+              <span className="grow">{s.name}</span>
+              <span className="note mono">{s.card_count} kort</span>
+              <button className="btn small ghost" type="button" onClick={() => bulkSet([s.id], false)}>Ta ur arkivet</button>
+            </div>
+          ))}
+          {!archive.length && <div className="admin-row note">Inget i arkivet än.</div>}
+        </div>
+        {archive.length > SHOW_MAX && <div className="note">Visar {SHOW_MAX} av {archive.length}. Sök för att hitta fler.</div>}
+      </details>
 
       <div className="label">Importera set från fil</div>
       <div className="row">
