@@ -1,11 +1,14 @@
 /* Front page for visitors and the welcome / what's new dialogs. */
+.hero-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 28px; align-items: center; }
+@media (max-width: 820px) { .hero-grid { grid-template-columns: 1fr; } }
 .hero { display: flex; flex-direction: column; gap: 14px; padding-block: 18px 6px; }
 .hero h1 { font-size: clamp(56px, 11vw, 112px); font-weight: 900; text-transform: uppercase; }
 .hero .lead { margin: 0; font-size: clamp(17px, 2.4vw, 21px); color: var(--muted); max-width: 46ch; }
-.features { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
-.feature { background: var(--surface); border: 1.5px solid var(--line); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+.features { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; }
+.feature { background: var(--surface); border: 1.5px solid var(--line); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
 .feature h3 { font-size: 24px; font-weight: 800; text-transform: uppercase; }
 .feature p { margin: 0; color: var(--muted); }
+.feature .mk { margin-top: auto; }
 .step { width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; font-weight: 700; font-size: 13px; }
 .dots { display: flex; gap: 6px; }
 .dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
@@ -16,3 +19,41 @@
 .news-item p { margin: 0; color: var(--muted); }
 .news-item.fresh { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .badge { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px; border-radius: 99px; background: var(--accent); color: var(--accent-ink); font-size: 11.5px; line-height: 18px; text-align: center; }
+.guide-art { display: flex; justify-content: center; }
+.guide-art .mk { width: 100%; max-width: 420px; }
+
+/* Illustrations (Visuals.tsx). */
+.mk { position: relative; display: flex; flex-direction: column; gap: 10px; padding: 26px 14px 14px; border-radius: 16px; border: 1.5px solid var(--line); background: var(--sunk); user-select: none; }
+.mk-tag { position: absolute; top: 8px; right: 12px; font-size: 10.5px; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); font-weight: 600; }
+.mk-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.mk-head b { font-family: var(--f-display); font-size: 20px; font-weight: 800; text-transform: uppercase; line-height: 1.05; }
+.mk-bar { height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; }
+.mk-bar i { display: block; height: 100%; background: var(--have); border-radius: 99px; }
+.mk-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.mk-grid.four { grid-template-columns: repeat(4, 1fr); }
+.mk-card { position: relative; aspect-ratio: 5 / 7; border-radius: 9px; border: 1.5px dashed var(--line); background: var(--surface); padding: 7px 6px; display: flex; flex-direction: column; justify-content: space-between; opacity: .72; min-width: 0; }
+.mk-card.have { opacity: 1; border-style: solid; border-color: var(--have); background: color-mix(in srgb, var(--have) 10%, var(--surface)); }
+.mk-num { font-size: 12px; font-weight: 700; }
+.mk-pos { font-size: 10.5px; color: var(--muted); line-height: 1.15; overflow-wrap: anywhere; }
+.mk-par { position: absolute; left: 6px; bottom: 6px; font-size: 10.5px; font-weight: 700; color: var(--rc); }
+.mk-card .mk-pos { margin-bottom: 14px; }
+.mk-tick { position: absolute; right: 5px; top: 5px; width: 18px; height: 18px; border-radius: 50%; background: var(--have); color: var(--bg); display: grid; place-items: center; }
+.mk-foot { font-size: 12.5px; color: var(--muted); font-weight: 600; }
+.mk-search { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 40px; padding: 0 6px 0 12px; border-radius: 10px; border: 1.5px solid var(--accent); background: var(--surface); font-size: 13px; }
+.mk-search span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.mk-search b { flex: none; padding: 6px 12px; border-radius: 8px; background: var(--accent); color: var(--accent-ink); font-size: 12.5px; }
+.mk-result { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; padding: 9px 11px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--surface); font-size: 13px; }
+.mk-result span { color: var(--muted); font-size: 12px; flex: none; }
+.mk-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.mk-chip { padding: 4px 11px; border-radius: 99px; border: 1.5px solid var(--line); background: var(--surface); font-size: 12px; font-weight: 600; }
+.mk-chip.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.mk-rows { display: flex; flex-direction: column; border-radius: 10px; border: 1.5px solid var(--line); overflow: hidden; background: var(--surface); }
+.mk-row { display: flex; gap: 10px; align-items: baseline; padding: 7px 11px; border-top: 1px solid var(--line); font-size: 13px; }
+.mk-row:first-child { border-top: 0; }
+.mk-row .mono { font-weight: 700; }
+.mk-row .mk-par { position: static; margin-left: auto; }
+.mk-t { width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid var(--accent); color: var(--accent); display: grid; place-items: center; font-size: 11px; font-weight: 700; }
+.mk-stats { padding: 8px 11px; border-radius: 10px; background: var(--surface); font-size: 13px; }
+.mk-sold { display: grid; grid-template-columns: 38px 1fr auto; gap: 10px; align-items: center; padding: 7px 10px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--surface); font-size: 13px; }
+.mk-sold b { font-size: 12.5px; }
+.mk-ph { width: 38px; height: 38px; border-radius: 7px; background: var(--sunk); }
