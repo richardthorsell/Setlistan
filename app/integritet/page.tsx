@@ -5,12 +5,12 @@ import { LEGAL } from "@/lib/legal";
 export const metadata: Metadata = { title: "Integritetspolicy · Setlistan", description: "Hur Setlistan behandlar dina personuppgifter." };
 
 export default function Page() {
-  const mail = LEGAL.contactEmail;
+  const contact = LEGAL.contactEmail ? <a href={`mailto:${LEGAL.contactEmail}`}>{LEGAL.contactEmail}</a> : <>Feedback-knappen i appen</>;
   return (
     <LegalPage title="Integritetspolicy" intro="Här står vilka personuppgifter Setlistan behandlar, varför, hur länge och vilka rättigheter du har enligt dataskyddsförordningen (GDPR).">
       <h2>Vem ansvarar för uppgifterna</h2>
       <p>
-        {LEGAL.controller} är personuppgiftsansvarig för {LEGAL.service} ({LEGAL.site}). Kontakt: <a href={`mailto:${mail}`}>{mail}</a>.
+        {LEGAL.controller} är personuppgiftsansvarig för {LEGAL.service} ({LEGAL.site}). Kontakt: {contact}.
       </p>
 
       <h2>Vilka uppgifter vi behandlar och varför</h2>
@@ -50,7 +50,7 @@ export default function Page() {
       <ul>
         <li><b>Tillgång och dataportabilitet:</b> under <i>Konto</i> i appen kan du ladda ner allt vi har sparat om dig som en fil.</li>
         <li><b>Radering:</b> under <i>Konto</i> kan du ta bort ditt konto. Då raderas dina uppgifter direkt, inklusive din samling, favoriter, feedback, förslag och väntelisteanmälan. Administratörskonton tas bort av en annan superuser.</li>
-        <li><b>Rättelse, begränsning och invändning:</b> du kan be oss rätta eller begränsa behandlingen, eller invända mot den, genom att mejla <a href={`mailto:${mail}`}>{mail}</a>.</li>
+        <li><b>Rättelse, begränsning och invändning:</b> du kan be oss rätta eller begränsa behandlingen, eller invända mot den, genom att kontakta oss: {contact}.</li>
         <li><b>Återkalla samtycke:</b> du kan när som helst dra tillbaka ditt samtycke till väntelistan. Det påverkar inte behandlingen innan dess.</li>
         <li><b>Klagomål:</b> du har rätt att klaga hos Integritetsskyddsmyndigheten (<a href="https://www.imy.se" rel="noopener noreferrer">imy.se</a>).</li>
       </ul>
