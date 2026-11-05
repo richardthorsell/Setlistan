@@ -356,6 +356,14 @@ export default function App() {
     for (const k of ownedPar.keys()) if (k.endsWith(":" + p.id)) h++;
     return `${h}/${n}`;
   };
+  // The parallel list only offers what fits: with one subset open, that subset's parallels; with "Alla delset", grouped by subset.
+  const activeSec = secIdx >= scoped.length ? null : scoped[secIdx] ?? null;
+  const parOptions = parallels.filter((p) => p.section_id === null || !activeSec || p.section_id === activeSec.id);
+  const parOpt = (p: Parallel) => (
+    <option key={p.id} value={p.id}>
+      {parallelLabel(p)} · {parCount(p)}
+    </option>
+  );
   const total = scoped.reduce((n, s) => n + s.cards.length, 0);
   const have = scoped.reduce((n, s) => n + s.cards.filter(has).length, 0);
   const pct = total ? Math.round((have / total) * 100) : 0;
@@ -837,11 +845,14 @@ export default function App() {
                 aria-label="Parallell"
               >
                 <option value="">Bas</option>
-                {parallels.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {parallelLabel(p)} · {parCount(p)}
-                  </option>
-                ))}
+                {parOptions.filter((p) => p.section_id === null).map(parOpt)}
+                {sections
+                  .filter((s) => parOptions.some((p) => p.section_id === s.id))
+                  .map((s) => (
+                    <optgroup key={s.id} label={s.name}>
+                      {parOptions.filter((p) => p.section_id === s.id).map(parOpt)}
+                    </optgroup>
+                  ))}
               </select>
             )}
             <div className="seg" role="group" aria-label="Vy">
