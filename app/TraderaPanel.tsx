@@ -7,6 +7,9 @@ type Item = { id: string; title: string; price: number | null; buyNow: number | 
 type Stats = { count: number; median: number | null; min: number | null; max: number | null };
 type Result = { items: Item[]; stats: Stats; seen: number; total: number; cached: boolean; searchUrl: string };
 
+// What the search is about: the set (and card) the user clicked, and the two queries it can run.
+export type TraderaScope = { set: string; card: string | null; narrow: string; broad: string };
+
 const when = (iso: string) => {
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString("sv-SE", { year: "numeric", month: "short", day: "numeric" });
@@ -14,9 +17,10 @@ const when = (iso: string) => {
 const kr = (n: number | null) => (n === null ? "" : `${Math.round(n).toLocaleString("sv-SE")} kr`);
 
 // Shows what a card has sold for on Tradera. Opening the panel from a card searches straight away;
-// answers are cached for 24 h, so a repeat costs no call to Tradera (which allows few calls per day).
-export default function TraderaPanel({ initialQuery, signedIn, onClose }: { initialQuery: string; signedIn: boolean; onClose: () => void }) {
-  const [q, setQ] = useState(initialQuery);
+// answers are cached for 24 h, so a repeat costs no call to Tradera.
+export default function TraderaPanel({ scope, signedIn, onClose }: { scope: TraderaScope; signedIn: boolean; onClose: () => void }) {
+  const [mode, setMode] = useState<"set" | "all" | "own">("set");
+  const [q, setQ] = useState(scope.narrow);
   const [busy, setBusy] = useState(false);
   const [res, setRes] = useState<Result | null>(null);
   const [err, setErr] = useState<{ m: string; url?: string } | null>(null);
@@ -41,12 +45,19 @@ export default function TraderaPanel({ initialQuery, signedIn, onClose }: { init
     }
   }, []);
 
+  const pick = (m: "set" | "all") => {
+    const next = m === "set" ? scope.narrow : scope.broad;
+    setMode(m);
+    setQ(next);
+    run(next);
+  };
+
   useEffect(() => {
     if (signedIn && !started.current) {
       started.current = true;
-      run(initialQuery);
+      run(scope.narrow);
     }
-  }, [signedIn, initialQuery, run]);
+  }, [signedIn, scope.narrow, run]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -63,14 +74,40 @@ export default function TraderaPanel({ initialQuery, signedIn, onClose }: { init
           <h3>Sålt på Tradera</h3>
           <button className="btn small ghost" type="button" onClick={onClose}>Stäng</button>
         </div>
+        <div className="t-context">
+          <span className="label">Gäller</span>
+          {scope.card && <b>{scope.card}</b>}
+          <span>{scope.set}</span>
+        </div>
+        <div className="row">
+          <div className="seg" role="group" aria-label="Avgränsning">
+            <button type="button" aria-pressed={mode === "set"} disabled={busy || !signedIn} onClick={() => pick("set")}>Detta set</button>
+            <button type="button" aria-pressed={mode === "all"} disabled={busy || !signedIn} onClick={() => pick("all")}>Alla set</button>
+          </div>
+          <span className="note grow">
+            {mode === "set" && "Söker på spelaren och setets namn. Annonser nämner inte alltid setet, så prova Alla set om du får få träffar."}
+            {mode === "all" && "Söker bara på spelaren och märket, så träffarna kan gälla andra set eller år."}
+            {mode === "own" && "Egen sökning."}
+          </span>
+        </div>
         <form
           className="row"
           onSubmit={(e) => {
             e.preventDefault();
+            setMode("own");
             run(q);
           }}
         >
-          <input className="grow t-input" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Sökord på Tradera" maxLength={100} />
+          <input
+            className="grow t-input"
+            value={q}
+            onChange={(e) => {
+              setQ(e.target.value);
+              setMode("own");
+            }}
+            aria-label="Sökord på Tradera"
+            maxLength={100}
+          />
           <button className="btn primary small" type="submit" disabled={busy || !signedIn}>{busy ? "Söker …" : "Sök"}</button>
           <a className="btn small" href={err?.url || res?.searchUrl || fallback} target="_blank" rel="noopener noreferrer">Öppna på Tradera</a>
         </form>
@@ -83,7 +120,7 @@ export default function TraderaPanel({ initialQuery, signedIn, onClose }: { init
           </div>
         )}
         {res && !res.items.length && !busy && (
-          <div className="note">Inga sålda auktioner hittades. Prova ett kortare sökord, till exempel bara spelarens namn.</div>
+          <div className="note">Inga sålda auktioner hittades. Prova Alla set eller ett kortare sökord, till exempel bara spelarens namn.</div>
         )}
         {res && res.items.length > 0 && (
           <div className="t-list">
