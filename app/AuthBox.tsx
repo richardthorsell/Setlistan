@@ -42,7 +42,9 @@ export default function AuthBox({ supabase, onClose }: { supabase: SupabaseClien
     } catch (err) {
       const e = err as { status?: number; code?: string; message?: string };
       const t =
-        e.code === "invalid_credentials"
+        (mode !== "login" && (e.status === 500 || e.code === "unexpected_failure" || /database error|not_invited/i.test(e.message || "")))
+          ? "Den här adressen är inte inbjuden än. Anmäl dig på väntelistan så bjuder vi in dig."
+          : e.code === "invalid_credentials"
           ? "Fel e-post eller lösenord."
           : e.code === "email_not_confirmed"
             ? "Bekräfta din e-post först via länken i mejlet."
@@ -70,6 +72,7 @@ export default function AuthBox({ supabase, onClose }: { supabase: SupabaseClien
         <button type="button" aria-pressed={mode === "signup"} onClick={() => setMode("signup")}>Nytt konto</button>
         <button type="button" aria-pressed={mode === "link"} onClick={() => setMode("link")}>Länk via e-post</button>
       </div>
+      {mode !== "login" && <div className="note">Betan är bara för inbjudna. Använd samma e-postadress som du anmälde till väntelistan.</div>}
       <form onSubmit={submit} className="auth-form">
         <label>
           <span className="label">E-post</span>
