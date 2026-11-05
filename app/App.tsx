@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
-import { type Card, type Section, type SetStat, type Sport, SPORTS, label, matches, norm, parsePaste, quickIds, ranges, slug, sportLabel } from "@/lib/checklist";
+import { type Card, type Parallel, type Section, type SetStat, type Sport, SPORTS, label, matches, norm, parallelLabel, parsePaste, quickIds, ranges, slug, sportLabel } from "@/lib/checklist";
+import TraderaPanel from "./TraderaPanel";
 import AuthBox from "./AuthBox";
 import AdminPanel from "./AdminPanel";
 
@@ -22,6 +23,20 @@ function readLocal(setId: string): Set<number> {
 function writeLocal(setId: string, ids: Set<number>) {
   try {
     localStorage.setItem(localKey(setId), JSON.stringify([...ids]));
+  } catch {}
+}
+
+// Owned parallels are kept as "cardId:parallelId" -> serial number (or null) when not signed in.
+function readLocalPar(setId: string): Map<string, string | null> {
+  try {
+    return new Map(Object.entries(JSON.parse(localStorage.getItem(`setlistan:par:${setId}`) || "{}")));
+  } catch {
+    return new Map();
+  }
+}
+function writeLocalPar(setId: string, m: Map<string, string | null>) {
+  try {
+    localStorage.setItem(`setlistan:par:${setId}`, JSON.stringify(Object.fromEntries(m)));
   } catch {}
 }
 
@@ -67,6 +82,10 @@ export default function App() {
   const [fetchDone, setFetchDone] = useState<string | null>(null);
   const [paste, setPaste] = useState<{ name: string; text: string; sport: Sport } | null>(null);
   const [sport, setSport] = useState<Sport | "">("");
+  const [parallels, setParallels] = useState<Parallel[]>([]);
+  const [ownedPar, setOwnedPar] = useState<Map<string, string | null>>(new Map());
+  const [parSel, setParSel] = useState<number | null>(null);
+  const [tradera, setTradera] = useState<string | null>(null);
   const [confirmDel, setConfirmDel] = useState(false);
   const [copyText, setCopyText] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -117,6 +136,23 @@ export default function App() {
         for (let i = 0; i < ids.length; i += 500) {
           const rows = ids.slice(i, i + 500).map((card_id) => ({ card_id, set_id: setId }));
           const { error } = await supabase.from("owned").upsert(rows, { onConflict: "user_id,card_id", ignoreDuplicates: true });
+          if (error) throw error;
+        }
+        localStorage.removeItem(k);
+      }
+      const parKeys: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i)!;
+        if (k.startsWith("setlistan:par:")) parKeys.push(k);
+      }
+      for (const k of parKeys) {
+        const setId = k.slice(14);
+        const rows = Object.entries(JSON.parse(localStorage.getItem(k) || "{}") as Record<string, string | null>).map(([key, serial]) => {
+          const [card_id, parallel_id] = key.split(":").map(Number);
+          return { card_id, parallel_id, set_id: setId, serial };
+        });
+        for (let i = 0; i < rows.length; i += 500) {
+          const { error } = await supabase.from("owned_parallels").upsert(rows.slice(i, i + 500), { onConflict: "user_id,card_id,parallel_id", ignoreDuplicates: true });
           if (error) throw error;
         }
         localStorage.removeItem(k);
@@ -184,9 +220,19 @@ export default function App() {
           const rows = await fetchAll<{ card_id: number }>((a, b) => supabase.from("owned").select("card_id").eq("set_id", openId).range(a, b));
           mine = new Set(rows.map((r) => r.card_id));
         } else mine = readLocal(openId);
+        const pars = await supabase.from("parallels").select("id, section_id, name, print_run, position").eq("set_id", openId).order("position");
+        let minePar = new Map<string, string | null>();
+        if (uid) {
+          const rows = await fetchAll<{ card_id: number; parallel_id: number; serial: string | null }>((a, b) =>
+            supabase.from("owned_parallels").select("card_id, parallel_id, serial").eq("set_id", openId).order("card_id").order("parallel_id").range(a, b),
+          );
+          minePar = new Map(rows.map((r) => [`${r.card_id}:${r.parallel_id}`, r.serial]));
+        } else minePar = readLocalPar(openId);
         if (stop) return;
         setSections(list);
         setOwned(mine);
+        setParallels((pars.data as Parallel[]) || []);
+        setOwnedPar(minePar);
       } catch {
         if (!stop) say("Kunde inte läsa setet just nu.");
       } finally {
@@ -201,6 +247,7 @@ export default function App() {
   const openSet = (id: string) => {
     setOpenId(id);
     setSecIdx(0);
+    setParSel(null);
     setFilter("all");
     setFind("");
     setTeam("");
@@ -212,12 +259,62 @@ export default function App() {
   };
 
   const current = sets.find((s) => s.id === openId) || null;
-  const total = sections.reduce((n, s) => n + s.cards.length, 0);
-  const have = sections.reduce((n, s) => n + s.cards.filter((c) => owned.has(c.id)).length, 0);
+  // With a parallel selected only the subsets it belongs to are shown and counted.
+  const selPar = parallels.find((p) => p.id === parSel) || null;
+  const scoped = selPar ? sections.filter((s) => selPar.section_id === null || s.id === selPar.section_id) : sections;
+  const has = (c: Card) => (selPar ? ownedPar.has(`${c.id}:${selPar.id}`) : owned.has(c.id));
+  const serialOf = (c: Card) => (selPar ? ownedPar.get(`${c.id}:${selPar.id}`) || "" : "");
+  const parCount = (p: Parallel) => {
+    const n = sections.filter((s) => p.section_id === null || s.id === p.section_id).reduce((a, s) => a + s.cards.length, 0);
+    let h = 0;
+    for (const k of ownedPar.keys()) if (k.endsWith(":" + p.id)) h++;
+    return `${h}/${n}`;
+  };
+  const total = scoped.reduce((n, s) => n + s.cards.length, 0);
+  const have = scoped.reduce((n, s) => n + s.cards.filter(has).length, 0);
   const pct = total ? Math.round((have / total) * 100) : 0;
+
+  const applyParallel = async (ids: number[], on: boolean) => {
+    if (!openId || !selPar) return 0;
+    const pid = selPar.id;
+    const next = new Map(ownedPar);
+    const changed = ids.filter((id) => on !== next.has(`${id}:${pid}`));
+    changed.forEach((id) => (on ? next.set(`${id}:${pid}`, null) : next.delete(`${id}:${pid}`)));
+    setOwnedPar(next);
+    if (!user) {
+      writeLocalPar(openId, next);
+      return changed.length;
+    }
+    try {
+      for (let i = 0; i < changed.length; i += 500) {
+        const part = changed.slice(i, i + 500);
+        const { error } = on
+          ? await supabase.from("owned_parallels").upsert(part.map((card_id) => ({ card_id, parallel_id: pid, set_id: openId })), { onConflict: "user_id,card_id,parallel_id", ignoreDuplicates: true })
+          : await supabase.from("owned_parallels").delete().eq("parallel_id", pid).in("card_id", part);
+        if (error) throw error;
+      }
+    } catch {
+      say("Kunde inte spara. Ladda om sidan och försök igen.");
+    }
+    return changed.length;
+  };
+
+  const saveSerial = async (cardId: number, value: string) => {
+    if (!openId || !selPar) return;
+    const key = `${cardId}:${selPar.id}`;
+    const serial = value.trim() || null;
+    if (!ownedPar.has(key) || ownedPar.get(key) === serial) return;
+    const next = new Map(ownedPar);
+    next.set(key, serial);
+    setOwnedPar(next);
+    if (!user) return writeLocalPar(openId, next);
+    const { error } = await supabase.from("owned_parallels").update({ serial }).eq("card_id", cardId).eq("parallel_id", selPar.id);
+    if (error) say("Kunde inte spara serienumret.");
+  };
 
   const applyOwned = async (ids: number[], on: boolean) => {
     if (!openId || !ids.length) return;
+    if (selPar) return applyParallel(ids, on);
     const next = new Set(owned);
     const changed = ids.filter((id) => (on ? !next.has(id) : next.has(id)));
     changed.forEach((id) => (on ? next.add(id) : next.delete(id)));
@@ -242,15 +339,15 @@ export default function App() {
   };
 
   const runQuick = async (on: boolean) => {
-    const { ids, bad } = quickIds(sections, quick);
+    const { ids, bad } = quickIds(scoped, quick);
     const n = (await applyOwned(ids, on)) ?? 0;
     say(`${n} kort ${on ? "markerade" : "avmarkerade"}${bad.length ? ` · förstod inte: ${bad.join(", ")}` : ""}`);
   };
 
   const missingText = () => {
-    const lines = [`${current?.name} — saknade kort`];
-    for (const sec of sections) {
-      const miss = sec.cards.filter((c) => !owned.has(c.id));
+    const lines = [`${current?.name}${selPar ? " — " + parallelLabel(selPar) : ""} — saknade kort`];
+    for (const sec of scoped) {
+      const miss = sec.cards.filter((c) => !has(c));
       if (miss.length) lines.push(`${sec.name}${sec.code ? ` (${sec.code})` : ""}, ${miss.length} st: ${ranges(miss.map((c) => c.no))}`);
     }
     return lines.length > 1 ? lines.join("\n") : `${current?.name}: komplett!`;
@@ -266,17 +363,17 @@ export default function App() {
   };
   const downloadCsv = (onlyMissing: boolean) => {
     const esc = (s: string) => `"${String(s).replace(/"/g, '""')}"`;
-    const rows = ["Nummer,Delset,Spelare,Lag,RC,Har"];
-    for (const sec of sections)
+    const rows = ["Nummer,Delset,Parallell,Spelare,Lag,RC,Har,Serienummer"];
+    for (const sec of scoped)
       for (const c of sec.cards) {
-        const h = owned.has(c.id);
+        const h = has(c);
         if (onlyMissing && h) continue;
-        rows.push([esc(label(sec, c)), esc(sec.name), esc(c.name), esc(c.team), c.tags.includes("RC") ? "RC" : "", h ? "Ja" : "Nej"].join(","));
+        rows.push([esc(label(sec, c)), esc(sec.name), esc(selPar ? parallelLabel(selPar) : "Bas"), esc(c.name), esc(c.team), c.tags.includes("RC") ? "RC" : "", h ? "Ja" : "Nej", esc(serialOf(c))].join(","));
       }
     const url = URL.createObjectURL(new Blob(["\ufeff" + rows.join("\r\n")], { type: "text/csv;charset=utf-8" }));
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${slug(current?.name || "set")}-${onlyMissing ? "saknade" : "setlista"}.csv`;
+    a.download = `${slug(current?.name || "set")}${selPar ? "-" + slug(parallelLabel(selPar)) : ""}-${onlyMissing ? "saknade" : "setlista"}.csv`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
@@ -363,13 +460,13 @@ export default function App() {
 
   // ----- derived view -----
   const hits = q.trim() ? sets.filter((s) => matches(s, q)) : [];
-  const showAll = secIdx >= sections.length;
-  const teams = [...new Set(sections.flatMap((s) => s.cards.map((c) => c.team)).filter(Boolean))].sort((a, b) => a.localeCompare(b, "sv"));
+  const showAll = secIdx >= scoped.length;
+  const teams = [...new Set(scoped.flatMap((s) => s.cards.map((c) => c.team)).filter(Boolean))].sort((a, b) => a.localeCompare(b, "sv"));
   const f = norm(find);
   const items: { sec: Section; c: Card; pos: string }[] = [];
-  (showAll ? sections : sections.slice(secIdx, secIdx + 1)).forEach((sec) =>
+  (showAll ? scoped : scoped.slice(secIdx, secIdx + 1)).forEach((sec) =>
     sec.cards.forEach((c, i) => {
-      const h = owned.has(c.id);
+      const h = has(c);
       if (filter === "missing" && h) return;
       if (filter === "have" && !h) return;
       if (team && c.team !== team) return;
@@ -408,6 +505,7 @@ export default function App() {
       {showAdmin && role && user && (
         <AdminPanel supabase={supabase} role={role} sets={sets} myEmail={(user.email || "").toLowerCase()} onChanged={loadSets} say={say} />
       )}
+      {tradera !== null && <TraderaPanel key={tradera} initialQuery={tradera} signedIn={!!user} onClose={() => setTradera(null)} />}
 
       <header className="top">
         <div className="brand">
@@ -537,7 +635,7 @@ export default function App() {
                 {sportLabel(current.sport)} · {current.verified ? "Verifierad checklista" : current.source === "inklistrad" ? "Inklistrad checklista" : `Hämtad${current.source ? " från " + current.source.replace(/^https?:\/\//, "").split("/")[0] : ""}`}
               </div>
               <h2>{current.name}</h2>
-              <div className="sub">{sections.length} delset · {total} kort{current.notes ? ` · ${current.notes}` : ""}</div>
+              <div className="sub">{scoped.length} delset · {total} kort{selPar ? ` · ${parallelLabel(selPar)}` : ""}{current.notes ? ` · ${current.notes}` : ""}</div>
             </div>
             <div className="tally">
               <div className="num mono">{have}<small> / {total}</small></div>
@@ -549,6 +647,7 @@ export default function App() {
             <button className="btn" type="button" onClick={copyMissing}>Kopiera saknade</button>
             <button className="btn" type="button" onClick={() => downloadCsv(true)}>Ladda ner saknade (CSV)</button>
             <button className="btn" type="button" onClick={() => downloadCsv(false)}>Ladda ner hela setlistan</button>
+            <button className="btn" type="button" onClick={() => setTradera(current.short_name || current.name)}>Sök på Tradera</button>
             {mine && <button className="btn ghost danger" type="button" onClick={() => setConfirmDel(true)}>Ta bort set</button>}
           </div>
           {!user && <div className="note">Du är inte inloggad. Avprickningarna sparas i den här webbläsaren och flyttas till ditt konto när du loggar in.</div>}
@@ -567,8 +666,8 @@ export default function App() {
           )}
 
           <div className="sections" role="toolbar" aria-label="Delset">
-            {sections.map((s, i) => {
-              const hs = s.cards.filter((c) => owned.has(c.id)).length;
+            {scoped.map((s, i) => {
+              const hs = s.cards.filter(has).length;
               return (
                 <button key={s.id} className={`sec ${hs === s.cards.length && hs ? "done" : ""}`} type="button" aria-pressed={i === secIdx} onClick={() => setSecIdx(i)}>
                   <b>{s.name}</b>
@@ -576,7 +675,7 @@ export default function App() {
                 </button>
               );
             })}
-            <button className="sec" type="button" aria-pressed={showAll} onClick={() => setSecIdx(sections.length)}>
+            <button className="sec" type="button" aria-pressed={showAll} onClick={() => setSecIdx(scoped.length)}>
               <b>Alla delset</b>
               <small>{have}/{total}</small>
             </button>
@@ -593,6 +692,23 @@ export default function App() {
               <option value="">Alla lag</option>
               {teams.map((t) => <option key={t}>{t}</option>)}
             </select>
+            {parallels.length > 0 && (
+              <select
+                value={parSel ?? ""}
+                onChange={(e) => {
+                  setParSel(e.target.value ? Number(e.target.value) : null);
+                  setSecIdx(0);
+                }}
+                aria-label="Parallell"
+              >
+                <option value="">Bas</option>
+                {parallels.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {parallelLabel(p)} · {parCount(p)}
+                  </option>
+                ))}
+              </select>
+            )}
             <div className="seg" role="group" aria-label="Vy">
               <button type="button" aria-pressed={view === "grid"} onClick={() => setView("grid")}>Pärm</button>
               <button type="button" aria-pressed={view === "list"} onClick={() => setView("list")}>Lista</button>
@@ -613,25 +729,42 @@ export default function App() {
           ) : view === "grid" ? (
             <div className="grid">
               {items.map(({ sec, c, pos }) => (
-                <button key={c.id} className="card" type="button" aria-pressed={owned.has(c.id)} onClick={() => applyOwned([c.id], !owned.has(c.id))}>
-                  <span className="no">{label(sec, c)}</span>
-                  <span className="pos" title="Pärmsida · fack">{pos}</span>
-                  <span className="name">{c.name}</span>
-                  <span className="team">{c.team}</span>
-                  <span className="tags">{tagEls(c)}</span>
-                  <span className="tick"><Tick /></span>
-                </button>
+                <div key={c.id} className="cardwrap">
+                  <button className="card" type="button" aria-pressed={has(c)} onClick={() => applyOwned([c.id], !has(c))}>
+                    <span className="no">{label(sec, c)}</span>
+                    <span className="pos" title="Pärmsida · fack">{pos}</span>
+                    <span className="name">{c.name}</span>
+                    <span className="team">{c.team}</span>
+                    <span className="tags">{tagEls(c)}{serialOf(c) && <span className="tag fs">{serialOf(c)}</span>}</span>
+                    <span className="tick"><Tick /></span>
+                  </button>
+                  <button className="tbtn" type="button" title="Sök på Tradera" aria-label={`Sök ${c.name} på Tradera`} onClick={() => setTradera(`${c.name} ${current.short_name || current.name}`)}>T</button>
+                </div>
               ))}
             </div>
           ) : (
             <div className="list">
               {items.map(({ sec, c }) => (
-                <button key={c.id} className="lrow" type="button" aria-pressed={owned.has(c.id)} onClick={() => applyOwned([c.id], !owned.has(c.id))}>
-                  <span className="box">{owned.has(c.id) && <Tick />}</span>
-                  <span className="n">{label(sec, c)}</span>
-                  <span className="nm">{c.name} {tagEls(c)}</span>
-                  <span className="tm">{c.team}</span>
-                </button>
+                <div key={c.id} className="lwrap">
+                  <button className="lrow" type="button" aria-pressed={has(c)} onClick={() => applyOwned([c.id], !has(c))}>
+                    <span className="box">{has(c) && <Tick />}</span>
+                    <span className="n">{label(sec, c)}</span>
+                    <span className="nm">{c.name} {tagEls(c)}</span>
+                    <span className="tm">{c.team}</span>
+                  </button>
+                  {selPar && has(c) && (
+                    <input
+                      key={serialOf(c)}
+                      className="serial"
+                      defaultValue={serialOf(c)}
+                      placeholder={selPar.print_run ? `nr/${selPar.print_run}` : "nr"}
+                      maxLength={20}
+                      aria-label={`Serienummer för ${c.name}`}
+                      onBlur={(e) => saveSerial(c.id, e.target.value)}
+                    />
+                  )}
+                  <button className="tbtn" type="button" title="Sök på Tradera" aria-label={`Sök ${c.name} på Tradera`} onClick={() => setTradera(`${c.name} ${current.short_name || current.name}`)}>T</button>
+                </div>
               ))}
             </div>
           )}
