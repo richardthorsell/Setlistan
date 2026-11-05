@@ -12,7 +12,7 @@ import Landing from "./Landing";
 import SetPicker from "./SetPicker";
 import { WhatsNew, Welcome, type Update } from "./Onboarding";
 
-type Filter = "all" | "missing" | "have";
+type Filter = "all" | "missing" | "have" | "fav";
 type LogLine = { m: string; k?: string };
 const PAGE = 1000;
 const localKey = (setId: string) => `setlistan:owned:${setId}`;
@@ -97,6 +97,8 @@ export default function App() {
   const [favs, setFavs] = useState<Set<string>>(new Set());
   const [parallels, setParallels] = useState<Parallel[]>([]);
   const [ownedPar, setOwnedPar] = useState<Map<string, string | null>>(new Map());
+  const [favCards, setFavCards] = useState<Set<number>>(new Set());
+  const [suggested, setSuggested] = useState<Set<string>>(new Set());
   const [parSel, setParSel] = useState<number | null>(null);
   const [tradera, setTradera] = useState<TraderaScope | null>(null);
   const [confirmDel, setConfirmDel] = useState(false);
@@ -306,11 +308,17 @@ export default function App() {
           );
           minePar = new Map(rows.map((r) => [`${r.card_id}:${r.parallel_id}`, r.serial]));
         } else minePar = readLocalPar(openId);
+        let mineFav = new Set<number>();
+        if (uid) {
+          const rows = await fetchAll<{ card_id: number }>((a, b) => supabase.from("favorite_cards").select("card_id").eq("set_id", openId).range(a, b));
+          mineFav = new Set(rows.map((r) => r.card_id));
+        }
         if (stop) return;
         setSections(list);
         setOwned(mine);
         setParallels((pars.data as Parallel[]) || []);
         setOwnedPar(minePar);
+        setFavCards(mineFav);
       } catch {
         if (!stop) say("Kunde inte läsa setet just nu.");
       } finally {
@@ -536,6 +544,36 @@ export default function App() {
     say("Setet är borttaget");
   };
 
+  // A favourite card: a player that is extra valuable to you. Saved per user, rolled back if saving fails.
+  const toggleFavCard = async (cardId: number) => {
+    if (!user || !openId) return say("Logga in för att markera favoriter.");
+    const was = favCards.has(cardId);
+    const flip = (on: boolean) =>
+      setFavCards((prev) => {
+        const next = new Set(prev);
+        if (on) next.add(cardId);
+        else next.delete(cardId);
+        return next;
+      });
+    flip(!was);
+    const r = was ? await supabase.from("favorite_cards").delete().eq("card_id", cardId) : await supabase.from("favorite_cards").insert({ card_id: cardId, set_id: openId });
+    if (r.error) {
+      flip(was);
+      say("Kunde inte spara favoriten.");
+    }
+  };
+
+  // Suggest a checklist to add. The administrators see the suggestions in the admin panel.
+  const suggest = async (query: string) => {
+    const text = query.trim().slice(0, 200);
+    if (!user) return say("Logga in för att föreslå ett set.");
+    if (text.length < 3) return say("Skriv minst tre tecken.");
+    const { error } = await supabase.from("set_suggestions").insert({ query: text, email: user.email ?? null });
+    if (error) return say("Kunde inte skicka förslaget just nu. Du kan skicka högst tio per dygn.");
+    setSuggested((prev) => new Set(prev).add(text.toLowerCase()));
+    say("Tack! Vi har tagit emot ditt förslag.");
+  };
+
   // ----- derived view -----
   const hits = q.trim() ? sets.filter((s) => matches(s, q)) : [];
   const showAll = secIdx >= scoped.length;
@@ -547,6 +585,7 @@ export default function App() {
       const h = has(c);
       if (filter === "missing" && h) return;
       if (filter === "have" && !h) return;
+      if (filter === "fav" && !favCards.has(c.id)) return;
       if (team && c.team !== team) return;
       if (f && !norm(`${label(sec, c)} ${c.name} ${c.team} ${c.tags.join(" ")}`).includes(f)) return;
       items.push({ sec, c, pos: `s.${Math.floor(i / 9) + 1}·${(i % 9) + 1}` });
@@ -642,7 +681,7 @@ export default function App() {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter") hits.length ? openSet(hits[0].id) : startFetch(q);
+              if (e.key === "Enter" && hits.length) openSet(hits[0].id);
             }}
           />
           <button className="btn big" type="button" onClick={() => { setFetchLog(null); setPaste({ name: q.trim(), text: "", sport: sport || "fotboll" }); }}>Klistra in lista</button>
@@ -660,11 +699,12 @@ export default function App() {
             ))}
             <div className="nomatch">
               <div>
-                <strong>{hits.length ? "Inte rätt set?" : "Inget set i biblioteket matchar."}</strong> Vi kan leta upp checklistan på nätet och lägga in den i biblioteket. Du kan också klistra in en adress till en checklista i sökfältet.
+                <strong>{hits.length ? "Saknas det du söker?" : "Inget set i biblioteket matchar."}</strong> Föreslå setet så lägger administratörerna in det. Du kan också klistra in din egen lista med knappen ovan.
               </div>
               <div className="row">
-                <button className="btn primary" type="button" disabled={fetching} onClick={() => startFetch(q)}>Hämta “{q.trim()}”</button>
-                {!user && <span className="note">Kräver inloggning, max 5 hämtningar per dygn.</span>}
+                <button className="btn primary" type="button" disabled={suggested.has(q.trim().toLowerCase())} onClick={() => suggest(q)}>
+                  {suggested.has(q.trim().toLowerCase()) ? "Förslaget är skickat" : `Föreslå “${q.trim()}”`}
+                </button>
               </div>
             </div>
           </div>
@@ -778,8 +818,8 @@ export default function App() {
 
           <div className="controls">
             <div className="seg" role="group" aria-label="Visa">
-              {(["all", "missing", "have"] as Filter[]).map((k) => (
-                <button key={k} type="button" aria-pressed={filter === k} onClick={() => setFilter(k)}>{{ all: "Alla", missing: "Saknas", have: "Har" }[k]}</button>
+              {(["all", "missing", "have", "fav"] as Filter[]).map((k) => (
+                <button key={k} type="button" aria-pressed={filter === k} onClick={() => setFilter(k)}>{{ all: "Alla", missing: "Saknas", have: "Har", fav: `★ Favoriter${favCards.size ? ` ${favCards.size}` : ""}` }[k]}</button>
               ))}
             </div>
             <input type="search" placeholder="Spelare, lag eller nummer" value={find} onChange={(e) => setFind(e.target.value)} aria-label="Sök i setet" />
@@ -820,11 +860,11 @@ export default function App() {
           {loadingSet && !sections.length ? (
             <div className="empty">Läser korten …</div>
           ) : !items.length ? (
-            <div className="empty">{filter === "missing" ? "Inga saknade kort här. Snyggt!" : filter === "have" ? "Du har inte prickat av några kort här än. Klicka på ett kort för att markera det." : "Inga kort matchar sökningen."}</div>
+            <div className="empty">{filter === "fav" ? "Inga favoriter här än. Tryck på stjärnan vid en spelare som är extra värdefull." : filter === "missing" ? "Inga saknade kort här. Snyggt!" : filter === "have" ? "Du har inte prickat av några kort här än. Klicka på ett kort för att markera det." : "Inga kort matchar sökningen."}</div>
           ) : view === "grid" ? (
             <div className="grid">
               {items.map(({ sec, c, pos }) => (
-                <div key={c.id} className="cardwrap">
+                <div key={c.id} className={`cardwrap${favCards.has(c.id) ? " fav" : ""}`}>
                   <button className="card" type="button" aria-pressed={has(c)} onClick={() => applyOwned([c.id], !has(c))}>
                     <span className="no">{label(sec, c)}</span>
                     <span className="pos" title="Pärmsida · fack">{pos}</span>
@@ -834,6 +874,7 @@ export default function App() {
                     <span className="tick"><Tick /></span>
                   </button>
                   <button className="tbtn" type="button" title="Visa sålda på Tradera" aria-label={`Sålda ${c.name} på Tradera`} onClick={() => setTradera(traderaScope(c, sec))}>T</button>
+                  <button className={`star${favCards.has(c.id) ? " on" : ""}`} type="button" aria-pressed={favCards.has(c.id)} title="Favorit: extra värdefull" aria-label={`${favCards.has(c.id) ? "Ta bort" : "Markera"} ${c.name} som favorit`} onClick={() => toggleFavCard(c.id)}>{favCards.has(c.id) ? "★" : "☆"}</button>
                 </div>
               ))}
             </div>
@@ -858,6 +899,7 @@ export default function App() {
                       onBlur={(e) => saveSerial(c.id, e.target.value)}
                     />
                   )}
+                  <button className={`star${favCards.has(c.id) ? " on" : ""}`} type="button" aria-pressed={favCards.has(c.id)} title="Favorit: extra värdefull" aria-label={`${favCards.has(c.id) ? "Ta bort" : "Markera"} ${c.name} som favorit`} onClick={() => toggleFavCard(c.id)}>{favCards.has(c.id) ? "★" : "☆"}</button>
                   <button className="tbtn" type="button" title="Visa sålda på Tradera" aria-label={`Sålda ${c.name} på Tradera`} onClick={() => setTradera(traderaScope(c, sec))}>T</button>
                 </div>
               ))}
