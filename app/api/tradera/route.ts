@@ -7,7 +7,7 @@ export const maxDuration = 20;
 // Tradera allows 10,000 calls per method and 24 h. Results are cached for 24 h and every call is reserved
 // against a per-user and a global quota in the database (see tradera_reserve) to keep abuse bounded.
 const URL_ADVANCED = "https://api.tradera.com/v4/search/advanced";
-const TTL_MS = 24 * 3600 * 1000;
+const TTL_MS = 72 * 3600 * 1000; // answers are reused for three days: fewer calls to Tradera
 const PAGE_SIZE = 40;
 const SHOW = 12;
 
@@ -80,8 +80,17 @@ function cleanStats(s: unknown): Stats {
   return { count: nz(x.count) ?? 0, median: nz(x.median), min: nz(x.min), max: nz(x.max) };
 }
 
+type Db = Awaited<ReturnType<typeof createClient>>;
+
+// Every search is logged without any user information: only the query, what it was about (set and card) and the result.
+async function logSearch(db: Db, key: string, ctx: string, stats: Stats, seen: number, total: number, cached: boolean) {
+  await db.rpc("tradera_log", { p_key: key, p_ctx: ctx, p_seen: seen, p_total: total, p_sold: stats.count, p_median: stats.median, p_min: stats.min, p_max: stats.max, p_cached: cached });
+}
+
 export async function GET(req: Request) {
-  const q = (new URL(req.url).searchParams.get("q") || "").trim().slice(0, 100);
+  const params = new URL(req.url).searchParams;
+  const q = (params.get("q") || "").trim().slice(0, 100);
+  const ctx = (params.get("ctx") || "").trim().slice(0, 200);
   if (q.length < 3) return Response.json({ error: "Skriv minst tre tecken." }, { status: 400 });
   // Traderas own search page, which lists what is for sale right now.
   const searchUrl = "https://www.tradera.com/search?q=" + encodeURIComponent(q);
@@ -94,9 +103,18 @@ export async function GET(req: Request) {
 
   const key = "sold:" + q.toLowerCase().split(" ").filter(Boolean).join(" ");
   const { data: cached } = await supabase.from("tradera_cache").select("total, items, fetched_at").eq("key", key).maybeSingle();
-  if (cached && !Array.isArray(cached.items) && Date.now() - new Date(cached.fetched_at).getTime() < TTL_MS) {
+  // A stored answer of any age; used fresh (within the TTL) or as a fallback when Tradera cannot be reached.
+  const fromCache = async (stale: boolean) => {
+    if (!cached || Array.isArray(cached.items)) return null;
     const p = cached.items as { items?: unknown; stats?: unknown; seen?: unknown };
-    return Response.json({ items: clean(p.items, searchUrl), stats: cleanStats(p.stats), seen: nz(p.seen) ?? 0, total: cached.total, cached: true, searchUrl });
+    const stats = cleanStats(p.stats);
+    const seen = nz(p.seen) ?? 0;
+    await logSearch(supabase, key, ctx, stats, seen, cached.total, true);
+    return Response.json({ items: clean(p.items, searchUrl), stats, seen, total: cached.total, cached: true, stale, searchUrl });
+  };
+  if (cached && Date.now() - new Date(cached.fetched_at).getTime() < TTL_MS) {
+    const r = await fromCache(false);
+    if (r) return r;
   }
 
   const appId = process.env.TRADERA_APP_ID?.trim();
@@ -107,8 +125,8 @@ export async function GET(req: Request) {
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(appKey)) return Response.json({ error: "TRADERA_APP_KEY i Vercel ska vara en GUID, till exempel aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee.", searchUrl }, { status: 500 });
 
   const { data: slot } = await supabase.rpc("tradera_reserve", { p_key: key });
-  if (slot === "user_limit") return Response.json({ error: "Du har gjort dina Tradera-sökningar för idag.", searchUrl }, { status: 429 });
-  if (slot === "global_limit") return Response.json({ error: "Tjänstens dagliga Tradera-kvot är slut. Försök igen i morgon.", searchUrl }, { status: 429 });
+  if (slot === "user_limit") return (await fromCache(true)) ?? Response.json({ error: "Du har gjort dina Tradera-sökningar för idag.", searchUrl }, { status: 429 });
+  if (slot === "global_limit") return (await fromCache(true)) ?? Response.json({ error: "Tjänstens dagliga Tradera-kvot är slut. Försök igen i morgon.", searchUrl }, { status: 429 });
   if (slot !== "ok") return Response.json({ error: "Kunde inte söka just nu.", searchUrl }, { status: 500 });
 
   let res: Response;
@@ -130,9 +148,9 @@ export async function GET(req: Request) {
       cache: "no-store",
     });
   } catch {
-    return Response.json({ error: "Tradera svarade inte i tid.", searchUrl }, { status: 502 });
+    return (await fromCache(true)) ?? Response.json({ error: "Tradera svarade inte i tid.", searchUrl }, { status: 502 });
   }
-  if (res.status === 429) return Response.json({ error: "Traderas dagliga gräns är nådd. Försök igen i morgon.", searchUrl }, { status: 429 });
+  if (res.status === 429) return (await fromCache(true)) ?? Response.json({ error: "Traderas dagliga gräns är nådd. Försök igen i morgon.", searchUrl }, { status: 429 });
   if (res.status === 401 || res.status === 403) {
     const body = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
     const why = String(body?.error?.message || "").slice(0, 120);
@@ -142,7 +160,7 @@ export async function GET(req: Request) {
     const hint = role ? ` Du använder AppId ${appId} och en nyckel som slutar på ${appKey.slice(-4)}. Jämför med din app hos Tradera.` : "";
     return Response.json({ error: `Traderas nycklar godkändes inte${why ? ` (Tradera säger: ${why})` : ""}.${hint}`, searchUrl }, { status: 502 });
   }
-  if (!res.ok) return Response.json({ error: `Tradera svarade med fel ${res.status}.`, searchUrl }, { status: 502 });
+  if (!res.ok) return (await fromCache(true)) ?? Response.json({ error: `Tradera svarade med fel ${res.status}.`, searchUrl }, { status: 502 });
 
   const data = (await res.json().catch(() => null)) as { items?: unknown; totalNumberOfItems?: unknown; errors?: unknown } | null;
   if (!data) return Response.json({ error: "Svaret från Tradera gick inte att läsa.", searchUrl }, { status: 502 });
@@ -153,5 +171,8 @@ export async function GET(req: Request) {
   const shown = clean(items, searchUrl);
   const total = nz(data.totalNumberOfItems) ?? all;
   await supabase.rpc("tradera_cache_put", { p_key: key, p_total: total, p_items: { items: shown, stats, seen: all } });
+  // History: every sold auction once (by Tradera's own id) and the search itself, without any user information.
+  await supabase.rpc("tradera_store_auctions", { p_items: items });
+  await logSearch(supabase, key, ctx, stats, all, total, false);
   return Response.json({ items: shown, stats, seen: all, total, cached: false, searchUrl });
 }
