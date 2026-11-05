@@ -1,16 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { MockMissing, MockSearch, MockSet, MockTick, MockTradera } from "./Visuals";
 import "./panels.css";
 import "./landing.css";
 
 export type Update = { id: string; title: string; body: string; created_at: string };
 
 const STEPS = [
-  { t: "Välkommen till Setlistan", d: "Här söker du fram checklistor för samlarkort, prickar av korten du har och ser direkt vilka som saknas. Vi visar dig runt på en minut." },
-  { t: "Hitta ett set", d: "Skriv till exempel Topps Premier League Flagship 26/27 i sökrutan. Finns setet i biblioteket öppnas det direkt. Annars trycker du Hämta så letar vi upp listan åt dig. Hämtningar är begränsade per dygn." },
-  { t: "Pricka av dina kort", d: "Tryck på ett kort för att markera att du har det. Välj parallell (/50, /25 och fler) och skriv in serienummer. Du kan också klistra in en lista för att pricka av många på en gång." },
-  { t: "Saknade kort och värde", d: "Filtrera på Saknas och exportera listan. Tryck på T vid ett kort för att se vad liknande kort har sålts för på Tradera. Under Nytt ser du alltid vad som har ändrats." },
+  { t: "Välkommen till Setlistan", d: "Här söker du fram checklistor för samlarkort, prickar av korten du har och ser direkt vilka som saknas. Vi visar dig runt på en minut.", v: <MockSet /> },
+  { t: "Hitta ett set", d: "Skriv till exempel Topps Premier League Flagship 26/27 i sökrutan. Finns setet i biblioteket öppnas det direkt. Annars trycker du Hämta så letar vi upp listan åt dig. Hämtningar är begränsade per dygn.", v: <MockSearch /> },
+  { t: "Pricka av dina kort", d: "Tryck på ett kort för att markera att du har det. Välj parallell (/50, /25 och fler) och skriv in serienummer. Du kan också klistra in en lista för att pricka av många på en gång.", v: <MockTick /> },
+  { t: "Saknade kort", d: "Filtrera på Saknas och exportera listan, så vet du precis vad du letar efter.", v: <MockMissing /> },
+  { t: "Vad är det värt?", d: "Tryck på T vid ett kort för att se vad liknande kort har sålts för på Tradera. Under Nytt ser du alltid vad som har ändrats i Setlistan.", v: <MockTradera /> },
 ];
 
 const when = (iso: string) => new Date(iso).toLocaleDateString("sv-SE", { year: "numeric", month: "short", day: "numeric" });
@@ -35,6 +37,7 @@ export function Welcome({ onDone }: { onDone: () => void }) {
           <span className="label">Steg {i + 1} av {STEPS.length}</span>
           <button className="btn small ghost" type="button" onClick={onDone}>Hoppa över</button>
         </div>
+        <div className="guide-art">{STEPS[i].v}</div>
         <h3 style={{ fontSize: 34 }}>{STEPS[i].t}</h3>
         <p style={{ margin: 0 }}>{STEPS[i].d}</p>
         <div className="row" style={{ justifyContent: "space-between" }}>
