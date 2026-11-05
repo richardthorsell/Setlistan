@@ -7,7 +7,7 @@ export function SiteFooter() {
     <nav className="site-foot" aria-label="Juridisk information">
       <a href="/integritet">Integritet</a>
       <a href="/villkor">Villkor</a>
-      <a href={`mailto:${LEGAL.contactEmail}`}>Kontakt</a>
+      {LEGAL.contactEmail && <a href={`mailto:${LEGAL.contactEmail}`}>Kontakt</a>}
     </nav>
   );
 }
@@ -25,7 +25,7 @@ export default function LegalPage({ title, intro, children }: { title: string; i
       <div className="legal-foot">
         <a href="/integritet">Integritetspolicy</a>
         <a href="/villkor">Användarvillkor</a>
-        <a href={`mailto:${LEGAL.contactEmail}`}>{LEGAL.contactEmail}</a>
+        {LEGAL.contactEmail && <a href={`mailto:${LEGAL.contactEmail}`}>{LEGAL.contactEmail}</a>}
       </div>
     </main>
   );
