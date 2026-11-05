@@ -8,6 +8,8 @@ import TraderaPanel, { type TraderaScope } from "./TraderaPanel";
 import AuthBox from "./AuthBox";
 import AdminPanel from "./AdminPanel";
 import { FeedbackBox, WaitlistBox } from "./BetaPanels";
+import Landing from "./Landing";
+import { WhatsNew, Welcome, type Update } from "./Onboarding";
 
 type Filter = "all" | "missing" | "have";
 type LogLine = { m: string; k?: string };
@@ -79,6 +81,12 @@ export default function App() {
   const [showAuth, setShowAuth] = useState(false);
   const [showWait, setShowWait] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [ready, setReady] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(false);
+  const [showNews, setShowNews] = useState(false);
+  const [updates, setUpdates] = useState<Update[]>([]);
+  const [seenAt, setSeenAt] = useState<string | null>(null);
+  const [newsSince, setNewsSince] = useState<string | null>(null);
   const [showAdmin, setShowAdmin] = useState(false);
   const [fetchLog, setFetchLog] = useState<LogLine[] | null>(null);
   const [fetching, setFetching] = useState(false);
@@ -172,22 +180,59 @@ export default function App() {
     [supabase],
   );
 
+  // Onboarding state and the "what's new" feed for the signed-in user.
+  const loadState = useCallback(
+    async (u: User | null) => {
+      if (!u) {
+        setShowWelcome(false);
+        setShowNews(false);
+        setUpdates([]);
+        setSeenAt(null);
+        return;
+      }
+      const [s, n] = await Promise.all([
+        supabase.from("user_state").select("onboarded_at, updates_seen_at").maybeSingle(),
+        supabase.from("app_updates").select("id, title, body, created_at").order("created_at", { ascending: false }).limit(20),
+      ]);
+      setUpdates((n.data as Update[]) || []);
+      setSeenAt(s.data?.updates_seen_at ?? null);
+      if (!s.error && !s.data?.onboarded_at) setShowWelcome(true);
+    },
+    [supabase],
+  );
+  const markSeen = useCallback(
+    async (welcome: boolean) => {
+      const { data } = await supabase.auth.getUser();
+      if (!data.user) return;
+      const now = new Date().toISOString();
+      await supabase.from("user_state").upsert({ user_id: data.user.id, ...(welcome ? { onboarded_at: now } : {}), updates_seen_at: now });
+      setSeenAt(now);
+    },
+    [supabase],
+  );
+  const unseen = seenAt === null ? 0 : updates.filter((u) => u.created_at > seenAt).length;
+
   useEffect(() => {
     loadSets();
     supabase.auth.getUser().then(({ data }) => {
       setUser(data.user);
+      setReady(true);
       loadCounts(data.user);
       loadRole(data.user);
+      loadState(data.user);
     });
     const { data: sub } = supabase.auth.onAuthStateChange(async (event, session) => {
       const u = session?.user ?? null;
       setUser(u);
+      setReady(true);
       if (event === "SIGNED_IN" && u) {
         setShowAuth(false);
         await pushLocal();
+        loadSets();
       }
       if (event === "SIGNED_IN" || event === "SIGNED_OUT") {
         loadRole(u);
+        loadState(u);
         if (!u) setShowAdmin(false);
       }
       loadCounts(u);
@@ -196,7 +241,7 @@ export default function App() {
     if (params.get("inloggning") === "misslyckades") say("Inloggningslänken fungerade inte. Begär en ny.");
     if (params.size) history.replaceState(null, "", location.pathname + location.hash);
     return () => sub.subscription.unsubscribe();
-  }, [supabase, loadSets, loadCounts, loadRole, pushLocal, say]);
+  }, [supabase, loadSets, loadCounts, loadRole, loadState, pushLocal, say]);
 
   // Open the set from the address (#set-id) or the first verified one.
   useEffect(() => {
@@ -497,6 +542,9 @@ export default function App() {
     };
   };
 
+  if (!ready) return <div className="wrap" aria-busy="true" />;
+  if (!user) return <Landing supabase={supabase} message={toast} />;
+
   return (
     <div className="wrap">
       <div className="topbar">
@@ -510,6 +558,17 @@ export default function App() {
                   {role === "superuser" ? "Superuser" : "Admin"}
                 </button>
               )}
+              <button
+                className="btn small"
+                type="button"
+                onClick={() => {
+                  setNewsSince(seenAt);
+                  setShowNews(true);
+                  markSeen(false);
+                }}
+              >
+                Nytt{unseen > 0 && <span className="badge">{unseen}</span>}
+              </button>
               <button className="btn small" type="button" onClick={() => setShowFeedback((v) => !v)}>Feedback</button>
               <button className="btn small ghost" type="button" onClick={() => supabase.auth.signOut()}>Logga ut</button>
             </>
@@ -524,6 +583,15 @@ export default function App() {
 
       {showWait && !user && <WaitlistBox onClose={() => setShowWait(false)} />}
       {showFeedback && user && <FeedbackBox onClose={() => setShowFeedback(false)} say={say} />}
+      {showWelcome && user && (
+        <Welcome
+          onDone={() => {
+            setShowWelcome(false);
+            markSeen(true);
+          }}
+        />
+      )}
+      {showNews && user && <WhatsNew updates={updates} since={newsSince} onClose={() => setShowNews(false)} />}
       {showAuth && !user && <AuthBox supabase={supabase} onClose={() => setShowAuth(false)} />}
       {showAdmin && role && user && (
         <AdminPanel supabase={supabase} role={role} sets={sets} myEmail={(user.email || "").toLowerCase()} onChanged={loadSets} say={say} />
