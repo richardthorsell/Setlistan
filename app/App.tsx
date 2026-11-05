@@ -93,6 +93,7 @@ export default function App() {
   const [fetchDone, setFetchDone] = useState<string | null>(null);
   const [paste, setPaste] = useState<{ name: string; text: string; sport: Sport } | null>(null);
   const [sport, setSport] = useState<Sport | "">("");
+  const [shelfQ, setShelfQ] = useState("");
   const [parallels, setParallels] = useState<Parallel[]>([]);
   const [ownedPar, setOwnedPar] = useState<Map<string, string | null>>(new Map());
   const [parSel, setParSel] = useState<number | null>(null);
@@ -525,7 +526,10 @@ export default function App() {
   const tagEls = (c: Card) => c.tags.map((t) => <span key={t} className={`tag ${t === "RC" ? "rc" : "fs"}`}>{t}</span>);
   const mine = current && user && (role !== null || (current.created_by === user.id && !current.verified));
   const sportsInUse = SPORTS.map((s) => ({ ...s, n: sets.filter((x) => x.sport === s.id).length }));
-  const shelfSets = sport ? sets.filter((s) => s.sport === sport) : sets;
+  // Library list: filtered by sport and search text, the albums you have started first, then by name.
+  const shelfSets = (sport ? sets.filter((s) => s.sport === sport) : sets)
+    .filter((s) => !shelfQ.trim() || matches(s, shelfQ))
+    .sort((a, b) => (counts[b.id] ? 1 : 0) - (counts[a.id] ? 1 : 0) || (a.short_name || a.name).localeCompare(b.short_name || b.name, "sv"));
   const origin = (s: SetStat) => (s.verified ? "Verifierad lista" : s.source === "inklistrad" ? "Inklistrad" : "Hämtad");
   // What a Tradera search is about. "Detta set" searches on the player, the brand and the set's own words
   // (e.g. "Max Dowman Topps Flagship"); "Alla set" only on the player and the brand.
@@ -685,7 +689,18 @@ export default function App() {
 
       <section>
         <div className="shelf-head">
-          <div className="label">Biblioteket</div>
+          <div className="row" style={{ justifyContent: "space-between" }}>
+            <div className="label">Biblioteket</div>
+            <span className="note mono">{shelfSets.length} av {sets.length} album</span>
+          </div>
+          <input
+            type="search"
+            className="shelf-search"
+            placeholder="Sök i biblioteket, till exempel Bundesliga, MLS eller Chrome"
+            aria-label="Sök i biblioteket"
+            value={shelfQ}
+            onChange={(e) => setShelfQ(e.target.value)}
+          />
           <div className="sports" role="tablist" aria-label="Sport">
             <button type="button" role="tab" aria-selected={sport === ""} onClick={() => setSport("")}>Alla <small>{sets.length}</small></button>
             {sportsInUse.map((s) => (
@@ -695,25 +710,27 @@ export default function App() {
             ))}
           </div>
         </div>
-        <div className="shelf">
+        <div className="shelf-list" role="list" aria-label="Album">
           {shelfSets.map((s) => {
             const n = counts[s.id] || 0;
             const p = s.card_count ? Math.round((n / s.card_count) * 100) : 0;
             return (
-              <button key={s.id} className={`shelf-item ${s.id === openId ? "active" : ""}`} type="button" onClick={() => openSet(s.id)}>
+              <button key={s.id} role="listitem" className={`shelf-row ${s.id === openId ? "active" : ""}`} type="button" onClick={() => openSet(s.id)}>
+                <span className="shelf-name">{s.short_name || s.name}</span>
                 <span className="row">
                   <span className={`pill ${s.verified ? "src" : ""}`}>{origin(s)}</span>
                   {!sport && <span className="pill">{sportLabel(s.sport)}</span>}
                 </span>
-                <strong>{s.short_name || s.name}</strong>
-                <div className="bar"><i style={{ width: `${p}%` }} /></div>
-                <span className="sub mono">{n} / {s.card_count} · {p} %</span>
+                <span className="shelf-prog">
+                  <span className="bar"><i style={{ width: `${p}%` }} /></span>
+                  <span className="sub mono">{n} / {s.card_count}</span>
+                </span>
               </button>
             );
           })}
           {!sets.length && <div className="empty">Läser biblioteket …</div>}
           {sets.length > 0 && !shelfSets.length && (
-            <div className="empty">Inga {sportLabel(sport).toLowerCase()}set än. Sök på ett set ovan och tryck Hämta, så hamnar det här.</div>
+            <div className="empty">{shelfQ.trim() ? "Inga album matchar sökningen." : `Inga ${sportLabel(sport).toLowerCase()}set än. Sök på ett set ovan och tryck Hämta, så hamnar det här.`}</div>
           )}
         </div>
       </section>
