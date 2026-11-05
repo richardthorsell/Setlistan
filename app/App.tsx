@@ -10,6 +10,8 @@ import AdminPanel from "./AdminPanel";
 import { FeedbackBox, WaitlistBox } from "./BetaPanels";
 import Landing from "./Landing";
 import SetPicker from "./SetPicker";
+import AccountPanel from "./AccountPanel";
+import { SiteFooter } from "./LegalPage";
 import { WhatsNew, Welcome, type Update } from "./Onboarding";
 
 type Filter = "all" | "missing" | "have" | "fav";
@@ -82,6 +84,7 @@ export default function App() {
   const [showAuth, setShowAuth] = useState(false);
   const [showWait, setShowWait] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [showAccount, setShowAccount] = useState(false);
   const [ready, setReady] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
   const [showNews, setShowNews] = useState(false);
@@ -271,6 +274,7 @@ export default function App() {
     });
     const params = new URLSearchParams(location.search);
     if (params.get("inloggning") === "misslyckades") say("Inloggningslänken fungerade inte. Begär en ny.");
+    if (params.get("konto") === "borttaget") say("Ditt konto och dina uppgifter är borttagna.");
     if (params.size) history.replaceState(null, "", location.pathname + location.hash);
     return () => sub.subscription.unsubscribe();
   }, [supabase, loadSets, loadCounts, loadRole, loadState, pushLocal, say]);
@@ -645,6 +649,7 @@ export default function App() {
                 Nytt{unseen > 0 && <span className="badge">{unseen}</span>}
               </button>
               <button className="btn small" type="button" onClick={() => setShowFeedback((v) => !v)}>Feedback</button>
+              <button className="btn small" type="button" aria-pressed={showAccount} onClick={() => setShowAccount((v) => !v)}>Konto</button>
               <button className="btn small ghost" type="button" onClick={() => supabase.auth.signOut()}>Logga ut</button>
             </>
           ) : (
@@ -658,6 +663,7 @@ export default function App() {
 
       {showWait && !user && <WaitlistBox onClose={() => setShowWait(false)} />}
       {showFeedback && user && <FeedbackBox onClose={() => setShowFeedback(false)} say={say} />}
+      {showAccount && user && <AccountPanel supabase={supabase} email={user.email || ""} isAdmin={role !== null} onClose={() => setShowAccount(false)} say={say} />}
       {showWelcome && user && (
         <Welcome
           onDone={() => {
@@ -872,6 +878,7 @@ export default function App() {
       )}
 
       <footer>Checklistorna kommer från öppna källor som anges på varje set. Hämtade listor kan innehålla fel.</footer>
+      <SiteFooter />
       {toast && <div className="toast">{toast}</div>}
     </div>
   );
