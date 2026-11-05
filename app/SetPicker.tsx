@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { type SetStat, type Sport, SPORTS, matches, sportLabel } from "@/lib/checklist";
 import "./panels.css";
+import { useT } from "@/lib/i18n";
 
 type Props = {
   sets: SetStat[];
@@ -28,6 +29,7 @@ const Star = ({ on }: { on: boolean }) => (
 
 // The library: your favourites as cards, and a dropdown with search and sport filter for everything else.
 export default function SetPicker({ sets, counts, openId, favs, sport, setSport, onOpen, onToggleFav, onSuggest, suggested }: Props) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const box = useRef<HTMLDivElement>(null);
@@ -63,33 +65,33 @@ export default function SetPicker({ sets, counts, openId, favs, sport, setSport,
 
   return (
     <div className="picker-wrap">
-      <div className="label">Biblioteket</div>
+      <div className="label">{t("Biblioteket")}</div>
 
       <div className="picker" ref={box}>
         <button className="picker-btn" type="button" aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
-          <span>{current ? nameOf(current) : `Välj album (${sets.length})`}</span>
+          <span>{current ? nameOf(current) : `${t("Välj album")} (${sets.length})`}</span>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
         </button>
         {open && (
           <div className="picker-panel">
             <div className="row">
-              <input ref={input} type="search" className="shelf-search grow" placeholder="Sök album, till exempel Bundesliga eller Chrome" aria-label="Sök album" value={q} onChange={(e) => setQ(e.target.value)} />
-              <select className="sport-select" aria-label="Sport" value={sport} onChange={(e) => setSport(e.target.value as Sport | "")}>
-                <option value="">Alla sporter</option>
+              <input ref={input} type="search" className="shelf-search grow" placeholder={t("Sök album, till exempel Bundesliga eller Chrome")} aria-label={t("Sök album")} value={q} onChange={(e) => setQ(e.target.value)} />
+              <select className="sport-select" aria-label={t("Sport")} value={sport} onChange={(e) => setSport(e.target.value as Sport | "")}>
+                <option value="">{t("Alla sporter")}</option>
                 {used.map((s) => (
-                  <option key={s.id} value={s.id}>{s.label}</option>
+                  <option key={s.id} value={s.id}>{t(s.label)}</option>
                 ))}
               </select>
             </div>
             <div className="note mono">{list.length} av {sets.length} album</div>
-            <div className="picker-list" role="listbox" aria-label="Album">
+            <div className="picker-list" role="listbox" aria-label={t("Album")}>
               {list.map((s) => {
                 const n = counts[s.id] || 0;
                 return (
                   <div key={s.id} className={`picker-row ${s.id === openId ? "active" : ""}`} role="option" aria-selected={s.id === openId}>
                     <button className="picker-pick" type="button" onClick={() => { onOpen(s.id); setOpen(false); setQ(""); }}>
                       <span className="picker-name">{nameOf(s)}</span>
-                      <span className="sub mono">{!sport && `${sportLabel(s.sport)} · `}{n} / {s.card_count}</span>
+                      <span className="sub mono">{!sport && `${t(sportLabel(s.sport))} · `}{n} / {s.card_count}</span>
                     </button>
                     <button className={`star ${favs.has(s.id) ? "on" : ""}`} type="button" aria-pressed={favs.has(s.id)} aria-label={favs.has(s.id) ? `Ta bort ${nameOf(s)} från favoriter` : `Lägg ${nameOf(s)} i favoriter`} onClick={() => onToggleFav(s.id)}>
                       <Star on={favs.has(s.id)} />
@@ -97,15 +99,14 @@ export default function SetPicker({ sets, counts, openId, favs, sport, setSport,
                   </div>
                 );
               })}
-              {!list.length && <div className="empty">Inga album matchar.</div>}
+              {!list.length && <div className="empty">{t("Inga album matchar.")}</div>}
             </div>
             {q.trim() && (
               <div className="nomatch">
                 <div>
-                  <strong>{list.length ? "Saknas det du söker?" : "Inget album matchar."}</strong> Föreslå setet så lägger administratörerna in det.
-                </div>
+                  <strong>{list.length ? t("Saknas det du söker?") : t("Inget album matchar.")}</strong>{" "}{t("Föreslå setet så lägger administratörerna in det.")}</div>
                 <button className="btn primary small" type="button" disabled={suggested.has(q.trim().toLowerCase())} onClick={() => onSuggest(q)}>
-                  {suggested.has(q.trim().toLowerCase()) ? "Förslaget är skickat" : `Föreslå “${q.trim()}”`}
+                  {suggested.has(q.trim().toLowerCase()) ? t("Förslaget är skickat") : `${t("Föreslå")} “${q.trim()}”`}
                 </button>
               </div>
             )}
@@ -113,7 +114,7 @@ export default function SetPicker({ sets, counts, openId, favs, sport, setSport,
         )}
       </div>
 
-      <div className="fav-head label">Favoriter</div>
+      <div className="fav-head label">{t("Favoriter")}</div>
       {favSets.length ? (
         <div className="shelf">
           {favSets.map((s) => {
@@ -134,7 +135,7 @@ export default function SetPicker({ sets, counts, openId, favs, sport, setSport,
           })}
         </div>
       ) : (
-        <div className="note">Du har inga favoriter än. Öppna listan ovan och tryck på stjärnan vid ett album, så hamnar det här.</div>
+        <div className="note">{t("Du har inga favoriter än. Öppna listan ovan och tryck på stjärnan vid ett album, så hamnar det här.")}</div>
       )}
     </div>
   );
