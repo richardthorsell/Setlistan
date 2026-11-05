@@ -1,4 +1,7 @@
+"use client";
+
 import "./landing.css";
+import { useT } from "@/lib/i18n";
 
 // Illustrations of the service built from plain markup, used on the front page and in the welcome guide.
 // The content is made up and marked as an example.
@@ -21,10 +24,11 @@ const Tick = () => (
 );
 
 function MockCard({ n, l, have, par }: { n: string; l: string; have: boolean; par?: string }) {
+  const t = useT();
   return (
     <div className={`mk-card ${have ? "have" : ""}`}>
       <span className="mk-num mono">#{n}</span>
-      <span className="mk-pos">{l}</span>
+      <span className="mk-pos">{t(l)}</span>
       {par && <span className="mk-par mono">{par}</span>}
       {have && (
         <span className="mk-tick">
@@ -35,52 +39,58 @@ function MockCard({ n, l, have, par }: { n: string; l: string; have: boolean; pa
   );
 }
 
-const Frame = ({ children, label = "Exempel" }: { children: React.ReactNode; label?: string }) => (
-  <div className="mk" aria-hidden="true">
-    <span className="mk-tag">{label}</span>
-    {children}
-  </div>
-);
+function Frame({ children, label = "Exempel" }: { children: React.ReactNode; label?: string }) {
+  const t = useT();
+  return (
+    <div className="mk" aria-hidden="true">
+      <span className="mk-tag">{t(label)}</span>
+      {children}
+    </div>
+  );
+}
 
 // A whole set with progress.
 export function MockSet() {
+  const t = useT();
   const have = CARDS.filter((c) => c.have).length;
   return (
     <Frame>
       <div className="mk-head">
-        <b>Premier League Flagship</b>
+        <b>{t("Premier League Flagship")}</b>
         <span className="mono">{have} / {CARDS.length}</span>
       </div>
       <div className="mk-bar"><i style={{ width: `${(have / CARDS.length) * 100}%` }} /></div>
       <div className="mk-grid">
         {CARDS.map((c) => <MockCard key={c.n} {...c} />)}
       </div>
-      <div className="mk-foot">{CARDS.length - have} kort saknas</div>
+      <div className="mk-foot">{CARDS.length - have}{" "}{t("kort saknas")}</div>
     </Frame>
   );
 }
 
 export function MockSearch() {
+  const t = useT();
   return (
     <Frame>
       <div className="mk-search">
         <span>Topps Premier League Flagship 26/27</span>
-        <b>Hämta</b>
+        <b>{t("Sök")}</b>
       </div>
-      <div className="mk-result"><b>Premier League Flagship 26/27</b><span className="mono">201 kort</span></div>
-      <div className="mk-result"><b>Premier League Chrome 25/26</b><span className="mono">201 kort</span></div>
+      <div className="mk-result"><b>Premier League Flagship 26/27</b><span className="mono">{t("201 kort")}</span></div>
+      <div className="mk-result"><b>Premier League Chrome 25/26</b><span className="mono">{t("201 kort")}</span></div>
     </Frame>
   );
 }
 
 export function MockTick() {
+  const t = useT();
   return (
     <Frame>
       <div className="mk-grid four">
         {CARDS.slice(0, 4).map((c) => <MockCard key={c.n} {...c} />)}
       </div>
       <div className="mk-chips">
-        <span className="mk-chip on">Basversion</span>
+        <span className="mk-chip on">{t("Basversion")}</span>
         <span className="mk-chip">/50</span>
         <span className="mk-chip">/25</span>
       </div>
@@ -89,33 +99,35 @@ export function MockTick() {
 }
 
 export function MockMissing() {
+  const t = useT();
   return (
     <Frame>
       <div className="mk-chips">
-        <span className="mk-chip">Alla</span>
-        <span className="mk-chip on">Saknas</span>
-        <span className="mk-chip">Har</span>
+        <span className="mk-chip">{t("Alla")}</span>
+        <span className="mk-chip on">{t("Saknas")}</span>
+        <span className="mk-chip">{t("Har")}</span>
       </div>
       <div className="mk-rows">
         {CARDS.filter((c) => !c.have).map((c) => (
-          <div key={c.n} className="mk-row"><span className="mono">#{c.n}</span><span>{c.l}</span>{c.par && <span className="mk-par mono">{c.par}</span>}</div>
+          <div key={c.n} className="mk-row"><span className="mono">#{c.n}</span><span>{t(c.l)}</span>{c.par && <span className="mk-par mono">{c.par}</span>}</div>
         ))}
       </div>
-      <div className="mk-foot">Exportera som lista</div>
+      <div className="mk-foot">{t("Exportera som lista")}</div>
     </Frame>
   );
 }
 
 export function MockTradera() {
+  const t = useT();
   return (
     <Frame label="Exempel, påhittade priser">
       <div className="mk-head">
-        <b>Sålt på Tradera</b>
+        <b>{t("Sålt på Tradera")}</b>
         <span className="mk-t mono">T</span>
       </div>
-      <div className="mk-stats"><b className="mono">380 kr</b> i median · lägst 210 kr · högst 650 kr</div>
-      <div className="mk-sold"><span className="mk-ph" /><span>Kort #005 /50</span><b className="mono">Såld för 450 kr</b></div>
-      <div className="mk-sold"><span className="mk-ph" /><span>Kort #008 /25</span><b className="mono">Såld för 650 kr</b></div>
+      <div className="mk-stats"><b className="mono">380 kr</b>{" "}{t("i median · lägst 210 kr · högst 650 kr")}</div>
+      <div className="mk-sold"><span className="mk-ph" /><span>{t("Kort #005 /50")}</span><b className="mono">{t("Såld för 450 kr")}</b></div>
+      <div className="mk-sold"><span className="mk-ph" /><span>{t("Kort #008 /25")}</span><b className="mono">{t("Såld för 650 kr")}</b></div>
     </Frame>
   );
 }
