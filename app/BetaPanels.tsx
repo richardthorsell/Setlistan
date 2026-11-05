@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 import "./panels.css";
+import "./legal.css";
 
 // Waitlist signup for visitors who are not signed in.
 export function WaitlistBox({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [bot, setBot] = useState("");
+  const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ t: string; warn?: boolean } | null>(null);
   const [done, setDone] = useState(false);
@@ -17,7 +19,7 @@ export function WaitlistBox({ onClose }: { onClose: () => void }) {
     setBusy(true);
     setMsg(null);
     try {
-      const r = await fetch("/api/waitlist", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, email, website: bot }) });
+      const r = await fetch("/api/waitlist", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, email, website: bot, consent }) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) setMsg({ t: j.error || "Det gick inte just nu.", warn: true });
       else {
@@ -49,8 +51,14 @@ export function WaitlistBox({ onClose }: { onClose: () => void }) {
             <input type="email" required maxLength={200} autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
           </label>
           <input className="hp" tabIndex={-1} autoComplete="off" aria-hidden="true" name="website" value={bot} onChange={(e) => setBot(e.target.value)} />
+          <label className="consent">
+            <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} required />
+            <span>
+              Jag samtycker till att Setlistan sparar mitt namn och min e-post för att kunna bjuda in mig, enligt <a href="/integritet" target="_blank" rel="noopener noreferrer">integritetspolicyn</a>. Jag kan när som helst be om att bli borttagen.
+            </span>
+          </label>
           <div className="row">
-            <button className="btn primary" type="submit" disabled={busy}>{busy ? "Skickar …" : "Anmäl mig"}</button>
+            <button className="btn primary" type="submit" disabled={busy || !consent}>{busy ? "Skickar …" : "Anmäl mig"}</button>
           </div>
         </form>
       )}
