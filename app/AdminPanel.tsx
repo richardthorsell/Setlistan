@@ -4,8 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { type SetStat, SPORTS } from "@/lib/checklist";
 
-type Overview = { users: number; collectors: number; owned: number; sets: number; fetches_24h: number };
-type Job = { id: number; query: string; status: string; error: string | null; set_id: string | null; created_at: string };
+type Overview = { users: number; collectors: number; owned: number; sets: number; fetches_24h: number; fetch_cost_month: number; tradera_calls_24h: number };
+type Job = { id: number; query: string; status: string; error: string | null; set_id: string | null; created_at: string; cost_usd: number };
 type Admin = { email: string; role: "admin" | "superuser"; added_at: string };
 
 const when = (iso: string) => new Date(iso).toLocaleString("sv-SE", { dateStyle: "short", timeStyle: "short" });
@@ -35,7 +35,7 @@ export default function AdminPanel({
   const load = useCallback(async () => {
     const [o, j, a] = await Promise.all([
       supabase.rpc("admin_overview"),
-      supabase.from("fetch_jobs").select("id, query, status, error, set_id, created_at").order("created_at", { ascending: false }).limit(30),
+      supabase.from("fetch_jobs").select("id, query, status, error, set_id, created_at, cost_usd").order("created_at", { ascending: false }).limit(30),
       supabase.from("admins").select("email, role, added_at").order("added_at"),
     ]);
     if (o.data) setOverview(o.data as Overview);
@@ -104,6 +104,8 @@ export default function AdminPanel({
           <div><b className="mono">{overview.owned}</b><span>avprickade kort</span></div>
           <div><b className="mono">{overview.sets}</b><span>set i biblioteket</span></div>
           <div><b className="mono">{overview.fetches_24h}</b><span>hämtningar senaste dygnet</span></div>
+          <div><b className="mono">${Number(overview.fetch_cost_month).toFixed(2)}</b><span>hämtkostnad denna månad</span></div>
+          <div><b className="mono">{overview.tradera_calls_24h}/80</b><span>Tradera-anrop senaste dygnet</span></div>
         </div>
       )}
 
@@ -139,6 +141,7 @@ export default function AdminPanel({
               <span className="mono note">{when(j.created_at)}</span>
               <span className="grow">{j.query}</span>
               <span className={`pill ${j.status === "done" ? "src" : ""}`}>{{ done: "Klar", failed: "Misslyckad", running: "Pågår" }[j.status] || j.status}</span>
+              {Number(j.cost_usd) > 0 && <span className="note mono">≈ ${Number(j.cost_usd).toFixed(2)}</span>}
               {j.error && <span className="note warn">{j.error}</span>}
             </div>
           ))}
