@@ -37,6 +37,21 @@
 .sports button[aria-selected="true"] small { color: inherit; opacity: .7; }
 .sports button.empty-sport:not([aria-selected="true"]) { color: var(--muted); border-style: dashed; }
 .grow { flex: 1 1 200px; min-width: 0; }
+
+/* Library as a searchable, scrollable list. */
+.shelf-search { height: 44px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--surface); padding: 0 14px; font-size: 15px; width: 100%; }
+.shelf-search:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+.shelf-list { display: flex; flex-direction: column; max-height: 460px; overflow-y: auto; border: 1.5px solid var(--line); border-radius: 12px; background: var(--surface); overscroll-behavior: contain; }
+.shelf-row { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(110px, 170px); gap: 6px 14px; align-items: center; padding: 10px 14px; border: 0; border-top: 1px solid var(--line); background: transparent; text-align: left; width: 100%; }
+.shelf-row:first-child { border-top: 0; }
+.shelf-row:hover { background: var(--sunk); }
+.shelf-row.active { background: color-mix(in srgb, var(--accent) 10%, transparent); box-shadow: inset 3px 0 0 var(--accent); }
+.shelf-name { font-family: var(--f-display); font-size: 19px; font-weight: 800; line-height: 1.1; text-transform: uppercase; overflow-wrap: anywhere; }
+.shelf-prog { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.shelf-prog .bar { display: block; }
+.shelf-prog .sub { color: var(--muted); font-size: 12.5px; }
+.shelf-list .empty { padding: 16px; }
+@media (max-width: 640px) { .shelf-row { grid-template-columns: minmax(0, 1fr); } }
 .sport-select { height: 40px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--bg); padding: 0 10px; }
 
 /* Sign-in and admin panels. */
