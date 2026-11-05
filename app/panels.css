@@ -52,6 +52,33 @@
 .shelf-prog .sub { color: var(--muted); font-size: 12.5px; }
 .shelf-list .empty { padding: 16px; }
 @media (max-width: 640px) { .shelf-row { grid-template-columns: minmax(0, 1fr); } }
+
+/* Library picker and favourites. */
+.picker-wrap { display: flex; flex-direction: column; gap: 10px; }
+.picker { position: relative; }
+.picker-btn { width: 100%; height: 50px; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 0 16px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--surface); font-family: var(--f-display); font-size: 20px; font-weight: 800; text-transform: uppercase; text-align: left; }
+.picker-btn:hover, .picker-btn[aria-expanded="true"] { border-color: var(--accent); }
+.picker-btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.picker-panel { position: absolute; z-index: 20; top: calc(100% + 6px); left: 0; right: 0; display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 14px; border: 1.5px solid var(--accent); background: var(--surface); box-shadow: 0 18px 40px rgba(10, 11, 24, .25); }
+.picker-list { max-height: 340px; overflow-y: auto; border: 1.5px solid var(--line); border-radius: 10px; overscroll-behavior: contain; }
+.picker-row { display: flex; align-items: center; border-top: 1px solid var(--line); }
+.picker-row:first-child { border-top: 0; }
+.picker-row:hover { background: var(--sunk); }
+.picker-row.active { background: color-mix(in srgb, var(--accent) 10%, transparent); box-shadow: inset 3px 0 0 var(--accent); }
+.picker-pick { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: 9px 12px; background: transparent; border: 0; text-align: left; }
+.picker-name { font-weight: 600; overflow-wrap: anywhere; }
+.picker-pick .sub { color: var(--muted); font-size: 12.5px; }
+.picker-list .empty { padding: 16px; }
+.star { width: 40px; height: 40px; flex: none; display: grid; place-items: center; background: transparent; border: 0; border-radius: 10px; color: var(--muted); }
+.star:hover { color: var(--rc); }
+.star.on { color: var(--rc); }
+.fav-head { margin-top: 6px; }
+.fav-card { position: relative; }
+.fav-open { display: flex; flex-direction: column; gap: 8px; width: 100%; padding: 0; background: transparent; border: 0; text-align: left; }
+.fav-open .bar { display: block; }
+.fav-open .sub { color: var(--muted); font-size: 13px; }
+.fav-card .star { position: absolute; top: 6px; right: 6px; width: 34px; height: 34px; }
+.fav-card strong { padding-right: 30px; }
 .sport-select { height: 40px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--bg); padding: 0 10px; }
 
 /* Sign-in and admin panels. */
