@@ -72,7 +72,7 @@ export default function AuthBox({ supabase, onClose }: { supabase: SupabaseClien
         <button type="button" aria-pressed={mode === "signup"} onClick={() => setMode("signup")}>Nytt konto</button>
         <button type="button" aria-pressed={mode === "link"} onClick={() => setMode("link")}>Länk via e-post</button>
       </div>
-      {mode !== "login" && <div className="note">Betan är bara för inbjudna. Använd samma e-postadress som du anmälde till väntelistan.</div>}
+      {mode !== "login" && <div className="note">Betan är bara för inbjudna. Använd samma e-postadress som du anmälde till väntelistan. Genom att skapa konto godkänner du <a href="/villkor" target="_blank" rel="noopener noreferrer">villkoren</a> och <a href="/integritet" target="_blank" rel="noopener noreferrer">integritetspolicyn</a>.</div>}
       <form onSubmit={submit} className="auth-form">
         <label>
           <span className="label">E-post</span>
