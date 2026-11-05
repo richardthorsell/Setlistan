@@ -6,9 +6,11 @@ export const maxDuration = 15;
 
 // Public: join the beta waitlist. The database function validates and deduplicates.
 export async function POST(req: Request) {
-  const b = (await req.json().catch(() => null)) as { name?: unknown; email?: unknown; website?: unknown } | null;
+  const b = (await req.json().catch(() => null)) as { name?: unknown; email?: unknown; website?: unknown; consent?: unknown } | null;
   // Hidden field that only bots fill in.
   if (b?.website) return Response.json({ ok: true });
+  // Joining the waitlist needs consent to storing the name and e-mail (see the privacy policy).
+  if (b?.consent !== true) return Response.json({ error: "Du behöver godkänna att vi sparar dina uppgifter." }, { status: 400 });
   const name = String(b?.name ?? "").trim().slice(0, 100);
   const email = String(b?.email ?? "").trim().toLowerCase().slice(0, 200);
   if (!name || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return Response.json({ error: "Fyll i namn och en giltig e-postadress." }, { status: 400 });
