@@ -166,6 +166,8 @@ export async function POST(req: Request) {
 
   // Spending caps: per user and day, and for the whole service per month.
   const { data: role } = await supabase.rpc("admin_role");
+  // Looking up new lists on the web costs money, so only admins can do it. Everyone else suggests a set instead.
+  if (!role) return Response.json({ error: "Nya listor läggs in av administratörerna. Föreslå setet i appen." }, { status: 403 });
   const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
   const { count } = await supabase.from("fetch_jobs").select("id", { count: "exact", head: true }).eq("user_id", user.id).gte("created_at", since);
   const limit = role ? ADMIN_DAILY_LIMIT : DAILY_LIMIT;
