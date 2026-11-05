@@ -20,6 +20,7 @@ type ImportSet = {
   parallels?: { section_code: string; name: string; print_run: number | null; position: number }[];
 };
 type Sug = { id: string; email: string | null; query: string; status: "ny" | "klar" | "avvisad"; created_at: string };
+type Th = { id: number; key: string; ctx: string; sold: number; median: number | null; from_cache: boolean; created_at: string };
 type Admin = { email: string; role: "admin" | "superuser"; added_at: string };
 
 const when = (iso: string) => new Date(iso).toLocaleString("sv-SE", { dateStyle: "short", timeStyle: "short" });
@@ -46,6 +47,8 @@ export default function AdminPanel({
   const [newEmail, setNewEmail] = useState("");
   const [newRole, setNewRole] = useState<"admin" | "superuser">("admin");
 
+  // Tradera history: searches (no user information) and the sold auctions saved so far.
+  const [th, setTh] = useState<{ rows: Th[]; searches: number; cached: number; auctions: number }>({ rows: [], searches: 0, cached: 0, auctions: 0 });
   // Set suggestions from users: new ones first.
   const [sugs, setSugs] = useState<Sug[]>([]);
   const [showDone, setShowDone] = useState(false);
@@ -190,6 +193,13 @@ export default function AdminPanel({
   };
 
   const load = useCallback(async () => {
+    const [ts, tsAll, tsCached, tAuc] = await Promise.all([
+      supabase.from("tradera_searches").select("id, key, ctx, sold, median, from_cache, created_at").order("created_at", { ascending: false }).limit(40),
+      supabase.from("tradera_searches").select("id", { count: "exact", head: true }),
+      supabase.from("tradera_searches").select("id", { count: "exact", head: true }).eq("from_cache", true),
+      supabase.from("tradera_auctions").select("item_id", { count: "exact", head: true }),
+    ]);
+    setTh({ rows: (ts.data as Th[]) || [], searches: tsAll.count ?? 0, cached: tsCached.count ?? 0, auctions: tAuc.count ?? 0 });
     const sg = await supabase.from("set_suggestions").select("id, email, query, status, created_at").order("created_at", { ascending: false }).limit(200);
     setSugs((sg.data as Sug[]) || []);
     const nw = await supabase.from("app_updates").select("id, title, created_at").order("created_at", { ascending: false }).limit(20);
@@ -377,6 +387,27 @@ export default function AdminPanel({
         <input type="file" accept="application/json,.json" disabled={importing} aria-label="Välj JSON-fil med set" onChange={(e) => e.target.files?.[0] && importFile(e.target.files[0])} />
       </div>
       {importMsg && <div className="note">{importMsg}</div>}
+
+      <div className="label">Tradera-historik</div>
+      <div className="stats">
+        <div><b className="mono">{th.searches}</b><span>sökningar sparade</span></div>
+        <div><b className="mono">{th.searches ? Math.round((th.cached / th.searches) * 100) : 0} %</b><span>besvarade ur sparat svar</span></div>
+        <div><b className="mono">{th.auctions}</b><span>sålda auktioner sparade</span></div>
+      </div>
+      {th.rows.length ? (
+        <div className="admin-table">
+          {th.rows.map((r) => (
+            <div key={r.id} className="admin-row">
+              <span className="mono note">{when(r.created_at)}</span>
+              <span className="grow"><b>{r.key.replace(/^sold:/, "")}</b>{r.ctx ? ` · ${r.ctx}` : ""}</span>
+              <span className="note mono">{r.sold} sålda{r.median ? ` · median ${r.median} kr` : ""}</span>
+              <span className={`pill ${r.from_cache ? "src" : ""}`}>{r.from_cache ? "Sparat" : "Tradera"}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="note">Inga sökningar sparade än. Historiken fylls på när någon söker på Tradera. Ingen information om vem som söker sparas.</div>
+      )}
 
       <div className="label">Senaste hämtningar</div>
       {jobs.length ? (
