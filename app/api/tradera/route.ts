@@ -83,7 +83,8 @@ function cleanStats(s: unknown): Stats {
 export async function GET(req: Request) {
   const q = (new URL(req.url).searchParams.get("q") || "").trim().slice(0, 100);
   if (q.length < 3) return Response.json({ error: "Skriv minst tre tecken." }, { status: 400 });
-  const searchUrl = "https://www.tradera.com/search?q=" + encodeURIComponent(q);
+  // Traderas own search page, filtered to ended (sold) listings.
+  const searchUrl = "https://www.tradera.com/search?q=" + encodeURIComponent(q) + "&itemStatus=Ended";
 
   const supabase = await createClient();
   const {
@@ -133,8 +134,13 @@ export async function GET(req: Request) {
   }
   if (res.status === 429) return Response.json({ error: "Traderas dagliga gräns är nådd. Försök igen i morgon.", searchUrl }, { status: 429 });
   if (res.status === 401 || res.status === 403) {
-    console.error("tradera: credentials were not accepted", res.status);
-    return Response.json({ error: "Traderas nycklar godkändes inte. Kontrollera AppId och nyckel i Vercel.", searchUrl }, { status: 502 });
+    const body = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+    const why = String(body?.error?.message || "").slice(0, 120);
+    console.error("tradera: credentials were not accepted", res.status, why);
+    // Admins also see which AppId is used and how the key ends, to compare with the app at Tradera.
+    const { data: role } = await supabase.rpc("admin_role");
+    const hint = role ? ` Du använder AppId ${appId} och en nyckel som slutar på ${appKey.slice(-4)}. Jämför med din app hos Tradera.` : "";
+    return Response.json({ error: `Traderas nycklar godkändes inte${why ? ` (Tradera säger: ${why})` : ""}.${hint}`, searchUrl }, { status: 502 });
   }
   if (!res.ok) return Response.json({ error: `Tradera svarade med fel ${res.status}.`, searchUrl }, { status: 502 });
 
