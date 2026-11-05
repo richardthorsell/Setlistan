@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { type Card, type Parallel, type Section, type SetStat, type Sport, SPORTS, label, matches, norm, parallelLabel, parsePaste, quickIds, ranges, slug, sportLabel } from "@/lib/checklist";
-import TraderaPanel from "./TraderaPanel";
+import TraderaPanel, { type TraderaScope } from "./TraderaPanel";
 import AuthBox from "./AuthBox";
 import AdminPanel from "./AdminPanel";
 
@@ -85,7 +85,7 @@ export default function App() {
   const [parallels, setParallels] = useState<Parallel[]>([]);
   const [ownedPar, setOwnedPar] = useState<Map<string, string | null>>(new Map());
   const [parSel, setParSel] = useState<number | null>(null);
-  const [tradera, setTradera] = useState<string | null>(null);
+  const [tradera, setTradera] = useState<TraderaScope | null>(null);
   const [confirmDel, setConfirmDel] = useState(false);
   const [copyText, setCopyText] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -479,8 +479,20 @@ export default function App() {
   const sportsInUse = SPORTS.map((s) => ({ ...s, n: sets.filter((x) => x.sport === s.id).length }));
   const shelfSets = sport ? sets.filter((s) => s.sport === sport) : sets;
   const origin = (s: SetStat) => (s.verified ? "Verifierad lista" : s.source === "inklistrad" ? "Inklistrad" : "Hämtad");
-  // Tradera titles rarely repeat the whole set name, so search on the player and the brand (Topps, Panini …).
-  const traderaQuery = (name: string) => `${name} ${(current?.short_name || current?.name || "").split(" ")[0]}`.trim();
+  // What a Tradera search is about. "Detta set" searches on the player, the brand and the set's own words
+  // (e.g. "Max Dowman Topps Flagship"); "Alla set" only on the player and the brand.
+  const traderaScope = (c?: Card, sec?: Section): TraderaScope => {
+    const setName = current?.short_name || current?.name || "";
+    const words = setName.split(" ").filter(Boolean);
+    const brand = words[0] || "";
+    const rest = words.slice(1).filter((w) => w.length >= 3 && !/^[\d/.-]+$/.test(w));
+    return {
+      set: setName,
+      card: c && sec ? `${label(sec, c)} · ${c.name}` : null,
+      narrow: [c?.name, brand, ...rest].filter(Boolean).join(" "),
+      broad: [c?.name, brand].filter(Boolean).join(" "),
+    };
+  };
 
   return (
     <div className="wrap">
@@ -507,7 +519,7 @@ export default function App() {
       {showAdmin && role && user && (
         <AdminPanel supabase={supabase} role={role} sets={sets} myEmail={(user.email || "").toLowerCase()} onChanged={loadSets} say={say} />
       )}
-      {tradera !== null && <TraderaPanel key={tradera} initialQuery={tradera} signedIn={!!user} onClose={() => setTradera(null)} />}
+      {tradera && <TraderaPanel key={tradera.narrow + "|" + tradera.broad} scope={tradera} signedIn={!!user} onClose={() => setTradera(null)} />}
 
       <header className="top">
         <div className="brand">
@@ -649,7 +661,7 @@ export default function App() {
             <button className="btn" type="button" onClick={copyMissing}>Kopiera saknade</button>
             <button className="btn" type="button" onClick={() => downloadCsv(true)}>Ladda ner saknade (CSV)</button>
             <button className="btn" type="button" onClick={() => downloadCsv(false)}>Ladda ner hela setlistan</button>
-            <button className="btn" type="button" onClick={() => setTradera(current.short_name || current.name)}>Sålda på Tradera</button>
+            <button className="btn" type="button" onClick={() => setTradera(traderaScope())}>Sålda på Tradera</button>
             {mine && <button className="btn ghost danger" type="button" onClick={() => setConfirmDel(true)}>Ta bort set</button>}
           </div>
           {!user && <div className="note">Du är inte inloggad. Avprickningarna sparas i den här webbläsaren och flyttas till ditt konto när du loggar in.</div>}
@@ -740,7 +752,7 @@ export default function App() {
                     <span className="tags">{tagEls(c)}{serialOf(c) && <span className="tag fs">{serialOf(c)}</span>}</span>
                     <span className="tick"><Tick /></span>
                   </button>
-                  <button className="tbtn" type="button" title="Visa sålda på Tradera" aria-label={`Sålda ${c.name} på Tradera`} onClick={() => setTradera(traderaQuery(c.name))}>T</button>
+                  <button className="tbtn" type="button" title="Visa sålda på Tradera" aria-label={`Sålda ${c.name} på Tradera`} onClick={() => setTradera(traderaScope(c, sec))}>T</button>
                 </div>
               ))}
             </div>
@@ -765,7 +777,7 @@ export default function App() {
                       onBlur={(e) => saveSerial(c.id, e.target.value)}
                     />
                   )}
-                  <button className="tbtn" type="button" title="Visa sålda på Tradera" aria-label={`Sålda ${c.name} på Tradera`} onClick={() => setTradera(traderaQuery(c.name))}>T</button>
+                  <button className="tbtn" type="button" title="Visa sålda på Tradera" aria-label={`Sålda ${c.name} på Tradera`} onClick={() => setTradera(traderaScope(c, sec))}>T</button>
                 </div>
               ))}
             </div>
