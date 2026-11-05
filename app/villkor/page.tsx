@@ -5,7 +5,7 @@ import { LEGAL } from "@/lib/legal";
 export const metadata: Metadata = { title: "Användarvillkor · Setlistan", description: "Villkor för att använda Setlistan." };
 
 export default function Page() {
-  const mail = LEGAL.contactEmail;
+  const contact = LEGAL.contactEmail ? <a href={`mailto:${LEGAL.contactEmail}`}>{LEGAL.contactEmail}</a> : <>Feedback-knappen i appen</>;
   return (
     <LegalPage title="Användarvillkor" intro="Villkoren gäller när du använder Setlistan. Genom att skapa ett konto eller använda tjänsten godkänner du dem.">
       <h2>Tjänsten</h2>
@@ -64,7 +64,7 @@ export default function Page() {
 
       <h2>Kontakt</h2>
       <p>
-        {LEGAL.controller}, <a href={`mailto:${mail}`}>{mail}</a>.
+        {LEGAL.controller}. Kontakt: {contact}.
       </p>
     </LegalPage>
   );
