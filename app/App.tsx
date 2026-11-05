@@ -7,6 +7,7 @@ import { type Card, type Parallel, type Section, type SetStat, type Sport, SPORT
 import TraderaPanel, { type TraderaScope } from "./TraderaPanel";
 import AuthBox from "./AuthBox";
 import AdminPanel from "./AdminPanel";
+import { FeedbackBox, WaitlistBox } from "./BetaPanels";
 
 type Filter = "all" | "missing" | "have";
 type LogLine = { m: string; k?: string };
@@ -76,6 +77,8 @@ export default function App() {
   const [toast, setToast] = useState<string | null>(null);
   const [role, setRole] = useState<"admin" | "superuser" | null>(null);
   const [showAuth, setShowAuth] = useState(false);
+  const [showWait, setShowWait] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
   const [fetchLog, setFetchLog] = useState<LogLine[] | null>(null);
   const [fetching, setFetching] = useState(false);
@@ -507,14 +510,20 @@ export default function App() {
                   {role === "superuser" ? "Superuser" : "Admin"}
                 </button>
               )}
+              <button className="btn small" type="button" onClick={() => setShowFeedback((v) => !v)}>Feedback</button>
               <button className="btn small ghost" type="button" onClick={() => supabase.auth.signOut()}>Logga ut</button>
             </>
           ) : (
-            <button className="btn small primary" type="button" onClick={() => setShowAuth((v) => !v)}>Logga in</button>
+            <>
+              <button className="btn small" type="button" onClick={() => setShowWait((v) => !v)}>Väntelista</button>
+              <button className="btn small primary" type="button" onClick={() => setShowAuth((v) => !v)}>Logga in</button>
+            </>
           )}
         </div>
       </div>
 
+      {showWait && !user && <WaitlistBox onClose={() => setShowWait(false)} />}
+      {showFeedback && user && <FeedbackBox onClose={() => setShowFeedback(false)} say={say} />}
       {showAuth && !user && <AuthBox supabase={supabase} onClose={() => setShowAuth(false)} />}
       {showAdmin && role && user && (
         <AdminPanel supabase={supabase} role={role} sets={sets} myEmail={(user.email || "").toLowerCase()} onChanged={loadSets} say={say} />
