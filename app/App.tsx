@@ -9,6 +9,7 @@ import AuthBox from "./AuthBox";
 import AdminPanel from "./AdminPanel";
 import { FeedbackBox, WaitlistBox } from "./BetaPanels";
 import Landing from "./Landing";
+import SetPicker from "./SetPicker";
 import { WhatsNew, Welcome, type Update } from "./Onboarding";
 
 type Filter = "all" | "missing" | "have";
@@ -93,7 +94,7 @@ export default function App() {
   const [fetchDone, setFetchDone] = useState<string | null>(null);
   const [paste, setPaste] = useState<{ name: string; text: string; sport: Sport } | null>(null);
   const [sport, setSport] = useState<Sport | "">("");
-  const [shelfQ, setShelfQ] = useState("");
+  const [favs, setFavs] = useState<Set<string>>(new Set());
   const [parallels, setParallels] = useState<Parallel[]>([]);
   const [ownedPar, setOwnedPar] = useState<Map<string, string | null>>(new Map());
   const [parSel, setParSel] = useState<number | null>(null);
@@ -189,17 +190,45 @@ export default function App() {
         setShowNews(false);
         setUpdates([]);
         setSeenAt(null);
+        setFavs(new Set());
         return;
       }
-      const [s, n] = await Promise.all([
+      const [s, n, f] = await Promise.all([
         supabase.from("user_state").select("onboarded_at, updates_seen_at").maybeSingle(),
         supabase.from("app_updates").select("id, title, body, created_at").order("created_at", { ascending: false }).limit(20),
+        supabase.from("favorites").select("set_id"),
       ]);
+      setFavs(new Set(((f.data as { set_id: string }[]) || []).map((r) => r.set_id)));
       setUpdates((n.data as Update[]) || []);
       setSeenAt(s.data?.updates_seen_at ?? null);
       if (!s.error && !s.data?.onboarded_at) setShowWelcome(true);
     },
     [supabase],
+  );
+  // Favourite albums: updated at once, saved in the background and rolled back if saving fails.
+  const toggleFav = useCallback(
+    async (id: string) => {
+      const was = favs.has(id);
+      setFavs((prev) => {
+        const next = new Set(prev);
+        if (was) next.delete(id);
+        else next.add(id);
+        return next;
+      });
+      const { data } = await supabase.auth.getUser();
+      if (!data.user) return;
+      const r = was ? await supabase.from("favorites").delete().eq("set_id", id) : await supabase.from("favorites").insert({ set_id: id });
+      if (r.error) {
+        setFavs((prev) => {
+          const next = new Set(prev);
+          if (was) next.add(id);
+          else next.delete(id);
+          return next;
+        });
+        say("Kunde inte spara favoriten.");
+      }
+    },
+    [supabase, favs, say],
   );
   const markSeen = useCallback(
     async (welcome: boolean) => {
@@ -525,11 +554,6 @@ export default function App() {
   );
   const tagEls = (c: Card) => c.tags.map((t) => <span key={t} className={`tag ${t === "RC" ? "rc" : "fs"}`}>{t}</span>);
   const mine = current && user && (role !== null || (current.created_by === user.id && !current.verified));
-  const sportsInUse = SPORTS.map((s) => ({ ...s, n: sets.filter((x) => x.sport === s.id).length }));
-  // Library list: filtered by sport and search text, the albums you have started first, then by name.
-  const shelfSets = (sport ? sets.filter((s) => s.sport === sport) : sets)
-    .filter((s) => !shelfQ.trim() || matches(s, shelfQ))
-    .sort((a, b) => (counts[b.id] ? 1 : 0) - (counts[a.id] ? 1 : 0) || (a.short_name || a.name).localeCompare(b.short_name || b.name, "sv"));
   const origin = (s: SetStat) => (s.verified ? "Verifierad lista" : s.source === "inklistrad" ? "Inklistrad" : "Hämtad");
   // What a Tradera search is about. "Detta set" searches on the player, the brand and the set's own words
   // (e.g. "Max Dowman Topps Flagship"); "Alla set" only on the player and the brand.
@@ -688,51 +712,11 @@ export default function App() {
       )}
 
       <section>
-        <div className="shelf-head">
-          <div className="row" style={{ justifyContent: "space-between" }}>
-            <div className="label">Biblioteket</div>
-            <span className="note mono">{shelfSets.length} av {sets.length} album</span>
-          </div>
-          <input
-            type="search"
-            className="shelf-search"
-            placeholder="Sök i biblioteket, till exempel Bundesliga, MLS eller Chrome"
-            aria-label="Sök i biblioteket"
-            value={shelfQ}
-            onChange={(e) => setShelfQ(e.target.value)}
-          />
-          <div className="sports" role="tablist" aria-label="Sport">
-            <button type="button" role="tab" aria-selected={sport === ""} onClick={() => setSport("")}>Alla <small>{sets.length}</small></button>
-            {sportsInUse.map((s) => (
-              <button key={s.id} type="button" role="tab" className={s.n ? "" : "empty-sport"} aria-selected={sport === s.id} onClick={() => setSport(s.id)}>
-                {s.label} <small>{s.n}</small>
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="shelf-list" role="list" aria-label="Album">
-          {shelfSets.map((s) => {
-            const n = counts[s.id] || 0;
-            const p = s.card_count ? Math.round((n / s.card_count) * 100) : 0;
-            return (
-              <button key={s.id} role="listitem" className={`shelf-row ${s.id === openId ? "active" : ""}`} type="button" onClick={() => openSet(s.id)}>
-                <span className="shelf-name">{s.short_name || s.name}</span>
-                <span className="row">
-                  <span className={`pill ${s.verified ? "src" : ""}`}>{origin(s)}</span>
-                  {!sport && <span className="pill">{sportLabel(s.sport)}</span>}
-                </span>
-                <span className="shelf-prog">
-                  <span className="bar"><i style={{ width: `${p}%` }} /></span>
-                  <span className="sub mono">{n} / {s.card_count}</span>
-                </span>
-              </button>
-            );
-          })}
-          {!sets.length && <div className="empty">Läser biblioteket …</div>}
-          {sets.length > 0 && !shelfSets.length && (
-            <div className="empty">{shelfQ.trim() ? "Inga album matchar sökningen." : `Inga ${sportLabel(sport).toLowerCase()}set än. Sök på ett set ovan och tryck Hämta, så hamnar det här.`}</div>
-          )}
-        </div>
+        {sets.length ? (
+          <SetPicker sets={sets} counts={counts} openId={openId} favs={favs} sport={sport} setSport={setSport} onOpen={openSet} onToggleFav={toggleFav} />
+        ) : (
+          <div className="empty">Läser biblioteket …</div>
+        )}
       </section>
 
       {current && (
@@ -743,6 +727,9 @@ export default function App() {
                 {sportLabel(current.sport)} · {current.verified ? "Verifierad checklista" : current.source === "inklistrad" ? "Inklistrad checklista" : `Hämtad${current.source ? " från " + current.source.replace(/^https?:\/\//, "").split("/")[0] : ""}`}
               </div>
               <h2>{current.name}</h2>
+              <button className="btn small" type="button" aria-pressed={favs.has(current.id)} onClick={() => toggleFav(current.id)}>
+                {favs.has(current.id) ? "★ Favorit" : "☆ Lägg i favoriter"}
+              </button>
               <div className="sub">{scoped.length} delset · {total} kort{selPar ? ` · ${parallelLabel(selPar)}` : ""}{current.notes ? ` · ${current.notes}` : ""}</div>
             </div>
             <div className="tally">
