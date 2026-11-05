@@ -25,7 +25,7 @@ export default function TraderaPanel({ scope, signedIn, onClose }: { scope: Trad
   const [res, setRes] = useState<Result | null>(null);
   const [err, setErr] = useState<{ m: string; url?: string } | null>(null);
   const started = useRef(false);
-  const fallback = "https://www.tradera.com/search?q=" + encodeURIComponent(q.trim());
+  const fallback = "https://www.tradera.com/search?q=" + encodeURIComponent(q.trim()) + "&itemStatus=Ended";
 
   const run = useCallback(async (query: string) => {
     if (query.trim().length < 3) return;
@@ -109,7 +109,7 @@ export default function TraderaPanel({ scope, signedIn, onClose }: { scope: Trad
             maxLength={100}
           />
           <button className="btn primary small" type="submit" disabled={busy || !signedIn}>{busy ? "Söker …" : "Sök"}</button>
-          <a className="btn small" href={err?.url || res?.searchUrl || fallback} target="_blank" rel="noopener noreferrer">Öppna på Tradera</a>
+          <a className="btn small" href={err?.url || res?.searchUrl || fallback} target="_blank" rel="noopener noreferrer">Visa sålda på Tradera</a>
         </form>
         {!signedIn && <div className="note">Logga in för att se sålda kort här. Du kan alltid öppna sökningen direkt på Tradera.</div>}
         {busy && <div className="note">Hämtar sålda annonser …</div>}
