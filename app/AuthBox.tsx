@@ -3,11 +3,13 @@
 import { useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import "./panels.css";
+import { useT } from "@/lib/i18n";
 
 type Mode = "login" | "signup" | "link";
 
 // Sign-in panel: password (sign in / create account) or a one-time link by e-mail.
 export default function AuthBox({ supabase, onClose }: { supabase: SupabaseClient; onClose: () => void }) {
+  const t = useT();
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -24,16 +26,16 @@ export default function AuthBox({ supabase, onClose }: { supabase: SupabaseClien
       if (mode === "link") {
         const { error } = await supabase.auth.signInWithOtp({ email: addr, options: { emailRedirectTo: redirect } });
         if (error) throw error;
-        setMsg({ t: "Vi har skickat en inloggningslänk. Öppna mejlet och klicka på länken." });
+        setMsg({ t: t("Vi har skickat en inloggningslänk. Öppna mejlet och klicka på länken.") });
       } else if (mode === "signup") {
         if (password.length < 8) {
-          setMsg({ t: "Lösenordet behöver minst 8 tecken.", warn: true });
+          setMsg({ t: t("Lösenordet behöver minst 8 tecken."), warn: true });
           return;
         }
         const { data, error } = await supabase.auth.signUp({ email: addr, password, options: { emailRedirectTo: redirect } });
         if (error) throw error;
         if (data.session) onClose();
-        else setMsg({ t: "Kontot är skapat. Bekräfta din e-post via länken i mejlet, sedan kan du logga in." });
+        else setMsg({ t: t("Kontot är skapat. Bekräfta din e-post via länken i mejlet, sedan kan du logga in.") });
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email: addr, password });
         if (error) throw error;
@@ -43,18 +45,18 @@ export default function AuthBox({ supabase, onClose }: { supabase: SupabaseClien
       const e = err as { status?: number; code?: string; message?: string };
       const t =
         (mode !== "login" && (e.status === 500 || e.code === "unexpected_failure" || /database error|not_invited/i.test(e.message || "")))
-          ? "Den här adressen är inte inbjuden än. Anmäl dig på väntelistan så bjuder vi in dig."
+          ? t("Den här adressen är inte inbjuden än. Anmäl dig på väntelistan så bjuder vi in dig.")
           : e.code === "invalid_credentials"
-          ? "Fel e-post eller lösenord."
+          ? t("Fel e-post eller lösenord.")
           : e.code === "email_not_confirmed"
-            ? "Bekräfta din e-post först via länken i mejlet."
+            ? t("Bekräfta din e-post först via länken i mejlet.")
             : e.code === "user_already_exists"
-              ? "Det finns redan ett konto med den adressen. Logga in i stället."
+              ? t("Det finns redan ett konto med den adressen. Logga in i stället.")
               : e.code === "weak_password"
-                ? "Lösenordet är för svagt. Välj ett längre."
+                ? t("Lösenordet är för svagt. Välj ett längre.")
                 : e.status === 429
-                  ? "För många försök. Vänta en stund och försök igen."
-                  : "Det gick inte. Kontrollera uppgifterna och försök igen.";
+                  ? t("För många försök. Vänta en stund och försök igen.")
+                  : t("Det gick inte. Kontrollera uppgifterna och försök igen.");
       setMsg({ t, warn: true });
     } finally {
       setBusy(false);
@@ -62,25 +64,25 @@ export default function AuthBox({ supabase, onClose }: { supabase: SupabaseClien
   };
 
   return (
-    <section className="panel auth" aria-label="Logga in">
+    <section className="panel auth" aria-label={t("Logga in")}>
       <div className="row" style={{ justifyContent: "space-between" }}>
-        <h3>{mode === "signup" ? "Skapa konto" : "Logga in"}</h3>
-        <button className="btn small ghost" type="button" onClick={onClose}>Stäng</button>
+        <h3>{mode === "signup" ? t("Skapa konto") : t("Logga in")}</h3>
+        <button className="btn small ghost" type="button" onClick={onClose}>{t("Stäng")}</button>
       </div>
-      <div className="seg" role="group" aria-label="Sätt att logga in">
-        <button type="button" aria-pressed={mode === "login"} onClick={() => setMode("login")}>Lösenord</button>
-        <button type="button" aria-pressed={mode === "signup"} onClick={() => setMode("signup")}>Nytt konto</button>
-        <button type="button" aria-pressed={mode === "link"} onClick={() => setMode("link")}>Länk via e-post</button>
+      <div className="seg" role="group" aria-label={t("Sätt att logga in")}>
+        <button type="button" aria-pressed={mode === "login"} onClick={() => setMode("login")}>{t("Lösenord")}</button>
+        <button type="button" aria-pressed={mode === "signup"} onClick={() => setMode("signup")}>{t("Nytt konto")}</button>
+        <button type="button" aria-pressed={mode === "link"} onClick={() => setMode("link")}>{t("Länk via e-post")}</button>
       </div>
-      {mode !== "login" && <div className="note">Betan är bara för inbjudna. Använd samma e-postadress som du anmälde till väntelistan. Genom att skapa konto godkänner du <a href="/villkor" target="_blank" rel="noopener noreferrer">villkoren</a> och <a href="/integritet" target="_blank" rel="noopener noreferrer">integritetspolicyn</a>.</div>}
+      {mode !== "login" && <div className="note">{t("Betan är bara för inbjudna. Använd samma e-postadress som du anmälde till väntelistan. Genom att skapa konto godkänner du")}{" "}<a href="/villkor" target="_blank" rel="noopener noreferrer">{t("villkoren")}</a> och <a href="/integritet" target="_blank" rel="noopener noreferrer">{t("integritetspolicyn")}</a>.</div>}
       <form onSubmit={submit} className="auth-form">
         <label>
-          <span className="label">E-post</span>
+          <span className="label">{t("E-post")}</span>
           <input id="email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
         </label>
         {mode !== "link" && (
           <label>
-            <span className="label">Lösenord</span>
+            <span className="label">{t("Lösenord")}</span>
             <input
               type="password"
               required
@@ -93,10 +95,10 @@ export default function AuthBox({ supabase, onClose }: { supabase: SupabaseClien
         )}
         <div className="row">
           <button className="btn primary" type="submit" disabled={busy}>
-            {mode === "signup" ? "Skapa konto" : mode === "link" ? "Skicka länk" : "Logga in"}
+            {mode === "signup" ? t("Skapa konto") : mode === "link" ? t("Skicka länk") : t("Logga in")}
           </button>
           {mode === "login" && (
-            <button className="btn ghost small" type="button" onClick={() => setMode("link")}>Glömt lösenordet? Logga in med länk</button>
+            <button className="btn ghost small" type="button" onClick={() => setMode("link")}>{t("Glömt lösenordet? Logga in med länk")}</button>
           )}
         </div>
       </form>
