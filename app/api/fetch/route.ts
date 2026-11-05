@@ -1,15 +1,22 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { SPORTS } from "@/lib/checklist";
+import { SPORTS, tokens } from "@/lib/checklist";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
-const DAILY_LIMIT = 5;
-const MAX_TURNS = 16;
-// Vercel stops the function at maxDuration; stop Claude earlier so the set is always finalized.
-const BUDGET_MS = 240_000;
+// Limits on time and money: one fetch should cost a few kronor and take about two minutes.
+const MODEL = process.env.FETCH_MODEL || "claude-sonnet-5-5";
+const PRICE_IN = Number(process.env.FETCH_PRICE_IN_PER_MTOK || 2) / 1e6; // USD per input token
+const PRICE_OUT = Number(process.env.FETCH_PRICE_OUT_PER_MTOK || 10) / 1e6; // USD per output token
+const PRICE_SEARCH = 0.01; // USD per web search
+const DAILY_LIMIT = 3; // fetches per user and day
+const ADMIN_DAILY_LIMIT = 20;
+const MONTH_CAP_USD = Number(process.env.FETCH_MONTH_CAP_USD || 15); // all users together
+const JOB_CAP_USD = Number(process.env.FETCH_JOB_CAP_USD || 0.5); // one fetch
+const BUDGET_MS = 150_000; // Vercel stops the function at maxDuration; stop earlier so the set is always finalized
+const MAX_TURNS = 8;
 
 const SaveSection = z.object({
   code: z.string().max(12).default(""),
@@ -26,6 +33,18 @@ const SaveSection = z.object({
     .min(1)
     .max(1000),
 });
+const SaveParallels = z.object({
+  parallels: z
+    .array(
+      z.object({
+        name: z.string().min(1).max(80),
+        print_run: z.coerce.number().int().positive().max(100000).optional(),
+        code: z.string().max(12).optional().default(""),
+      }),
+    )
+    .min(1)
+    .max(40),
+});
 const SPORT_IDS = SPORTS.map((s) => s.id) as [string, ...string[]];
 const Finish = z.object({
   name: z.string().min(1).max(200),
@@ -35,8 +54,8 @@ const Finish = z.object({
 });
 
 const tools = [
-  { type: "web_search_20260209", name: "web_search", max_uses: 6 },
-  { type: "web_fetch_20260209", name: "web_fetch", max_uses: 8, max_content_tokens: 60000 },
+  { type: "web_search_20260209", name: "web_search", max_uses: 3 },
+  { type: "web_fetch_20260209", name: "web_fetch", max_uses: 3, max_content_tokens: 50000 },
   {
     name: "save_section",
     description:
@@ -65,6 +84,29 @@ const tools = [
     },
   },
   {
+    name: "save_parallels",
+    description:
+      "Save the parallels of the set (colour or numbered versions of a subset's cards, e.g. 'Gold Rainbow' numbered /50). Call once, after the base set is saved. Skip autograph and relic parallels.",
+    input_schema: {
+      type: "object",
+      properties: {
+        parallels: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              name: { type: "string", description: "Parallel name without the print run, e.g. 'Gold Rainbow'." },
+              print_run: { type: "integer", description: "N for a parallel numbered to /N (1 for 1/1). Omit if it is not numbered." },
+              code: { type: "string", description: "Prefix of the subset it belongs to. Empty string for the base set." },
+            },
+            required: ["name"],
+          },
+        },
+      },
+      required: ["parallels"],
+    },
+  },
+  {
     name: "finish",
     description: "Call once when all subsets are saved (or when no checklist could be found) to record the set's full name, the source URL and a short note.",
     input_schema: {
@@ -85,12 +127,14 @@ function slug(s: string) {
     s
       .toLowerCase()
       .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[̀-ͯ]/g, "")
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-|-$/g, "")
       .slice(0, 60) || "set"
   );
 }
+
+const HEADERS = { "Content-Type": "application/x-ndjson; charset=utf-8", "Cache-Control": "no-store" };
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
@@ -105,11 +149,29 @@ export async function POST(req: Request) {
   } = await supabase.auth.getUser();
   if (!user) return Response.json({ error: "Logga in för att hämta nya set." }, { status: 401 });
 
-  // Admins have no daily limit.
+  const isUrl = /^https?:\/\/\S+$/i.test(query);
+
+  // A set that is already in the library is never fetched again (free and instant).
+  if (!isUrl) {
+    const qt = tokens(query);
+    if (qt.length >= 3) {
+      const { data: existing } = await supabase.from("sets").select("id, name, short_name, keywords").eq("status", "ready");
+      const hit = (existing || []).find((s) => {
+        const have = new Set(tokens(`${s.name} ${s.short_name || ""} ${s.keywords}`));
+        return qt.every((w) => have.has(w));
+      });
+      if (hit) return new Response(JSON.stringify({ t: "done", setId: hit.id, m: `Setet finns redan i biblioteket: ${hit.name}` }) + "\n", { headers: HEADERS });
+    }
+  }
+
+  // Spending caps: per user and day, and for the whole service per month.
   const { data: role } = await supabase.rpc("admin_role");
   const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
   const { count } = await supabase.from("fetch_jobs").select("id", { count: "exact", head: true }).eq("user_id", user.id).gte("created_at", since);
-  if (!role && (count ?? 0) >= DAILY_LIMIT) return Response.json({ error: `Du har hämtat ${DAILY_LIMIT} set senaste dygnet. Försök igen i morgon.` }, { status: 429 });
+  const limit = role ? ADMIN_DAILY_LIMIT : DAILY_LIMIT;
+  if ((count ?? 0) >= limit) return Response.json({ error: `Du har hämtat ${limit} set senaste dygnet. Försök igen i morgon.` }, { status: 429 });
+  const { data: spend } = await supabase.rpc("fetch_spend_month");
+  if (Number(spend ?? 0) >= MONTH_CAP_USD) return Response.json({ error: "Månadens budget för hämtningar är slut. Försök igen nästa månad." }, { status: 429 });
 
   // A fetch cut off by the platform leaves its set at "fetching"; release this user's stale ones.
   await supabase
@@ -124,12 +186,13 @@ export async function POST(req: Request) {
   const { error: setErr } = await supabase.from("sets").insert({ id: setId, name: query, keywords: query, status: "fetching", sport: sportHint ?? "ovrigt" });
   if (setErr) return Response.json({ error: "Kunde inte skapa setet i databasen." }, { status: 500 });
 
-  const isUrl = /^https?:\/\/\S+$/i.test(query);
-  const prompt = `Find the complete checklist for the trading card set ${isUrl ? "on this page: " + query : `"${query}"`} and save it.
+  const prompt = `Find the checklist for the trading card set ${isUrl ? "on this page: " + query : `"${query}"`} and save it. Be quick and frugal: you have about two minutes.
 
-${isUrl ? "Fetch that page with web_fetch and take the cards from it." : "Use web_search to find a page with the full checklist (for example checklistinsider.com, cardsmithsbreaks.com, cartophilic-info-exch.blogspot.com, beckett.com, cardboardconnection.com or tcdb.com), then read it with web_fetch."}
+${isUrl ? "Fetch that page once with web_fetch." : "Do one web_search to find a page with the full checklist (for example checklistinsider.com, cardsmithsbreaks.com, cartophilic-info-exch.blogspot.com, beckett.com, cardboardconnection.com or tcdb.com), then read the best page once with web_fetch. Never read the same page twice."}
 
-Save the cards with save_section: the base set first (code ""), then each insert set under its number prefix. Leave out autographs, relics and parallels. Each card: no (the number within its subset), name, team (club or country), rc (true for rookie cards). Take every card from the page; never invent or guess cards. If you cannot find a reliable checklist, save nothing. You have about four minutes in total, so go straight to the best checklist page and save as you go.
+Work in this order and save as you go:
+1. save_section for the base set (code ""), then save_parallels once with the base parallels and their print runs (e.g. Gold Rainbow /50), then save_section for each insert set under its number prefix. Skip autographs and relics.
+2. Each card: no (the number within its subset), name, team (club or country), rc (true for rookie cards). Take every card from the page; never invent or guess cards. If you cannot find a reliable checklist, save nothing.
 
 When you are done, call finish with the set's full name, its sport${sportHint ? ` (the user is browsing "${sportHint}", use it unless the set clearly belongs to another sport)` : ""}, the source URL and a short note in Swedish.`;
 
@@ -139,9 +202,15 @@ When you are done, call finish with the set's full name, its sport${sportHint ? 
       const send = (obj: Record<string, unknown>) => controller.enqueue(encoder.encode(JSON.stringify(obj) + "\n"));
       const sectionIds = new Map<string, number>();
       let position = 0;
+      let parallelPos = 0;
       let totalCards = 0;
       let meta: z.infer<typeof Finish> | null = null;
       let failure: string | null = null;
+      let inTok = 0;
+      let cacheTok = 0;
+      let outTok = 0;
+      let searches = 0;
+      const cost = () => (inTok + cacheTok * 0.1) * PRICE_IN + outTok * PRICE_OUT + searches * PRICE_SEARCH;
       const ctl = new AbortController();
       const timer = setTimeout(() => ctl.abort(), BUDGET_MS);
       req.signal.addEventListener("abort", () => ctl.abort());
@@ -177,6 +246,23 @@ When you are done, call finish with the set's full name, its sport${sportHint ? 
         return { subset: parsed.data.name, total: n ?? rows.length };
       };
 
+      const saveParallels = async (input: unknown) => {
+        const parsed = SaveParallels.safeParse(input);
+        if (!parsed.success) return { error: "Invalid input: " + parsed.error.issues.map((i) => i.path.join(".") + " " + i.message).join("; ") };
+        const rows = parsed.data.parallels.map((p, i) => ({
+          set_id: setId,
+          section_id: sectionIds.get(p.code.toUpperCase().replace(/[^A-Z0-9]/g, "")) ?? sectionIds.get("") ?? null,
+          name: p.name.trim(),
+          print_run: p.print_run ?? null,
+          position: parallelPos + i + 1,
+        }));
+        parallelPos += rows.length;
+        const { error } = await supabase.from("parallels").upsert(rows, { onConflict: "set_id,section_id,name", ignoreDuplicates: true });
+        if (error) return { error: "Could not save the parallels." };
+        send({ t: "log", k: "ok", m: `Sparade ${rows.length} paralleller` });
+        return { saved: rows.length };
+      };
+
       try {
         const client = new Anthropic();
         const messages: Anthropic.Beta.Messages.BetaMessageParam[] = [{ role: "user", content: prompt }];
@@ -185,11 +271,11 @@ When you are done, call finish with the set's full name, its sport${sportHint ? 
 
         for (let turn = 0; turn < MAX_TURNS && !meta; turn++) {
           const params = {
-            model: "claude-opus-5-5",
-            max_tokens: 64000,
+            model: MODEL,
+            max_tokens: 24000,
             betas: ["server-side-fallback-2026-07-01"],
             fallbacks: "default",
-            output_config: { effort: "medium" },
+            output_config: { effort: process.env.FETCH_EFFORT || "low" },
             tools,
             messages,
           };
@@ -203,6 +289,18 @@ When you are done, call finish with the set's full name, its sport${sportHint ? 
             continue;
           }
 
+          const u = message.usage as unknown as {
+            input_tokens?: number;
+            output_tokens?: number;
+            cache_creation_input_tokens?: number;
+            cache_read_input_tokens?: number;
+            server_tool_use?: { web_search_requests?: number };
+          };
+          inTok += (u.input_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0);
+          cacheTok += u.cache_read_input_tokens ?? 0;
+          outTok += u.output_tokens ?? 0;
+          searches += u.server_tool_use?.web_search_requests ?? 0;
+
           for (const block of message.content) {
             if (block.type === "server_tool_use") {
               const input = block.input as { query?: string; url?: string };
@@ -212,11 +310,15 @@ When you are done, call finish with the set's full name, its sport${sportHint ? 
           }
 
           if (message.stop_reason === "refusal") {
-            failure = "Claude avböjde att hämta den här listan.";
+            failure = "Hämtningen avböjdes för den här listan.";
             break;
           }
           if (message.stop_reason === "pause_turn") {
             messages.push({ role: "assistant", content: message.content });
+            if (cost() >= JOB_CAP_USD) {
+              failure = "Kostnadsgränsen för en hämtning nåddes. Det som hann sparas finns med.";
+              break;
+            }
             continue;
           }
           const toolUses = message.content.filter((b): b is Anthropic.Beta.Messages.BetaToolUseBlock => b.type === "tool_use");
@@ -232,6 +334,9 @@ When you are done, call finish with the set's full name, its sport${sportHint ? 
             if (tu.name === "save_section") {
               const r = await saveSection(tu.input);
               results.push({ type: "tool_result", tool_use_id: tu.id, content: JSON.stringify(r), is_error: "error" in r });
+            } else if (tu.name === "save_parallels") {
+              const r = await saveParallels(tu.input);
+              results.push({ type: "tool_result", tool_use_id: tu.id, content: JSON.stringify(r), is_error: "error" in r });
             } else if (tu.name === "finish") {
               const p = Finish.safeParse(tu.input);
               meta = p.success ? p.data : { name: query, source: "", notes: "" };
@@ -241,25 +346,30 @@ When you are done, call finish with the set's full name, its sport${sportHint ? 
             }
           }
           messages.push({ role: "user", content: results });
+          if (!meta && cost() >= JOB_CAP_USD) {
+            failure = "Kostnadsgränsen för en hämtning nåddes. Det som hann sparas finns med.";
+            break;
+          }
         }
       } catch (err) {
         failure =
           ctl.signal.aborted && !req.signal.aborted
             ? "Tiden tog slut. Det som hann sparas finns med, men vissa delset kan saknas."
             : err instanceof Anthropic.RateLimitError
-            ? "Claude är överbelastad just nu. Försök igen om en stund."
-            : err instanceof Anthropic.APIError
-              ? `Claude svarade med fel ${err.status}.`
-              : req.signal.aborted
-                ? "Avbruten."
-                : "Något gick fel under hämtningen.";
+              ? "Tjänsten är överbelastad just nu. Försök igen om en stund."
+              : err instanceof Anthropic.APIError
+                ? `Hämtningen svarade med fel ${err.status}.`
+                : req.signal.aborted
+                  ? "Avbruten."
+                  : "Något gick fel under hämtningen.";
         console.error("fetch failed", err);
       }
       clearTimeout(timer);
 
+      const usage = { input_tokens: inTok + cacheTok, output_tokens: outTok, cost_usd: Number(cost().toFixed(4)) };
       if (totalCards === 0) {
         await supabase.from("sets").delete().eq("id", setId);
-        if (job) await supabase.from("fetch_jobs").update({ status: "failed", error: failure ?? "no cards" }).eq("id", job.id);
+        if (job) await supabase.from("fetch_jobs").update({ status: "failed", error: failure ?? "no cards", ...usage }).eq("id", job.id);
         send({ t: "error", m: failure ?? (meta?.notes || "Ingen tillförlitlig checklista hittades. Prova ett mer exakt namn eller klistra in en adress till listan.") });
       } else {
         await supabase
@@ -273,12 +383,12 @@ When you are done, call finish with the set's full name, its sport${sportHint ? 
             notes: meta?.notes || failure || "",
           })
           .eq("id", setId);
-        if (job) await supabase.from("fetch_jobs").update({ status: "done" }).eq("id", job.id);
-        send({ t: "done", setId, m: `Klart: ${totalCards} kort.` });
+        if (job) await supabase.from("fetch_jobs").update({ status: "done", error: failure, ...usage }).eq("id", job.id);
+        send({ t: "done", setId, m: `Klart: ${totalCards} kort.${failure ? " " + failure : ""}` });
       }
       controller.close();
     },
   });
 
-  return new Response(stream, { headers: { "Content-Type": "application/x-ndjson; charset=utf-8", "Cache-Control": "no-store" } });
+  return new Response(stream, { headers: HEADERS });
 }
