@@ -6,6 +6,8 @@ import { type SetStat, SPORTS } from "@/lib/checklist";
 
 type Overview = { users: number; collectors: number; owned: number; sets: number; fetches_24h: number; fetch_cost_month: number; tradera_calls_24h: number };
 type Job = { id: number; query: string; status: string; error: string | null; set_id: string | null; created_at: string; cost_usd: number };
+type Wait = { id: string; name: string; email: string; invited_at: string | null; created_at: string };
+type Fb = { id: string; email: string | null; kind: string; page: string | null; text: string; handled_at: string | null; created_at: string };
 type Admin = { email: string; role: "admin" | "superuser"; added_at: string };
 
 const when = (iso: string) => new Date(iso).toLocaleString("sv-SE", { dateStyle: "short", timeStyle: "short" });
@@ -32,7 +34,34 @@ export default function AdminPanel({
   const [newEmail, setNewEmail] = useState("");
   const [newRole, setNewRole] = useState<"admin" | "superuser">("admin");
 
+  const [wait, setWait] = useState<Wait[]>([]);
+  const [fb, setFb] = useState<Fb[]>([]);
+
+  const invite = async (w: Wait) => {
+    const r = await fetch("/api/invite", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: w.id }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) return say(j.error || "Kunde inte bjuda in.");
+    await load();
+    say(`Inbjudan skickad till ${w.email}`);
+  };
+  const delWait = async (id: string) => {
+    const { error } = await supabase.from("waitlist").delete().eq("id", id);
+    if (error) return say("Kunde inte ta bort.");
+    await load();
+  };
+  const handled = async (f: Fb) => {
+    const { error } = await supabase.from("feedback").update({ handled_at: f.handled_at ? null : new Date().toISOString() }).eq("id", f.id);
+    if (error) return say("Kunde inte ändra.");
+    await load();
+  };
+
   const load = useCallback(async () => {
+    const [w, f] = await Promise.all([
+      supabase.from("waitlist").select("id, name, email, invited_at, created_at").order("created_at", { ascending: false }).limit(200),
+      supabase.from("feedback").select("id, email, kind, page, text, handled_at, created_at").order("created_at", { ascending: false }).limit(100),
+    ]);
+    setWait((w.data as Wait[]) || []);
+    setFb((f.data as Fb[]) || []);
     const [o, j, a] = await Promise.all([
       supabase.rpc("admin_overview"),
       supabase.from("fetch_jobs").select("id, query, status, error, set_id, created_at, cost_usd").order("created_at", { ascending: false }).limit(30),
@@ -148,6 +177,39 @@ export default function AdminPanel({
         </div>
       ) : (
         <div className="note">Inga hämtningar än.</div>
+      )}
+
+      <div className="label">Väntelista ({wait.length})</div>
+      {wait.length ? (
+        <div className="admin-table">
+          {wait.map((w) => (
+            <div key={w.id} className="admin-row">
+              <span className="mono note">{when(w.created_at)}</span>
+              <span className="grow">{w.name} · {w.email}</span>
+              {w.invited_at ? <span className="pill src">Inbjuden</span> : null}
+              <button className="btn small" type="button" onClick={() => invite(w)}>{w.invited_at ? "Bjud in igen" : "Bjud in"}</button>
+              <button className="btn small ghost danger" type="button" onClick={() => delWait(w.id)}>Ta bort</button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="note">Ingen på väntelistan än.</div>
+      )}
+
+      <div className="label">Feedback ({fb.filter((f) => !f.handled_at).length} ohanterad)</div>
+      {fb.length ? (
+        <div className="admin-table">
+          {fb.map((f) => (
+            <div key={f.id} className="admin-row">
+              <span className="mono note">{when(f.created_at)}</span>
+              <span className="pill">{{ idea: "Idé", bug: "Fel", other: "Annat" }[f.kind] || f.kind}</span>
+              <span className="grow" style={{ whiteSpace: "pre-wrap" }}>{f.text}{f.email ? ` — ${f.email}` : ""}</span>
+              <button className="btn small ghost" type="button" onClick={() => handled(f)}>{f.handled_at ? "Öppna igen" : "Klar"}</button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="note">Ingen feedback än.</div>
       )}
 
       <div className="label">Administratörer</div>
