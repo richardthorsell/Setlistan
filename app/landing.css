@@ -1,0 +1,18 @@
+/* Front page for visitors and the welcome / what's new dialogs. */
+.hero { display: flex; flex-direction: column; gap: 14px; padding-block: 18px 6px; }
+.hero h1 { font-size: clamp(56px, 11vw, 112px); font-weight: 900; text-transform: uppercase; }
+.hero .lead { margin: 0; font-size: clamp(17px, 2.4vw, 21px); color: var(--muted); max-width: 46ch; }
+.features { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+.feature { background: var(--surface); border: 1.5px solid var(--line); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+.feature h3 { font-size: 24px; font-weight: 800; text-transform: uppercase; }
+.feature p { margin: 0; color: var(--muted); }
+.step { width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; font-weight: 700; font-size: 13px; }
+.dots { display: flex; gap: 6px; }
+.dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+.dots i.on { background: var(--accent); }
+.news-list { display: flex; flex-direction: column; border: 1.5px solid var(--line); border-radius: 10px; overflow: hidden; }
+.news-item { padding: 12px 14px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px; }
+.news-item:first-child { border-top: 0; }
+.news-item p { margin: 0; color: var(--muted); }
+.news-item.fresh { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.badge { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px; border-radius: 99px; background: var(--accent); color: var(--accent-ink); font-size: 11.5px; line-height: 18px; text-align: center; }
