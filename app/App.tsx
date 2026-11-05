@@ -684,9 +684,6 @@ export default function App() {
           <h1>Setlistan</h1>
           <p>Sök fram en checklista, pricka av korten du har och se direkt vilka som fattas.</p>
         </div>
-        <div className="row">
-          <button className="btn" type="button" onClick={() => setPaste({ name: "", text: "", sport: sport || "fotboll" })}>Klistra in egen lista</button>
-        </div>
       </header>
 
       {paste && (
