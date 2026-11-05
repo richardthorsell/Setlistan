@@ -46,6 +46,8 @@
 .auth-form input, .admin input, .admin select {
   height: 40px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--bg); padding: 0 12px; min-width: 0;
 }
+.hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+.auth-form textarea { border-radius: 10px; border: 1.5px solid var(--line); background: var(--bg); padding: 10px 12px; font: inherit; resize: vertical; }
 .account .btn[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
 
 .stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
