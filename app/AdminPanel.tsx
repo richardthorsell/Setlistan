@@ -8,6 +8,16 @@ type Overview = { users: number; collectors: number; owned: number; sets: number
 type Job = { id: number; query: string; status: string; error: string | null; set_id: string | null; created_at: string; cost_usd: number };
 type Wait = { id: string; name: string; email: string; invited_at: string | null; created_at: string };
 type Fb = { id: string; email: string | null; kind: string; page: string | null; text: string; handled_at: string | null; created_at: string };
+type ImportSet = {
+  id: string;
+  name: string;
+  sport: string;
+  source: string;
+  source_urls: string[];
+  notes: string;
+  keywords: string;
+  sections: { code: string; name: string; cards: { no: number; name: string; team: string; tags: string[] }[] }[];
+};
 type Admin = { email: string; role: "admin" | "superuser"; added_at: string };
 
 const when = (iso: string) => new Date(iso).toLocaleString("sv-SE", { dateStyle: "short", timeStyle: "short" });
@@ -34,6 +44,60 @@ export default function AdminPanel({
   const [newEmail, setNewEmail] = useState("");
   const [newRole, setNewRole] = useState<"admin" | "superuser">("admin");
 
+  const [importMsg, setImportMsg] = useState("");
+  const [importing, setImporting] = useState(false);
+
+  // Imports a JSON file of sets (see Claude-hub/data): sets that already exist are left alone.
+  const importFile = async (file: File) => {
+    setImporting(true);
+    try {
+      const data = JSON.parse(await file.text()) as ImportSet[];
+      if (!Array.isArray(data)) throw new Error("Filen har fel format.");
+      const have = new Set((await supabase.from("sets").select("id")).data?.map((r: { id: string }) => r.id) ?? []);
+      let done = 0;
+      let skipped = 0;
+      let failed = 0;
+      let cards = 0;
+      for (const s of data) {
+        setImportMsg(`Importerar ${done + skipped + failed + 1} av ${data.length}: ${s.name}`);
+        if (have.has(s.id)) {
+          skipped++;
+          continue;
+        }
+        const ins = await supabase.from("sets").insert({ id: s.id, name: s.name, keywords: s.keywords, source: s.source, source_urls: s.source_urls, notes: s.notes, sport: s.sport, verified: false, status: "ready" });
+        if (ins.error) {
+          failed++;
+          continue;
+        }
+        const secs = await supabase.from("sections").insert(s.sections.map((x, i) => ({ set_id: s.id, code: x.code, name: x.name, position: i }))).select("id, code");
+        if (secs.error || !secs.data) {
+          await supabase.from("sets").delete().eq("id", s.id);
+          failed++;
+          continue;
+        }
+        const byCode = new Map<string, number>(secs.data.map((r: { id: number; code: string }): [string, number] => [r.code, r.id]));
+        const rows = s.sections.flatMap((x) => x.cards.map((c) => ({ set_id: s.id, section_id: byCode.get(x.code), no: c.no, name: c.name, team: c.team, tags: c.tags })));
+        let ok = true;
+        for (let i = 0; i < rows.length && ok; i += 500) {
+          const r = await supabase.from("cards").insert(rows.slice(i, i + 500));
+          if (r.error) ok = false;
+        }
+        if (!ok) {
+          await supabase.from("sets").delete().eq("id", s.id);
+          failed++;
+          continue;
+        }
+        done++;
+        cards += rows.length;
+      }
+      setImportMsg(`Klart: ${done} set importerade (${cards} kort), ${skipped} fanns redan, ${failed} misslyckades.`);
+      await onChanged();
+    } catch (e) {
+      setImportMsg(e instanceof Error ? e.message : "Importen misslyckades.");
+    } finally {
+      setImporting(false);
+    }
+  };
   const [news, setNews] = useState<{ id: string; title: string; created_at: string }[]>([]);
   const [nTitle, setNTitle] = useState("");
   const [nBody, setNBody] = useState("");
@@ -180,6 +244,12 @@ export default function AdminPanel({
           </div>
         ))}
       </div>
+
+      <div className="label">Importera set från fil</div>
+      <div className="row">
+        <input type="file" accept="application/json,.json" disabled={importing} aria-label="Välj JSON-fil med set" onChange={(e) => e.target.files?.[0] && importFile(e.target.files[0])} />
+      </div>
+      {importMsg && <div className="note">{importMsg}</div>}
 
       <div className="label">Senaste hämtningar</div>
       {jobs.length ? (
