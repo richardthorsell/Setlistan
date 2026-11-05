@@ -5,6 +5,7 @@ import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { type Card, type Parallel, type Section, type SetStat, type Sport, SPORTS, label, matches, norm, parallelLabel, parsePaste, quickIds, ranges, slug, sportLabel } from "@/lib/checklist";
 import TraderaPanel, { type TraderaScope } from "./TraderaPanel";
+import EbayPanel from "./EbayPanel";
 import AuthBox from "./AuthBox";
 import AdminPanel from "./AdminPanel";
 import { FeedbackBox, WaitlistBox } from "./BetaPanels";
@@ -108,6 +109,7 @@ export default function App() {
   const [suggested, setSuggested] = useState<Set<string>>(new Set());
   const [parSel, setParSel] = useState<number | null>(null);
   const [tradera, setTradera] = useState<TraderaScope | null>(null);
+  const [ebay, setEbay] = useState<TraderaScope | null>(null);
   const [confirmDel, setConfirmDel] = useState(false);
   const [copyText, setCopyText] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -731,6 +733,7 @@ export default function App() {
           onClose={() => setParCard(null)}
         />
       )}
+      {ebay && <EbayPanel key={ebay.narrow + "|" + ebay.broad} scope={ebay} signedIn={!!user} onClose={() => setEbay(null)} />}
       {tradera && <TraderaPanel key={tradera.narrow + "|" + tradera.broad} scope={tradera} signedIn={!!user} onClose={() => setTradera(null)} />}
 
       <header className="top">
@@ -800,6 +803,7 @@ export default function App() {
             <button className="btn" type="button" onClick={() => downloadCsv(true)}>{t("Ladda ner saknade (CSV)")}</button>
             <button className="btn" type="button" onClick={() => downloadCsv(false)}>{t("Ladda ner hela setlistan")}</button>
             <button className="btn" type="button" onClick={() => setTradera(traderaScope())}>{t("Sålda på Tradera")}</button>
+            <button className="btn" type="button" onClick={() => setEbay(traderaScope())}>{t("Auktioner på eBay")}</button>
             {mine && <button className="btn ghost danger" type="button" onClick={() => setConfirmDel(true)}>{t("Ta bort set")}</button>}
           </div>
           {!user && <div className="note">{t("Du är inte inloggad. Avprickningarna sparas i den här webbläsaren och flyttas till ditt konto när du loggar in.")}</div>}
@@ -894,6 +898,7 @@ export default function App() {
                     <span className="tick"><Tick /></span>
                   </button>
                   <button className="tbtn" type="button" title={t("Visa sålda på Tradera")} aria-label={`Sålda ${c.name} på Tradera`} onClick={() => setTradera(traderaScope(c, sec))}>T</button>
+                  <button className="tbtn" type="button" title={t("Visa auktioner med bud på eBay")} aria-label={`Auktioner ${c.name} på eBay`} onClick={() => setEbay(traderaScope(c, sec))}>E</button>
                   <button className={`star${favCards.has(c.id) ? " on" : ""}`} type="button" aria-pressed={favCards.has(c.id)} title={t("Favorit: extra värdefull")} aria-label={`${favCards.has(c.id) ? t("Ta bort") : t("Markera")} ${c.name} som favorit`} onClick={() => toggleFavCard(c.id)}>{favCards.has(c.id) ? "★" : "☆"}</button>
                   {cardPars(c).length > 0 && (
                     <button className={`pbtn${ownedParsOf(c).length ? " on" : ""}`} type="button" title={t("Välj paralleller för kortet")} aria-label={`Paralleller för ${c.name}`} onClick={() => setParCard({ card: c, sec })}>{t("Par.")}{ownedParsOf(c).length ? ` ${ownedParsOf(c).length}` : ""}
@@ -929,6 +934,7 @@ export default function App() {
                   )}
                   <button className={`star${favCards.has(c.id) ? " on" : ""}`} type="button" aria-pressed={favCards.has(c.id)} title={t("Favorit: extra värdefull")} aria-label={`${favCards.has(c.id) ? t("Ta bort") : t("Markera")} ${c.name} som favorit`} onClick={() => toggleFavCard(c.id)}>{favCards.has(c.id) ? "★" : "☆"}</button>
                   <button className="tbtn" type="button" title={t("Visa sålda på Tradera")} aria-label={`Sålda ${c.name} på Tradera`} onClick={() => setTradera(traderaScope(c, sec))}>T</button>
+                  <button className="tbtn" type="button" title={t("Visa auktioner med bud på eBay")} aria-label={`Auktioner ${c.name} på eBay`} onClick={() => setEbay(traderaScope(c, sec))}>E</button>
                 </div>
               ))}
             </div>
