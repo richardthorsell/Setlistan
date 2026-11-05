@@ -83,8 +83,8 @@ function cleanStats(s: unknown): Stats {
 export async function GET(req: Request) {
   const q = (new URL(req.url).searchParams.get("q") || "").trim().slice(0, 100);
   if (q.length < 3) return Response.json({ error: "Skriv minst tre tecken." }, { status: 400 });
-  // Traderas own search page, filtered to ended (sold) listings.
-  const searchUrl = "https://www.tradera.com/search?q=" + encodeURIComponent(q) + "&itemStatus=Ended";
+  // Traderas own search page, which lists what is for sale right now.
+  const searchUrl = "https://www.tradera.com/search?q=" + encodeURIComponent(q);
 
   const supabase = await createClient();
   const {
