@@ -20,6 +20,9 @@
 .t-backdrop { position: fixed; inset: 0; z-index: 40; background: rgba(10, 11, 24, .55); display: flex; align-items: flex-start; justify-content: center; padding: max(16px, env(safe-area-inset-top, 0px)) 16px 16px; overflow-y: auto; }
 .tradera { width: 100%; max-width: 680px; margin-top: 4vh; }
 .t-stats { padding: 10px 12px; border-radius: 10px; background: var(--sunk); font-size: 14px; }
+.t-context { display: flex; gap: 6px 12px; flex-wrap: wrap; align-items: baseline; padding: 10px 12px; border-radius: 10px; background: var(--sunk); }
+.t-context b { font-family: var(--f-mono); font-size: 14px; }
+.seg button:disabled { opacity: .6; cursor: default; }
 
 /* Sport tabs above the library. */
 .shelf-head { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
