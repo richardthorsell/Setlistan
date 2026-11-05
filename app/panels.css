@@ -1,3 +1,23 @@
+/* Tradera button on cards, serial numbers and the Tradera panel. */
+.cardwrap { position: relative; }
+.cardwrap .card { width: 100%; }
+.tbtn { width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid var(--line); background: var(--surface); color: var(--muted); font: 700 11px var(--f-mono); display: grid; place-items: center; padding: 0; flex: none; }
+.tbtn:hover { border-color: var(--accent); color: var(--accent); }
+.cardwrap .tbtn { position: absolute; top: 30px; right: 8px; }
+.lwrap { display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--line); padding-right: 10px; }
+.lwrap:first-child { border-top: 0; }
+.lwrap .lrow { flex: 1; border-top: 0; min-width: 0; }
+.serial { width: 96px; height: 30px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--bg); padding: 0 8px; font-family: var(--f-mono); font-size: 12.5px; }
+.t-input { height: 40px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--bg); padding: 0 12px; min-width: 0; }
+.t-list { display: flex; flex-direction: column; border: 1.5px solid var(--line); border-radius: 10px; overflow: hidden; }
+.t-item { display: grid; grid-template-columns: 56px 1fr; gap: 4px 12px; align-items: center; padding: 8px 10px; border-top: 1px solid var(--line); color: inherit; text-decoration: none; }
+.t-item:first-child { border-top: 0; }
+.t-item:hover { background: var(--sunk); }
+.t-item img, .t-ph { width: 56px; height: 56px; border-radius: 8px; object-fit: cover; background: var(--sunk); grid-row: span 2; }
+.t-title { font-weight: 600; overflow-wrap: anywhere; }
+.t-meta { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); }
+.t-meta b { color: var(--ink); }
+
 /* Sport tabs above the library. */
 .shelf-head { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
 .sports { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: thin; }
