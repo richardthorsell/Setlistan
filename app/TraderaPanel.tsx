@@ -5,7 +5,7 @@ import "./panels.css";
 
 type Item = { id: string; title: string; price: number | null; buyNow: number | null; bids: number | null; ends: string; url: string; thumb: string };
 type Stats = { count: number; median: number | null; min: number | null; max: number | null };
-type Result = { items: Item[]; stats: Stats; seen: number; total: number; cached: boolean; searchUrl: string };
+type Result = { items: Item[]; stats: Stats; seen: number; total: number; cached: boolean; stale?: boolean; searchUrl: string };
 
 // What the search is about: the set (and card) the user clicked, and the two queries it can run.
 export type TraderaScope = { set: string; card: string | null; narrow: string; broad: string };
@@ -32,7 +32,9 @@ export default function TraderaPanel({ scope, signedIn, onClose }: { scope: Trad
     setBusy(true);
     setErr(null);
     try {
-      const r = await fetch("/api/tradera?q=" + encodeURIComponent(query.trim()));
+      // The context (set and card) is saved with the search in the history; nothing about who searched.
+      const ctx = [scope.set, scope.card].filter(Boolean).join(" · ");
+      const r = await fetch("/api/tradera?q=" + encodeURIComponent(query.trim()) + "&ctx=" + encodeURIComponent(ctx));
       const j = await r.json().catch(() => ({}));
       if (!r.ok) {
         setRes(null);
@@ -43,7 +45,7 @@ export default function TraderaPanel({ scope, signedIn, onClose }: { scope: Trad
     } finally {
       setBusy(false);
     }
-  }, []);
+  }, [scope.set, scope.card]);
 
   const pick = (m: "set" | "all") => {
     const next = m === "set" ? scope.narrow : scope.broad;
@@ -140,7 +142,7 @@ export default function TraderaPanel({ scope, signedIn, onClose }: { scope: Trad
         {res && (
           <div className="note">
             Av {res.seen} avslutade annonser hade {res.stats.count} bud och räknas som sålda. Annonser utan bud (osålda eller fasta priser) visas inte.
-            {res.cached ? " Sparat svar från de senaste 24 timmarna." : ""}
+            {res.stale ? " Tradera kunde inte nås eller kvoten är slut, så detta är ett äldre sparat svar." : res.cached ? " Sparat svar från de senaste tre dygnen." : ""}
           </div>
         )}
       </section>
