@@ -479,6 +479,8 @@ export default function App() {
   const sportsInUse = SPORTS.map((s) => ({ ...s, n: sets.filter((x) => x.sport === s.id).length }));
   const shelfSets = sport ? sets.filter((s) => s.sport === sport) : sets;
   const origin = (s: SetStat) => (s.verified ? "Verifierad lista" : s.source === "inklistrad" ? "Inklistrad" : "Hämtad");
+  // Tradera titles rarely repeat the whole set name, so search on the player and the brand (Topps, Panini …).
+  const traderaQuery = (name: string) => `${name} ${(current?.short_name || current?.name || "").split(" ")[0]}`.trim();
 
   return (
     <div className="wrap">
@@ -647,7 +649,7 @@ export default function App() {
             <button className="btn" type="button" onClick={copyMissing}>Kopiera saknade</button>
             <button className="btn" type="button" onClick={() => downloadCsv(true)}>Ladda ner saknade (CSV)</button>
             <button className="btn" type="button" onClick={() => downloadCsv(false)}>Ladda ner hela setlistan</button>
-            <button className="btn" type="button" onClick={() => setTradera(current.short_name || current.name)}>Sök på Tradera</button>
+            <button className="btn" type="button" onClick={() => setTradera(current.short_name || current.name)}>Sålda på Tradera</button>
             {mine && <button className="btn ghost danger" type="button" onClick={() => setConfirmDel(true)}>Ta bort set</button>}
           </div>
           {!user && <div className="note">Du är inte inloggad. Avprickningarna sparas i den här webbläsaren och flyttas till ditt konto när du loggar in.</div>}
@@ -738,7 +740,7 @@ export default function App() {
                     <span className="tags">{tagEls(c)}{serialOf(c) && <span className="tag fs">{serialOf(c)}</span>}</span>
                     <span className="tick"><Tick /></span>
                   </button>
-                  <button className="tbtn" type="button" title="Sök på Tradera" aria-label={`Sök ${c.name} på Tradera`} onClick={() => setTradera(`${c.name} ${current.short_name || current.name}`)}>T</button>
+                  <button className="tbtn" type="button" title="Visa sålda på Tradera" aria-label={`Sålda ${c.name} på Tradera`} onClick={() => setTradera(traderaQuery(c.name))}>T</button>
                 </div>
               ))}
             </div>
@@ -763,7 +765,7 @@ export default function App() {
                       onBlur={(e) => saveSerial(c.id, e.target.value)}
                     />
                   )}
-                  <button className="tbtn" type="button" title="Sök på Tradera" aria-label={`Sök ${c.name} på Tradera`} onClick={() => setTradera(`${c.name} ${current.short_name || current.name}`)}>T</button>
+                  <button className="tbtn" type="button" title="Visa sålda på Tradera" aria-label={`Sålda ${c.name} på Tradera`} onClick={() => setTradera(traderaQuery(c.name))}>T</button>
                 </div>
               ))}
             </div>
