@@ -678,58 +678,10 @@ export default function App() {
           <h1>Setlistan</h1>
           <p>Sök fram en checklista, pricka av korten du har och se direkt vilka som fattas.</p>
         </div>
-        <div className="search">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
-          <input
-            id="q"
-            type="search"
-            placeholder="T.ex. Topps Premier League Flagship 26/27 eller en adress till en checklista"
-            autoComplete="off"
-            aria-label="Sök set"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && hits.length) openSet(hits[0].id);
-            }}
-          />
-          <button className="btn big" type="button" onClick={() => { setFetchLog(null); setPaste({ name: q.trim(), text: "", sport: sport || "fotboll" }); }}>Klistra in lista</button>
+        <div className="row">
+          <button className="btn" type="button" onClick={() => setPaste({ name: "", text: "", sport: sport || "fotboll" })}>Klistra in egen lista</button>
         </div>
-        {q.trim() && (
-          <div className="results">
-            {hits.map((s) => (
-              <button key={s.id} className="result" type="button" onClick={() => openSet(s.id)}>
-                <div className="meta">
-                  <strong>{s.name}</strong>
-                  <span>{sportLabel(s.sport)} · {s.card_count} kort · {s.section_count} delset · {counts[s.id] || 0} avprickade</span>
-                </div>
-                <span className={`pill ${s.verified ? "src" : ""}`}>{origin(s)}</span>
-              </button>
-            ))}
-            <div className="nomatch">
-              <div>
-                <strong>{hits.length ? "Saknas det du söker?" : "Inget set i biblioteket matchar."}</strong> Föreslå setet så lägger administratörerna in det. Du kan också klistra in din egen lista med knappen ovan.
-              </div>
-              <div className="row">
-                <button className="btn primary" type="button" disabled={suggested.has(q.trim().toLowerCase())} onClick={() => suggest(q)}>
-                  {suggested.has(q.trim().toLowerCase()) ? "Förslaget är skickat" : `Föreslå “${q.trim()}”`}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </header>
-
-      {fetchLog && (
-        <section className="panel">
-          <h3>Hämtar setlista</h3>
-          <div className="log">{fetchLog.map((l, i) => <div key={i} className={l.k || ""}>{l.m}</div>)}</div>
-          <div className="actions">
-            {fetching && <button className="btn" type="button" onClick={() => abortRef.current?.abort()}>Stoppa</button>}
-            {fetchDone && <button className="btn primary" type="button" onClick={() => { setFetchLog(null); openSet(fetchDone); }}>Öppna setet</button>}
-            {!fetching && <button className="btn ghost" type="button" onClick={() => setFetchLog(null)}>Stäng</button>}
-          </div>
-        </section>
-      )}
 
       {paste && (
         <section className="panel">
@@ -761,7 +713,7 @@ export default function App() {
 
       <section>
         {sets.length ? (
-          <SetPicker sets={sets} counts={counts} openId={openId} favs={favs} sport={sport} setSport={setSport} onOpen={openSet} onToggleFav={toggleFav} />
+          <SetPicker sets={sets} counts={counts} openId={openId} favs={favs} sport={sport} setSport={setSport} onOpen={openSet} onToggleFav={toggleFav} onSuggest={suggest} suggested={suggested} />
         ) : (
           <div className="empty">Läser biblioteket …</div>
         )}
