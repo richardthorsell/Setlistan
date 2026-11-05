@@ -11,6 +11,7 @@ import { FeedbackBox, WaitlistBox } from "./BetaPanels";
 import Landing from "./Landing";
 import SetPicker from "./SetPicker";
 import AccountPanel from "./AccountPanel";
+import CardPar from "./CardPar";
 import { SiteFooter } from "./LegalPage";
 import { WhatsNew, Welcome, type Update } from "./Onboarding";
 
@@ -85,6 +86,7 @@ export default function App() {
   const [showWait, setShowWait] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [showAccount, setShowAccount] = useState(false);
+  const [parCard, setParCard] = useState<{ card: Card; sec: Section } | null>(null);
   const [ready, setReady] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
   const [showNews, setShowNews] = useState(false);
@@ -369,7 +371,7 @@ export default function App() {
     </option>
   );
   const total = scoped.reduce((n, s) => n + s.cards.length, 0);
-  const have = scoped.reduce((n, s) => n + s.cards.filter(has).length, 0);
+  const have =scoped.reduce((n, s) => n + s.cards.filter(has).length, 0);
   const pct = total ? Math.round((have / total) * 100) : 0;
 
   const applyParallel = async (ids: number[], on: boolean) => {
@@ -575,6 +577,46 @@ export default function App() {
     }
   };
 
+  // Parallels picked directly on a card: set-wide ones plus the ones that belong to the card's own subset.
+  const parBySec = new Map<number | null, Parallel[]>();
+  for (const p of parallels) (parBySec.get(p.section_id) || parBySec.set(p.section_id, []).get(p.section_id)!).push(p);
+  const cardPars = (c: Card) => [...(parBySec.get(null) || []), ...(parBySec.get(c.section_id) || [])];
+  const ownedParsOf = (c: Card) => cardPars(c).filter((p) => ownedPar.has(`${c.id}:${p.id}`));
+  const parChips = (c: Card) =>
+    ownedParsOf(c).map((p) => {
+      const sn = ownedPar.get(`${c.id}:${p.id}`);
+      return (
+        <span key={p.id} className="parchip" title={parallelLabel(p)}>
+          {p.print_run ? (sn ? `${sn}/${p.print_run}` : `/${p.print_run}`) : p.name}
+        </span>
+      );
+    });
+  const toggleCardPar = async (cardId: number, pid: number, on: boolean) => {
+    if (!openId) return;
+    const key = `${cardId}:${pid}`;
+    const next = new Map(ownedPar);
+    if (on) next.set(key, next.get(key) ?? null);
+    else next.delete(key);
+    setOwnedPar(next);
+    if (!user) return writeLocalPar(openId, next);
+    const { error } = on
+      ? await supabase.from("owned_parallels").upsert({ card_id: cardId, parallel_id: pid, set_id: openId }, { onConflict: "user_id,card_id,parallel_id", ignoreDuplicates: true })
+      : await supabase.from("owned_parallels").delete().eq("parallel_id", pid).eq("card_id", cardId);
+    if (error) say("Kunde inte spara. Ladda om sidan och försök igen.");
+  };
+  const saveCardSerial = async (cardId: number, pid: number, value: string) => {
+    if (!openId) return;
+    const key = `${cardId}:${pid}`;
+    const serial = value.trim() || null;
+    if (!ownedPar.has(key) || ownedPar.get(key) === serial) return;
+    const next = new Map(ownedPar);
+    next.set(key, serial);
+    setOwnedPar(next);
+    if (!user) return writeLocalPar(openId, next);
+    const { error } = await supabase.from("owned_parallels").update({ serial }).eq("card_id", cardId).eq("parallel_id", pid);
+    if (error) say("Kunde inte spara serienumret.");
+  };
+
   // Suggest a checklist to add. The administrators see the suggestions in the admin panel.
   const suggest = async (query: string) => {
     const text = query.trim().slice(0, 200);
@@ -676,6 +718,17 @@ export default function App() {
       {showAuth && !user && <AuthBox supabase={supabase} onClose={() => setShowAuth(false)} />}
       {showAdmin && role && user && (
         <AdminPanel supabase={supabase} role={role} sets={sets} myEmail={(user.email || "").toLowerCase()} onChanged={loadSets} say={say} />
+      )}
+      {parCard && (
+        <CardPar
+          cardId={parCard.card.id}
+          title={`${label(parCard.sec, parCard.card)} · ${parCard.card.name}`}
+          options={cardPars(parCard.card)}
+          owned={ownedPar}
+          onToggle={(pid, on) => toggleCardPar(parCard.card.id, pid, on)}
+          onSerial={(pid, v) => saveCardSerial(parCard.card.id, pid, v)}
+          onClose={() => setParCard(null)}
+        />
       )}
       {tradera && <TraderaPanel key={tradera.narrow + "|" + tradera.broad} scope={tradera} signedIn={!!user} onClose={() => setTradera(null)} />}
 
@@ -836,11 +889,16 @@ export default function App() {
                     <span className="pos" title="Pärmsida · fack">{pos}</span>
                     <span className="name">{c.name}</span>
                     <span className="team">{c.team}</span>
-                    <span className="tags">{tagEls(c)}{serialOf(c) && <span className="tag fs">{serialOf(c)}</span>}</span>
+                    <span className="tags">{tagEls(c)}{serialOf(c) && <span className="tag fs">{serialOf(c)}</span>}{parChips(c)}</span>
                     <span className="tick"><Tick /></span>
                   </button>
                   <button className="tbtn" type="button" title="Visa sålda på Tradera" aria-label={`Sålda ${c.name} på Tradera`} onClick={() => setTradera(traderaScope(c, sec))}>T</button>
                   <button className={`star${favCards.has(c.id) ? " on" : ""}`} type="button" aria-pressed={favCards.has(c.id)} title="Favorit: extra värdefull" aria-label={`${favCards.has(c.id) ? "Ta bort" : "Markera"} ${c.name} som favorit`} onClick={() => toggleFavCard(c.id)}>{favCards.has(c.id) ? "★" : "☆"}</button>
+                  {cardPars(c).length > 0 && (
+                    <button className={`pbtn${ownedParsOf(c).length ? " on" : ""}`} type="button" title="Välj paralleller för kortet" aria-label={`Paralleller för ${c.name}`} onClick={() => setParCard({ card: c, sec })}>
+                      Par.{ownedParsOf(c).length ? ` ${ownedParsOf(c).length}` : ""}
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
@@ -851,7 +909,7 @@ export default function App() {
                   <button className="lrow" type="button" aria-pressed={has(c)} onClick={() => applyOwned([c.id], !has(c))}>
                     <span className="box">{has(c) && <Tick />}</span>
                     <span className="n">{label(sec, c)}</span>
-                    <span className="nm">{c.name} {tagEls(c)}</span>
+                    <span className="nm">{c.name} {tagEls(c)}{parChips(c)}</span>
                     <span className="tm">{c.team}</span>
                   </button>
                   {selPar && has(c) && (
@@ -864,6 +922,11 @@ export default function App() {
                       aria-label={`Serienummer för ${c.name}`}
                       onBlur={(e) => saveSerial(c.id, e.target.value)}
                     />
+                  )}
+                  {cardPars(c).length > 0 && (
+                    <button className={`pbtn${ownedParsOf(c).length ? " on" : ""}`} type="button" title="Välj paralleller för kortet" aria-label={`Paralleller för ${c.name}`} onClick={() => setParCard({ card: c, sec })}>
+                      Par.{ownedParsOf(c).length ? ` ${ownedParsOf(c).length}` : ""}
+                    </button>
                   )}
                   <button className={`star${favCards.has(c.id) ? " on" : ""}`} type="button" aria-pressed={favCards.has(c.id)} title="Favorit: extra värdefull" aria-label={`${favCards.has(c.id) ? "Ta bort" : "Markera"} ${c.name} som favorit`} onClick={() => toggleFavCard(c.id)}>{favCards.has(c.id) ? "★" : "☆"}</button>
                   <button className="tbtn" type="button" title="Visa sålda på Tradera" aria-label={`Sålda ${c.name} på Tradera`} onClick={() => setTradera(traderaScope(c, sec))}>T</button>
