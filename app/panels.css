@@ -17,6 +17,9 @@
 .t-title { font-weight: 600; overflow-wrap: anywhere; }
 .t-meta { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); }
 .t-meta b { color: var(--ink); }
+.t-backdrop { position: fixed; inset: 0; z-index: 40; background: rgba(10, 11, 24, .55); display: flex; align-items: flex-start; justify-content: center; padding: max(16px, env(safe-area-inset-top, 0px)) 16px 16px; overflow-y: auto; }
+.tradera { width: 100%; max-width: 680px; margin-top: 4vh; }
+.t-stats { padding: 10px 12px; border-radius: 10px; background: var(--sunk); font-size: 14px; }
 
 /* Sport tabs above the library. */
 .shelf-head { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
