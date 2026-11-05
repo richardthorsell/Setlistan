@@ -34,6 +34,23 @@ export default function AdminPanel({
   const [newEmail, setNewEmail] = useState("");
   const [newRole, setNewRole] = useState<"admin" | "superuser">("admin");
 
+  const [news, setNews] = useState<{ id: string; title: string; created_at: string }[]>([]);
+  const [nTitle, setNTitle] = useState("");
+  const [nBody, setNBody] = useState("");
+  const postNews = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const { error } = await supabase.from("app_updates").insert({ title: nTitle.trim(), body: nBody.trim() });
+    if (error) return say("Kunde inte publicera uppdateringen.");
+    setNTitle("");
+    setNBody("");
+    await load();
+    say("Uppdateringen är publicerad");
+  };
+  const delNews = async (id: string) => {
+    const { error } = await supabase.from("app_updates").delete().eq("id", id);
+    if (error) return say("Kunde inte ta bort.");
+    await load();
+  };
   const [wait, setWait] = useState<Wait[]>([]);
   const [fb, setFb] = useState<Fb[]>([]);
 
@@ -56,6 +73,8 @@ export default function AdminPanel({
   };
 
   const load = useCallback(async () => {
+    const nw = await supabase.from("app_updates").select("id, title, created_at").order("created_at", { ascending: false }).limit(20);
+    setNews((nw.data as { id: string; title: string; created_at: string }[]) || []);
     const [w, f] = await Promise.all([
       supabase.from("waitlist").select("id, name, email, invited_at, created_at").order("created_at", { ascending: false }).limit(200),
       supabase.from("feedback").select("id, email, kind, page, text, handled_at, created_at").order("created_at", { ascending: false }).limit(100),
@@ -177,6 +196,24 @@ export default function AdminPanel({
         </div>
       ) : (
         <div className="note">Inga hämtningar än.</div>
+      )}
+
+      <div className="label">Nytt i Setlistan</div>
+      <form className="row" onSubmit={postNews}>
+        <input className="grow" required maxLength={120} placeholder="Rubrik" aria-label="Rubrik" value={nTitle} onChange={(e) => setNTitle(e.target.value)} />
+        <input className="grow" required maxLength={1000} placeholder="Vad är nytt?" aria-label="Text" value={nBody} onChange={(e) => setNBody(e.target.value)} />
+        <button className="btn small primary" type="submit">Publicera</button>
+      </form>
+      {news.length > 0 && (
+        <div className="admin-table">
+          {news.map((n) => (
+            <div key={n.id} className="admin-row">
+              <span className="mono note">{when(n.created_at)}</span>
+              <span className="grow">{n.title}</span>
+              <button className="btn small ghost danger" type="button" onClick={() => delNews(n.id)}>Ta bort</button>
+            </div>
+          ))}
+        </div>
       )}
 
       <div className="label">Väntelista ({wait.length})</div>
