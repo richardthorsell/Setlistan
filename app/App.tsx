@@ -754,6 +754,7 @@ export default function App() {
     }),
   );
   const tagEls = (c: Card) => c.tags.map((t) => <span key={t} className={`tag ${t === "RC" ? "rc" : "fs"}`}>{t}</span>);
+  const dupChip = (c: Card) => (isDup(c) ? <span className="tag dup" title={`${dupExtra(c)} ${t("Dubbletter").toLowerCase()}`}>⧉ +{dupExtra(c)}</span> : null);
   const mine = current && user && (role !== null || (current.created_by === user.id && !current.verified));
   const origin = (s: SetStat) => (s.verified ? t("Verifierad lista") : s.source === "inklistrad" ? t("Inklistrad") : t("Hämtad"));
   // What a Tradera search is about. t("Detta set") searches on the player, the brand and the set's own words
@@ -1010,13 +1011,13 @@ export default function App() {
                     <span className="pos" title={t("Pärmsida · fack")}>{pos}</span>
                     <span className="name">{c.name}</span>
                     <span className="team">{c.team}</span>
-                    <span className="tags">{tagEls(c)}{serialOf(c) && <span className="tag fs">{serialOf(c)}</span>}{parChips(c)}</span>
+                    <span className="tags">{tagEls(c)}{dupChip(c)}{serialOf(c) &&<span className="tag fs">{serialOf(c)}</span>}{parChips(c)}</span>
                     <span className="tick"><Tick /></span>
                   </button>
                   <button className="tbtn" type="button" title={t("Visa sålda på Tradera")} aria-label={`Sålda ${c.name} på Tradera`} onClick={() => setTradera(traderaScope(c, sec))}>T</button>
                   <button className={`star${favCards.has(c.id) ? " on" : ""}`} type="button" aria-pressed={favCards.has(c.id)} title={t("Favorit: extra värdefull")} aria-label={`${favCards.has(c.id) ? t("Ta bort") : t("Markera")} ${c.name} som favorit`} onClick={() => toggleFavCard(c.id)}>{favCards.has(c.id) ? "★" : "☆"}</button>
                   <button className={`star wish${wishes.has(c.id) ? " on" : ""}`} type="button" aria-pressed={wishes.has(c.id)} title={t("Önskelista: jag jagar det här kortet")} aria-label={`${wishes.has(c.id) ? t("Ta bort") : t("Lägg")} ${c.name} ${t("på önskelistan")}`} onClick={() => setWish(c.id, wishes.has(c.id) ? null : { priority: 2, max_price: null, note: null })}>{wishes.has(c.id) ? "♥" : "♡"}</button>
-                  <button className={`pbtn${ownedParsOf(c).length || baseQtyOf(c.id) > 1 || wishes.has(c.id) ? " on" : ""}`} type="button" title={t("Antal, paralleller och önskelista")} aria-label={`${t("Mer om")} ${c.name}`} onClick={() => setParCard({ card: c, sec })}>{cardPars(c).length ? t("Par.") : t("Mer")}{ownedParsOf(c).length ? ` ${ownedParsOf(c).length}` : ""}{baseQtyOf(c.id) > 1 ? ` ×${baseQtyOf(c.id)}` : ""}{wishes.has(c.id) ? " ♡" : ""}</button>
+                  <button className={`pbtn${ownedParsOf(c).length || baseQtyOf(c.id) > 1 || wishes.has(c.id) ? " on" : ""}`} type="button" title={t("Antal, paralleller och önskelista")} aria-label={`${t("Mer om")} ${c.name}`} onClick={() => setParCard({ card: c, sec })}>{cardPars(c).length ? t("Par.") : t("Mer")}{ownedParsOf(c).length ? ` ${ownedParsOf(c).length}` : ""}{wishes.has(c.id) ? " ♡" : ""}</button>
                 </div>
               ))}
             </div>
@@ -1027,7 +1028,7 @@ export default function App() {
                   <button className="lrow" type="button" aria-pressed={has(c)} onClick={() => applyOwned([c.id], !has(c))}>
                     <span className="box">{has(c) && <Tick />}</span>
                     <span className="n">{label(sec, c)}</span>
-                    <span className="nm">{c.name} {tagEls(c)}{parChips(c)}</span>
+                    <span className="nm">{c.name} {tagEls(c)}{dupChip(c)}{parChips(c)}</span>
                     <span className="tm">{c.team}</span>
                   </button>
                   {selPar && has(c) && (
@@ -1041,7 +1042,7 @@ export default function App() {
                       onBlur={(e) => saveSerial(c.id, e.target.value)}
                     />
                   )}
-                  <button className={`pbtn${ownedParsOf(c).length || baseQtyOf(c.id) > 1 || wishes.has(c.id) ? " on" : ""}`} type="button" title={t("Antal, paralleller och önskelista")} aria-label={`${t("Mer om")} ${c.name}`} onClick={() => setParCard({ card: c, sec })}>{cardPars(c).length ? t("Par.") : t("Mer")}{ownedParsOf(c).length ? ` ${ownedParsOf(c).length}` : ""}{baseQtyOf(c.id) > 1 ? ` ×${baseQtyOf(c.id)}` : ""}{wishes.has(c.id) ? " ♡" : ""}</button>
+                  <button className={`pbtn${ownedParsOf(c).length || baseQtyOf(c.id) > 1 || wishes.has(c.id) ? " on" : ""}`} type="button" title={t("Antal, paralleller och önskelista")} aria-label={`${t("Mer om")} ${c.name}`} onClick={() => setParCard({ card: c, sec })}>{cardPars(c).length ? t("Par.") : t("Mer")}{ownedParsOf(c).length ? ` ${ownedParsOf(c).length}` : ""}{wishes.has(c.id) ? " ♡" : ""}</button>
                   <button className={`star${favCards.has(c.id) ? " on" : ""}`} type="button" aria-pressed={favCards.has(c.id)} title={t("Favorit: extra värdefull")} aria-label={`${favCards.has(c.id) ? t("Ta bort") : t("Markera")} ${c.name} som favorit`} onClick={() => toggleFavCard(c.id)}>{favCards.has(c.id) ? "★" : "☆"}</button>
                   <button className={`star wish${wishes.has(c.id) ? " on" : ""}`} type="button" aria-pressed={wishes.has(c.id)} title={t("Önskelista: jag jagar det här kortet")} aria-label={`${wishes.has(c.id) ? t("Ta bort") : t("Lägg")} ${c.name} ${t("på önskelistan")}`} onClick={() => setWish(c.id, wishes.has(c.id) ? null : { priority: 2, max_price: null, note: null })}>{wishes.has(c.id) ? "♥" : "♡"}</button>
                   <button className="tbtn" type="button" title={t("Visa sålda på Tradera")} aria-label={`Sålda ${c.name} på Tradera`} onClick={() => setTradera(traderaScope(c, sec))}>T</button>
