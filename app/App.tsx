@@ -130,8 +130,13 @@ export default function App() {
   }, []);
 
   const loadSets = useCallback(async () => {
-    const { data } = await supabase.from("set_stats").select("*").eq("status", "ready").order("verified", { ascending: false }).order("created_at", { ascending: false });
-    setSets((data as SetStat[]) || []);
+    // The library has more than 1000 sets, so page through it (PostgREST caps one request at 1000 rows).
+    try {
+      const rows = await fetchAll<SetStat>((a, b) => supabase.from("set_stats").select("*").eq("status", "ready").order("verified", { ascending: false }).order("created_at", { ascending: false }).order("id").range(a, b));
+      setSets(rows);
+    } catch {
+      setSets([]);
+    }
   }, [supabase]);
 
   const loadCounts = useCallback(
