@@ -26,33 +26,39 @@ export function Welcome({ onDone }: { onDone: () => void }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onDone();
+      if (e.key === "ArrowRight") setI((v) => Math.min(v + 1, 4));
+      if (e.key === "ArrowLeft") setI((v) => Math.max(v - 1, 0));
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onDone]);
-
-  return (
-    <div className="t-backdrop">
-      <section className="panel tradera" role="dialog" aria-modal="true" aria-label={t("Introduktion")}>
-        <div className="row" style={{ justifyContent: "space-between" }}>
-          <span className="label">{t("Steg")}{" "}{i + 1} {t("av")} {STEPS.length}</span>
-          <button className="btn small ghost" type="button" onClick={onDone}>{t("Hoppa över")}</button>
+    return (
+    <div className="ob-backdrop">
+      <section className="ob" role="dialog" aria-modal="true" aria-label={t("Introduktion")}>
+        <div className="ob-art">
+          <span className="ob-step mono" aria-hidden="true">{String(i + 1).padStart(2, "0")}</span>
+          <div className="ob-visual" key={i}>{STEPS[i].v}</div>
         </div>
-        <div className="guide-art">{STEPS[i].v}</div>
-        <h3 style={{ fontSize: 34 }}>{STEPS[i].t}</h3>
-        <p style={{ margin: 0 }}>{STEPS[i].d}</p>
-        <div className="row" style={{ justifyContent: "space-between" }}>
-          <div className="dots" aria-hidden="true">{STEPS.map((_, k) => <i key={k} className={k === i ? "on" : ""} />)}</div>
-          <div className="row">
-            {i > 0 && <button className="btn" type="button" onClick={() => setI(i - 1)}>{t("Tillbaka")}</button>}
-            <button className="btn primary" type="button" onClick={() => (last ? onDone() : setI(i + 1))}>{last ? t("Börja använda Setlistan") : t("Nästa")}</button>
+        <div className="ob-body">
+          <div className="ob-top">
+            <span className="label">{t("Steg")}{" "}{i + 1} {t("av")} {STEPS.length}</span>
+            <button className="btn small ghost" type="button" onClick={onDone}>{t("Hoppa över")}</button>
+          </div>
+          <div className="ob-bar" aria-hidden="true"><i style={{ width: `${((i + 1) / STEPS.length) * 100}%` }} /></div>
+          <div className="ob-copy" key={"c" + i}>
+            <h3>{STEPS[i].t}</h3>
+            <p>{STEPS[i].d}</p>
+          </div>
+          <div className="ob-nav">
+            <div className="dots" aria-hidden="true">{STEPS.map((_, k) => <i key={k} className={k === i ? "on" : ""} />)}</div>
+            <div className="row">
+              {i > 0 && <button className="btn" type="button" onClick={() => setI(i - 1)}>{t("Tillbaka")}</button>}
+              <button className="btn primary big" type="button" onClick={() => (last ? onDone() : setI(i + 1))}>{last ? t("Börja använda Setlistan") : t("Nästa")}</button>
+            </div>
           </div>
         </div>
       </section>
     </div>
   );
 }
-
 // What's new: updates posted by the admins. `since` marks the ones the user has not seen yet.
 export function WhatsNew({ updates, since, onClose }: { updates: Update[]; since: string | null; onClose: () => void }) {
   const t = useT();
