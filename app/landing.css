@@ -82,3 +82,25 @@
   .ob-body { padding: 20px 20px 22px; }
 }
 @media (prefers-reduced-motion: reduce) { .ob, .ob-visual, .ob-copy { animation: none; } .ob-bar i { transition: none; } }
+/* More colour: tinted feature cards, gradient headline and hero glow on the front page; a tone per step in the guide. */
+.hero-grid { position: relative; isolation: isolate; }
+.hero-grid::before { content: ""; position: absolute; inset: -40px -20px; z-index: -1; border-radius: 40px; background: radial-gradient(60% 70% at 8% 10%, color-mix(in srgb, var(--holo-a) 55%, transparent), transparent 70%), radial-gradient(55% 65% at 95% 20%, color-mix(in srgb, var(--holo-b) 55%, transparent), transparent 70%), radial-gradient(60% 60% at 60% 105%, color-mix(in srgb, var(--holo-c) 55%, transparent), transparent 70%); filter: blur(6px); }
+.hero h1 { background: linear-gradient(100deg, var(--ink) 0%, var(--accent) 55%, var(--have) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.feature { --tone: var(--accent); border-color: color-mix(in srgb, var(--tone) 35%, var(--line)); border-top: 5px solid var(--tone); background: linear-gradient(180deg, color-mix(in srgb, var(--tone) 13%, var(--surface)), var(--surface) 60%); }
+.feature:nth-child(1) { --tone: var(--accent); }
+.feature:nth-child(2) { --tone: var(--have); }
+.feature:nth-child(3) { --tone: #E0559A; }
+.feature:nth-child(4) { --tone: var(--rc); }
+.feature h3 { color: color-mix(in srgb, var(--tone) 70%, var(--ink)); }
+.feature .step { background: var(--tone); }
+.mk { background: linear-gradient(160deg, color-mix(in srgb, var(--holo-a) 30%, var(--sunk)), var(--sunk) 55%, color-mix(in srgb, var(--holo-b) 28%, var(--sunk))); }
+.mk-bar i { background: linear-gradient(90deg, var(--have), var(--holo-b)); }
+.mk-chip.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.ob { --tone: var(--accent); }
+.ob-art { background: radial-gradient(110% 90% at 0% 0%, color-mix(in srgb, var(--tone) 55%, transparent), transparent 62%), radial-gradient(110% 90% at 100% 100%, var(--holo-b), transparent 62%), radial-gradient(90% 80% at 100% 0%, var(--holo-c), transparent 65%), var(--sunk); transition: background .4s ease; }
+.ob-step { color: var(--tone); opacity: .35; }
+.ob-bar i { background: linear-gradient(90deg, var(--tone), var(--holo-b)); }
+.ob-copy h3 { color: color-mix(in srgb, var(--tone) 75%, var(--ink)); }
+.ob-copy h3::after { content: ""; display: block; width: 56px; height: 5px; margin-top: 12px; border-radius: 5px; background: var(--tone); }
+.ob .dots i.on { background: var(--tone); }
+.ob .btn.primary { background: var(--tone); border-color: var(--tone); }
