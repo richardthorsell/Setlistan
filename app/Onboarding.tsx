@@ -30,7 +30,10 @@ export function Welcome({ onDone }: { onDone: () => void }) {
       if (e.key === "ArrowLeft") setI((v) => Math.max(v - 1, 0));
     };
     window.addEventListener("keydown", onKey);
-    return (
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onDone]);
+
+  return (
     <div className="ob-backdrop">
       <section className="ob" role="dialog" aria-modal="true" aria-label={t("Introduktion")}>
         <div className="ob-art">
@@ -59,6 +62,7 @@ export function Welcome({ onDone }: { onDone: () => void }) {
     </div>
   );
 }
+
 // What's new: updates posted by the admins. `since` marks the ones the user has not seen yet.
 export function WhatsNew({ updates, since, onClose }: { updates: Update[]; since: string | null; onClose: () => void }) {
   const t = useT();
