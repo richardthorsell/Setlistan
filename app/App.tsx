@@ -955,7 +955,7 @@ export default function App() {
           <div className="controls">
             <div className="seg" role="group" aria-label={t("Visa")}>
               {(["all", "missing", "have", "dups", "wish", "fav"] as Filter[]).map((k) => (
-                <button key={k} type="button" aria-pressed={filter === k} onClick={() => setFilter(k)}>{{ all: t("Alla"), missing: t("Saknas"), have: t("Har"), fav: `★ Favoriter${favCards.size ? ` ${favCards.size}` : ""}`, dups: `${t("Dubbletter")}${dupCount ? ` ${dupCount}` : ""}`, wish: `♡ ${t("Önskas")}${wishes.size ? ` ${wishes.size}` : ""}` }[k]}</button>
+                <button key={k} type="button" aria-pressed={filter === k} onClick={() => setFilter(k)}>{{ all: t("Alla"), missing: t("Saknas"), have: t("Har"), fav: `★ ${t("Favoriter")}${favCards.size ? ` ${favCards.size}` : ""}`, dups: `${t("Dubbletter")}${dupCount ? ` ${dupCount}` : ""}`, wish: `♡ ${t("Önskas")}${wishes.size ? ` ${wishes.size}` : ""}` }[k]}</button>
               ))}
             </div>
             <input type="search" placeholder={t("Spelare, lag eller nummer")} value={find} onChange={(e) => setFind(e.target.value)} aria-label={t("Sök i setet")} />
