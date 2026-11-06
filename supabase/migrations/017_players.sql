@@ -57,7 +57,7 @@ as $$
   where char_length(p_key) >= 3
     and public.name_key(c.name) like '%' || replace(replace(replace(p_key, '\', '\\'), '%', '\%'), '_', '\_') || '%'
     and p_key = any (select btrim(part) from unnest(string_to_array(public.name_key(c.name), ' / ')) as part)
-  order by s.name, x.position, c.no
+  order by s.name, x.position, c.no, c.id
   limit 3000
 $$;
 
