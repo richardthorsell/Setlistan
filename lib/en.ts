@@ -95,6 +95,8 @@ export const EN: Record<string, string> = {
   "Inklistrad": "Pasted",
   "Inklistrad checklista": "Pasted checklist",
   "Hämtad": "Imported",
+  "Kan innehålla fel": "May contain errors",
+  "Checklistorna kommer från öppna källor. Hämtade listor kan innehålla fel, så kontrollera mot kortets baksida eller tillverkarens lista när det är viktigt.": "The checklists come from open sources. Imported lists can contain errors, so check against the back of the card or the manufacturer's list when it matters.",
   "från": "from",
   "Inga favoriter här än. Tryck på stjärnan vid en spelare som är extra värdefull.": "No favourites here yet. Tap the star on a player who is extra valuable.",
   "Inga saknade kort här. Snyggt!": "No missing cards here. Nice!",
