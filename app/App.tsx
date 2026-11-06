@@ -904,7 +904,7 @@ export default function App() {
           <div className="set-head">
             <div>
               <div className="label">
-                {t(sportLabel(current.sport))} · {current.verified ? t("Verifierad checklista") : current.source === "inklistrad" ? t("Inklistrad checklista") : `${t("Hämtad")}${current.source ? " " + t("från") + " " + current.source.replace(/^https?:\/\//, "").split("/")[0] : ""}`}
+                {t(sportLabel(current.sport))} · {current.verified ? t("Verifierad checklista") : current.source === "inklistrad" ? t("Inklistrad checklista") : `${t("Hämtad")} · ${t("Kan innehålla fel")}`}
               </div>
               <h2>{current.name}</h2>
               <button className="btn small" type="button" aria-pressed={favs.has(current.id)} onClick={() => toggleFav(current.id)}>
@@ -1060,7 +1060,7 @@ export default function App() {
         </section>
       )}
 
-      <footer>{t("Checklistorna kommer från öppna källor som anges på varje set. Hämtade listor kan innehålla fel.")}</footer>
+      <footer>{t("Checklistorna kommer från öppna källor. Hämtade listor kan innehålla fel, så kontrollera mot kortets baksida eller tillverkarens lista när det är viktigt.")}</footer>
       <SiteFooter />
       {toast && <div className="toast">{toast}</div>}
     </div>
