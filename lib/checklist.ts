@@ -122,8 +122,9 @@ export function quickIds(sections: Section[], input: string) {
   const ids: number[] = [];
   const bad: string[] = [];
   for (const tok of input.split(/[,;]+/).map((x) => x.trim()).filter(Boolean)) {
-    const m = tok.match(/^(\d?[A-Za-z]+)?\s*#?(\d+)(?:\s*[-–]\s*(\d+))?$/);
-    const sec = m && byCode.get((m[1] || "").toUpperCase());
+    // The code may itself end in a digit (e.g. "SBC2 271-503"), so take the shortest prefix that leaves a valid number or range.
+    const m = tok.match(/^(.*?)\s*#?(\d+)(?:\s*[-–]\s*(\d+))?$/);
+    const sec = m && byCode.get(m[1].trim().toUpperCase());
     if (!m || !sec) {
       bad.push(tok);
       continue;
