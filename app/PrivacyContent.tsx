@@ -25,7 +25,7 @@ export default function PrivacyContent() {
           </thead>
           <tbody>
             <tr><td>E-postadress och lösenord (lösenordet sparas bara som krypterad hash)</td><td>Skapa konto och logga in</td><td>Avtal (att tillhandahålla tjänsten)</td><td>Så länge kontot finns</td></tr>
-            <tr><td>Din samling: avprickade kort, antal, paralleller, serienummer, favoritalbum, favoritkort och önskelista</td><td>Visa vad du har och saknar</td><td>Avtal</td><td>Så länge kontot finns</td></tr>
+            <tr><td>Din samling: avprickade kort, antal, paralleller, serienummer, favoritalbum, favoritkort, följda spelare och önskelista</td><td>Visa vad du har och saknar</td><td>Avtal</td><td>Så länge kontot finns</td></tr>
             <tr><td>Namn och e-post på väntelistan</td><td>Bjuda in dig till betan och mejla dig om det</td><td>Samtycke</td><td>Tills du får en inbjudan och skapar konto, eller tills du ber oss ta bort dig</td></tr>
             <tr><td>Feedback och förslag på set (text och din e-post)</td><td>Förbättra tjänsten och lägga in önskade set</td><td>Avtal och berättigat intresse</td><td>Så länge kontot finns</td></tr>
             <tr><td>Teknisk information (IP-adress, webbläsare, tidpunkt) i serverloggar</td><td>Drift, felsökning och säkerhet</td><td>Berättigat intresse</td><td>Enligt leverantörernas loggrutiner</td></tr>
