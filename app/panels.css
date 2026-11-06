@@ -122,3 +122,12 @@
 .admin-row input:not([type="checkbox"]) { flex: 1 1 240px; height: 36px; }
 .admin .grow { flex: 1 1 200px; min-width: 0; overflow-wrap: anywhere; }
 .check { display: inline-flex; gap: 6px; align-items: center; font-size: 13.5px; }
+
+/* Copies stepper, wishlist */
+.stepper { display: inline-flex; align-items: center; gap: 6px; }
+.stepper b { min-width: 2ch; text-align: center; }
+.wish-box { display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1px dashed var(--line); border-radius: 12px; }
+.wish-list { display: flex; flex-direction: column; gap: 8px; }
+.wish-item { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.wish-item .grow { min-width: 160px; }
+.panel.wish { max-width: 860px; }
