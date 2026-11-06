@@ -6,6 +6,8 @@ import { createClient } from "@/lib/supabase/client";
 import { type Card, type Parallel, type Section, type SetStat, type Sport, SPORTS, label, matches, norm, parallelLabel, parsePaste, quickIds, ranges, slug, sportLabel } from "@/lib/checklist";
 import TraderaPanel, { type TraderaScope } from "./TraderaPanel";
 import EbayPanel from "./EbayPanel";
+import WishPanel from "./WishPanel";
+import type { Wish } from "./CardPar";
 import AuthBox from "./AuthBox";
 import AdminPanel from "./AdminPanel";
 import { FeedbackBox, WaitlistBox } from "./BetaPanels";
@@ -17,7 +19,7 @@ import { SiteFooter } from "./LegalPage";
 import { WhatsNew, Welcome, type Update } from "./Onboarding";
 import { LangSwitch, useT } from "@/lib/i18n";
 
-type Filter = "all" | "missing" | "have" | "fav";
+type Filter = "all" | "missing" | "have" | "fav" | "dups" | "wish";
 type LogLine = { m: string; k?: string };
 const PAGE = 1000;
 const localKey = (setId: string) => `setlistan:owned:${setId}`;
@@ -110,6 +112,11 @@ export default function App() {
   const [parSel, setParSel] = useState<number | null>(null);
   const [tradera, setTradera] = useState<TraderaScope | null>(null);
   const [ebay, setEbay] = useState<TraderaScope | null>(null);
+  // Copies per card ("b:<card>" for the base card, "<card>:<parallel>" for a parallel); only counts above one are stored.
+  const [qty, setQty] = useState<Map<string, number>>(new Map());
+  const [wishes, setWishes] = useState<Map<number, Wish>>(new Map());
+  const [showWish, setShowWish] = useState(false);
+  const [wishCount, setWishCount] = useState(0);
   const [confirmDel, setConfirmDel] = useState(false);
   const [copyText, setCopyText] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -132,6 +139,8 @@ export default function App() {
       if (u) {
         const { data } = await supabase.from("my_owned_counts").select("set_id, n");
         setCounts(Object.fromEntries((data || []).map((r: { set_id: string; n: number }) => [r.set_id, r.n])));
+        const w = await supabase.from("wishlist").select("card_id", { count: "exact", head: true });
+        setWishCount(w.count ?? 0);
       } else {
         const c: Record<string, number> = {};
         try {
@@ -306,22 +315,28 @@ export default function App() {
         for (const c of cards) (bySec.get(c.section_id) || bySec.set(c.section_id, []).get(c.section_id)!).push(c);
         const list = ((secs.data as Omit<Section, "cards">[]) || []).map((s) => ({ ...s, cards: bySec.get(s.id) || [] }));
         let mine: Set<number>;
+        const mineQty = new Map<string, number>();
         if (uid) {
-          const rows = await fetchAll<{ card_id: number }>((a, b) => supabase.from("owned").select("card_id").eq("set_id", openId).range(a, b));
+          const rows = await fetchAll<{ card_id: number; qty: number }>((a, b) => supabase.from("owned").select("card_id, qty").eq("set_id", openId).order("card_id").range(a, b));
           mine = new Set(rows.map((r) => r.card_id));
+          for (const r of rows) if (r.qty > 1) mineQty.set("b:" + r.card_id, r.qty);
         } else mine = readLocal(openId);
         const pars = await supabase.from("parallels").select("id, section_id, name, print_run, position").eq("set_id", openId).order("position");
         let minePar = new Map<string, string | null>();
         if (uid) {
-          const rows = await fetchAll<{ card_id: number; parallel_id: number; serial: string | null }>((a, b) =>
-            supabase.from("owned_parallels").select("card_id, parallel_id, serial").eq("set_id", openId).order("card_id").order("parallel_id").range(a, b),
+          const rows = await fetchAll<{ card_id: number; parallel_id: number; serial: string | null; qty: number }>((a, b) =>
+            supabase.from("owned_parallels").select("card_id, parallel_id, serial, qty").eq("set_id", openId).order("card_id").order("parallel_id").range(a, b),
           );
           minePar = new Map(rows.map((r) => [`${r.card_id}:${r.parallel_id}`, r.serial]));
+          for (const r of rows) if (r.qty > 1) mineQty.set(`${r.card_id}:${r.parallel_id}`, r.qty);
         } else minePar = readLocalPar(openId);
         let mineFav = new Set<number>();
+        const mineWish = new Map<number, Wish>();
         if (uid) {
           const rows = await fetchAll<{ card_id: number }>((a, b) => supabase.from("favorite_cards").select("card_id").eq("set_id", openId).range(a, b));
           mineFav = new Set(rows.map((r) => r.card_id));
+          const w = await fetchAll<{ card_id: number; priority: number; max_price: number | null; note: string | null }>((a, b) => supabase.from("wishlist").select("card_id, priority, max_price, note").eq("set_id", openId).order("card_id").range(a, b));
+          for (const r of w) mineWish.set(r.card_id, { priority: r.priority, max_price: r.max_price, note: r.note });
         }
         if (stop) return;
         setSections(list);
@@ -329,6 +344,8 @@ export default function App() {
         setParallels((pars.data as Parallel[]) || []);
         setOwnedPar(minePar);
         setFavCards(mineFav);
+        setQty(mineQty);
+        setWishes(mineWish);
       } catch {
         if (!stop) say(t("Kunde inte läsa setet just nu."));
       } finally {
@@ -384,6 +401,7 @@ export default function App() {
     const next = new Map(ownedPar);
     const changed = ids.filter((id) => on !== next.has(`${id}:${pid}`));
     changed.forEach((id) => (on ? next.set(`${id}:${pid}`, null) : next.delete(`${id}:${pid}`)));
+    if (!on) setQty((q) => { const n = new Map(q); changed.forEach((id) => n.delete(`${id}:${pid}`)); return n; });
     setOwnedPar(next);
     if (!user) {
       writeLocalPar(openId, next);
@@ -422,6 +440,7 @@ export default function App() {
     const next = new Set(owned);
     const changed = ids.filter((id) => (on ? !next.has(id) : next.has(id)));
     changed.forEach((id) => (on ? next.add(id) : next.delete(id)));
+    if (!on) setQty((q) => { const n = new Map(q); changed.forEach((id) => n.delete("b:" + id)); return n; });
     setOwned(next);
     setCounts((c) => ({ ...c, [openId]: [...next].length }));
     if (!user) {
@@ -621,6 +640,89 @@ export default function App() {
     if (error) say(t("Kunde inte spara serienumret."));
   };
 
+  // Copies. Zero removes the card from the collection; more than one makes duplicates.
+  const baseQtyOf = (cardId: number) => (owned.has(cardId) ? qty.get("b:" + cardId) ?? 1 : 0);
+  const setBaseQty = async (cardId: number, n: number) => {
+    if (!openId) return;
+    if (!user) return say(t("Logga in för att ange antal."));
+    const nextOwned = new Set(owned);
+    const nextQty = new Map(qty);
+    if (n <= 0) {
+      nextOwned.delete(cardId);
+      nextQty.delete("b:" + cardId);
+    } else {
+      nextOwned.add(cardId);
+      if (n > 1) nextQty.set("b:" + cardId, n);
+      else nextQty.delete("b:" + cardId);
+    }
+    setOwned(nextOwned);
+    setQty(nextQty);
+    setCounts((c) => ({ ...c, [openId]: nextOwned.size }));
+    const r = n <= 0 ? await supabase.from("owned").delete().eq("card_id", cardId) : await supabase.from("owned").upsert({ card_id: cardId, set_id: openId, qty: n }, { onConflict: "user_id,card_id" });
+    if (r.error) say(t("Kunde inte spara. Ladda om sidan och försök igen."));
+  };
+  const setParQty = async (cardId: number, pid: number, n: number) => {
+    if (!user || n < 1) return;
+    const key = `${cardId}:${pid}`;
+    const next = new Map(qty);
+    if (n > 1) next.set(key, n);
+    else next.delete(key);
+    setQty(next);
+    const { error } = await supabase.from("owned_parallels").update({ qty: n }).eq("card_id", cardId).eq("parallel_id", pid);
+    if (error) say(t("Kunde inte spara. Ladda om sidan och försök igen."));
+  };
+  const isDup = (c: Card) => baseQtyOf(c.id) > 1 || cardPars(c).some((p) => (qty.get(`${c.id}:${p.id}`) ?? 1) > 1 && ownedPar.has(`${c.id}:${p.id}`));
+  const dupExtra = (c: Card) => Math.max(0, baseQtyOf(c.id) - 1) + cardPars(c).reduce((n, p) => n + (ownedPar.has(`${c.id}:${p.id}`) ? Math.max(0, (qty.get(`${c.id}:${p.id}`) ?? 1) - 1) : 0), 0);
+  const dupCount = sections.reduce((n, sec) => n + sec.cards.filter(isDup).length, 0);
+
+  // Wishlist: a card you are chasing, with priority, maximum price and a note.
+  const setWish = async (cardId: number, w: Wish | null) => {
+    if (!openId) return;
+    if (!user) return say(t("Logga in för att använda önskelistan."));
+    const prev = wishes.get(cardId) ?? null;
+    const apply = (v: Wish | null) =>
+      setWishes((m) => {
+        const n = new Map(m);
+        if (v) n.set(cardId, v);
+        else n.delete(cardId);
+        return n;
+      });
+    apply(w);
+    setWishCount((c) => Math.max(0, c + (w && !prev ? 1 : !w && prev ? -1 : 0)));
+    const r = w
+      ? await supabase.from("wishlist").upsert({ card_id: cardId, set_id: openId, priority: w.priority, max_price: w.max_price, note: w.note }, { onConflict: "user_id,card_id" })
+      : await supabase.from("wishlist").delete().eq("card_id", cardId);
+    if (r.error) {
+      apply(prev);
+      setWishCount((c) => Math.max(0, c + (w && !prev ? -1 : !w && prev ? 1 : 0)));
+      say(t("Kunde inte spara önskelistan."));
+    }
+  };
+
+  // A link anyone can open that shows this set's missing cards or duplicates. It carries no name or e-mail and can be switched off.
+  const shareList = async (kind: "missing" | "dups") => {
+    if (!user || !openId) return say(t("Logga in för att dela listor."));
+    const sel = await supabase.from("shared_lists").select("token").eq("set_id", openId).eq("kind", kind).maybeSingle();
+    let token = sel.data?.token as string | undefined;
+    if (!token) {
+      const ins = await supabase.from("shared_lists").insert({ set_id: openId, kind }).select("token").single();
+      token = ins.data?.token as string | undefined;
+    }
+    if (!token) return say(t("Kunde inte skapa länken."));
+    const url = `${location.origin}/l/${token}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      say(t("Länken är kopierad. Den visar bara kortlistan, ingen personinfo."));
+    } catch {
+      setCopyText(url);
+    }
+  };
+  const unshareLists = async () => {
+    if (!user || !openId) return;
+    const { error } = await supabase.from("shared_lists").delete().eq("set_id", openId);
+    say(error ? t("Kunde inte stänga av länkarna.") : t("Delningslänkarna för setet är avstängda."));
+  };
+
   // Suggest a checklist to add. The administrators see the suggestions in the admin panel.
   const suggest = async (query: string) => {
     const text = query.trim().slice(0, 200);
@@ -644,6 +746,8 @@ export default function App() {
       if (filter === "missing" && h) return;
       if (filter === "have" && !h) return;
       if (filter === "fav" && !favCards.has(c.id)) return;
+      if (filter === "dups" && !isDup(c)) return;
+      if (filter === "wish" && !wishes.has(c.id)) return;
       if (team && c.team !== team) return;
       if (f && !norm(`${label(sec, c)} ${c.name} ${c.team} ${c.tags.join(" ")}`).includes(f)) return;
       items.push({ sec, c, pos: `s.${Math.floor(i / 9) + 1}·${(i % 9) + 1}` });
@@ -694,7 +798,9 @@ export default function App() {
               >{t("Nytt")}{unseen > 0 && <span className="badge">{unseen}</span>}
               </button>
               <button className="btn small" type="button" onClick={() => setShowFeedback((v) => !v)}>{t("Feedback")}</button>
-              <LangSwitch /><button className="btn small" type="button" aria-pressed={showAccount} onClick={() => setShowAccount((v) => !v)}>{t("Konto")}</button>
+              <LangSwitch />
+          {user && <button className="btn small" type="button" aria-pressed={showWish} onClick={() => setShowWish((v) => !v)}>{t("Önskelista")}{wishCount ? ` ${wishCount}` : ""}</button>}
+          <button className="btn small" type="button" aria-pressed={showAccount} onClick={() => setShowAccount((v) => !v)}>{t("Konto")}</button>
               <button className="btn small ghost" type="button" onClick={() => supabase.auth.signOut()}>{t("Logga ut")}</button>
             </>
           ) : (
@@ -728,11 +834,18 @@ export default function App() {
           title={`${label(parCard.sec, parCard.card)} · ${parCard.card.name}`}
           options={cardPars(parCard.card)}
           owned={ownedPar}
+          qty={qty}
+          baseQty={baseQtyOf(parCard.card.id)}
+          wish={wishes.get(parCard.card.id) ?? null}
+          onBaseQty={(n) => setBaseQty(parCard.card.id, n)}
+          onQty={(pid, n) => setParQty(parCard.card.id, pid, n)}
+          onWish={(w) => setWish(parCard.card.id, w)}
           onToggle={(pid, on) => toggleCardPar(parCard.card.id, pid, on)}
           onSerial={(pid, v) => saveCardSerial(parCard.card.id, pid, v)}
           onClose={() => setParCard(null)}
         />
       )}
+      {showWish && user && <WishPanel supabase={supabase} onClose={() => setShowWish(false)} onChanged={(n) => setWishCount(n)} />}
       {ebay && <EbayPanel key={ebay.narrow + "|" + ebay.broad} scope={ebay} signedIn={!!user} onClose={() => setEbay(null)} />}
       {tradera && <TraderaPanel key={tradera.narrow + "|" + tradera.broad} scope={tradera} signedIn={!!user} onClose={() => setTradera(null)} />}
 
@@ -802,6 +915,9 @@ export default function App() {
             <button className="btn" type="button" onClick={copyMissing}>{t("Kopiera saknade")}</button>
             <button className="btn" type="button" onClick={() => downloadCsv(true)}>{t("Ladda ner saknade (CSV)")}</button>
             <button className="btn" type="button" onClick={() => downloadCsv(false)}>{t("Ladda ner hela setlistan")}</button>
+            <button className="btn" type="button" onClick={() => shareList("missing")}>{t("Dela saknade som länk")}</button>
+            {dupCount > 0 && <button className="btn" type="button" onClick={() => shareList("dups")}>{t("Dela dubbletter som länk")}</button>}
+            {user && <button className="btn ghost" type="button" onClick={unshareLists}>{t("Stäng av delning")}</button>}
             <button className="btn" type="button" onClick={() => setTradera(traderaScope())}>{t("Sålda på Tradera")}</button>
             <button className="btn" type="button" onClick={() => setEbay(traderaScope())}>{t("Auktioner på eBay")}</button>
             {mine && <button className="btn ghost danger" type="button" onClick={() => setConfirmDel(true)}>{t("Ta bort set")}</button>}
@@ -839,8 +955,8 @@ export default function App() {
 
           <div className="controls">
             <div className="seg" role="group" aria-label={t("Visa")}>
-              {(["all", "missing", "have", "fav"] as Filter[]).map((k) => (
-                <button key={k} type="button" aria-pressed={filter === k} onClick={() => setFilter(k)}>{{ all: t("Alla"), missing: t("Saknas"), have: t("Har"), fav: `★ Favoriter${favCards.size ? ` ${favCards.size}` : ""}` }[k]}</button>
+              {(["all", "missing", "have", "dups", "wish", "fav"] as Filter[]).map((k) => (
+                <button key={k} type="button" aria-pressed={filter === k} onClick={() => setFilter(k)}>{{ all: t("Alla"), missing: t("Saknas"), have: t("Har"), fav: `★ Favoriter${favCards.size ? ` ${favCards.size}` : ""}`, dups: `${t("Dubbletter")}${dupCount ? ` ${dupCount}` : ""}`, wish: `♡ ${t("Önskas")}${wishes.size ? ` ${wishes.size}` : ""}` }[k]}</button>
               ))}
             </div>
             <input type="search" placeholder={t("Spelare, lag eller nummer")} value={find} onChange={(e) => setFind(e.target.value)} aria-label={t("Sök i setet")} />
@@ -900,10 +1016,7 @@ export default function App() {
                   <button className="tbtn" type="button" title={t("Visa sålda på Tradera")} aria-label={`Sålda ${c.name} på Tradera`} onClick={() => setTradera(traderaScope(c, sec))}>T</button>
                   <button className="tbtn" type="button" title={t("Visa auktioner med bud på eBay")} aria-label={`Auktioner ${c.name} på eBay`} onClick={() => setEbay(traderaScope(c, sec))}>E</button>
                   <button className={`star${favCards.has(c.id) ? " on" : ""}`} type="button" aria-pressed={favCards.has(c.id)} title={t("Favorit: extra värdefull")} aria-label={`${favCards.has(c.id) ? t("Ta bort") : t("Markera")} ${c.name} som favorit`} onClick={() => toggleFavCard(c.id)}>{favCards.has(c.id) ? "★" : "☆"}</button>
-                  {cardPars(c).length > 0 && (
-                    <button className={`pbtn${ownedParsOf(c).length ? " on" : ""}`} type="button" title={t("Välj paralleller för kortet")} aria-label={`Paralleller för ${c.name}`} onClick={() => setParCard({ card: c, sec })}>{t("Par.")}{ownedParsOf(c).length ? ` ${ownedParsOf(c).length}` : ""}
-                    </button>
-                  )}
+                  <button className={`pbtn${ownedParsOf(c).length || baseQtyOf(c.id) > 1 || wishes.has(c.id) ? " on" : ""}`} type="button" title={t("Antal, paralleller och önskelista")} aria-label={`${t("Mer om")} ${c.name}`} onClick={() => setParCard({ card: c, sec })}>{cardPars(c).length ? t("Par.") : t("Mer")}{ownedParsOf(c).length ? ` ${ownedParsOf(c).length}` : ""}{baseQtyOf(c.id) > 1 ? ` ×${baseQtyOf(c.id)}` : ""}{wishes.has(c.id) ? " ♡" : ""}</button>
                 </div>
               ))}
             </div>
@@ -928,10 +1041,7 @@ export default function App() {
                       onBlur={(e) => saveSerial(c.id, e.target.value)}
                     />
                   )}
-                  {cardPars(c).length > 0 && (
-                    <button className={`pbtn${ownedParsOf(c).length ? " on" : ""}`} type="button" title={t("Välj paralleller för kortet")} aria-label={`Paralleller för ${c.name}`} onClick={() => setParCard({ card: c, sec })}>{t("Par.")}{ownedParsOf(c).length ? ` ${ownedParsOf(c).length}` : ""}
-                    </button>
-                  )}
+                  <button className={`pbtn${ownedParsOf(c).length || baseQtyOf(c.id) > 1 || wishes.has(c.id) ? " on" : ""}`} type="button" title={t("Antal, paralleller och önskelista")} aria-label={`${t("Mer om")} ${c.name}`} onClick={() => setParCard({ card: c, sec })}>{cardPars(c).length ? t("Par.") : t("Mer")}{ownedParsOf(c).length ? ` ${ownedParsOf(c).length}` : ""}{baseQtyOf(c.id) > 1 ? ` ×${baseQtyOf(c.id)}` : ""}{wishes.has(c.id) ? " ♡" : ""}</button>
                   <button className={`star${favCards.has(c.id) ? " on" : ""}`} type="button" aria-pressed={favCards.has(c.id)} title={t("Favorit: extra värdefull")} aria-label={`${favCards.has(c.id) ? t("Ta bort") : t("Markera")} ${c.name} som favorit`} onClick={() => toggleFavCard(c.id)}>{favCards.has(c.id) ? "★" : "☆"}</button>
                   <button className="tbtn" type="button" title={t("Visa sålda på Tradera")} aria-label={`Sålda ${c.name} på Tradera`} onClick={() => setTradera(traderaScope(c, sec))}>T</button>
                   <button className="tbtn" type="button" title={t("Visa auktioner med bud på eBay")} aria-label={`Auktioner ${c.name} på eBay`} onClick={() => setEbay(traderaScope(c, sec))}>E</button>
