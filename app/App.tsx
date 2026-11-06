@@ -799,6 +799,7 @@ export default function App() {
               </button>
               <button className="btn small" type="button" onClick={() => setShowFeedback((v) => !v)}>{t("Feedback")}</button>
               <LangSwitch />
+          {user && <button className="btn small" type="button" onClick={() => setShowWelcome(true)}>{t("Guide")}</button>}
           {user && <button className="btn small" type="button" aria-pressed={showWish} onClick={() => setShowWish((v) => !v)}>{t("Önskelista")}{wishCount ? ` ${wishCount}` : ""}</button>}
           <button className="btn small" type="button" aria-pressed={showAccount} onClick={() => setShowAccount((v) => !v)}>{t("Konto")}</button>
               <button className="btn small ghost" type="button" onClick={() => supabase.auth.signOut()}>{t("Logga ut")}</button>
