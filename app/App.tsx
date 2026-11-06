@@ -7,6 +7,7 @@ import { type Card, type Parallel, type Section, type SetStat, type Sport, SPORT
 import TraderaPanel, { type TraderaScope } from "./TraderaPanel";
 import EbayPanel from "./EbayPanel";
 import WishPanel from "./WishPanel";
+import PlayerPanel from "./PlayerPanel";
 import type { Wish } from "./CardPar";
 import AuthBox from "./AuthBox";
 import AdminPanel from "./AdminPanel";
@@ -116,6 +117,7 @@ export default function App() {
   const [qty, setQty] = useState<Map<string, number>>(new Map());
   const [wishes, setWishes] = useState<Map<number, Wish>>(new Map());
   const [showWish, setShowWish] = useState(false);
+  const [showPlayers, setShowPlayers] = useState(false);
   const [wishCount, setWishCount] = useState(0);
   const [confirmDel, setConfirmDel] = useState(false);
   const [copyText, setCopyText] = useState<string | null>(null);
@@ -806,6 +808,7 @@ export default function App() {
               <button className="btn small" type="button" onClick={() => setShowFeedback((v) => !v)}>{t("Feedback")}</button>
               <LangSwitch />
           {user && <button className="btn small" type="button" onClick={() => setShowWelcome(true)}>{t("Guide")}</button>}
+          {user && <button className="btn small" type="button" aria-pressed={showPlayers} onClick={() => setShowPlayers((v) => !v)}>{t("Spelare")}</button>}
           {user && <button className="btn small" type="button" aria-pressed={showWish} onClick={() => setShowWish((v) => !v)}>{t("Önskelista")}{wishCount ? ` ${wishCount}` : ""}</button>}
           <button className="btn small" type="button" aria-pressed={showAccount} onClick={() => setShowAccount((v) => !v)}>{t("Konto")}</button>
               <button className="btn small ghost" type="button" onClick={() => supabase.auth.signOut()}>{t("Logga ut")}</button>
@@ -852,6 +855,7 @@ export default function App() {
           onClose={() => setParCard(null)}
         />
       )}
+      {showPlayers && user && <PlayerPanel supabase={supabase} onClose={() => setShowPlayers(false)} onOpenSet={(id) => openSet(id)} />}
       {showWish && user && <WishPanel supabase={supabase} onClose={() => setShowWish(false)} onChanged={(n) => setWishCount(n)} />}
       {ebay && <EbayPanel key={ebay.narrow + "|" + ebay.broad} scope={ebay} signedIn={!!user} onClose={() => setEbay(null)} />}
       {tradera && <TraderaPanel key={tradera.narrow + "|" + tradera.broad} scope={tradera} signedIn={!!user} onClose={() => setTradera(null)} />}
