@@ -57,3 +57,28 @@
 .mk-sold { display: grid; grid-template-columns: 38px 1fr auto; gap: 10px; align-items: center; padding: 7px 10px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--surface); font-size: 13px; }
 .mk-sold b { font-size: 12.5px; }
 .mk-ph { width: 38px; height: 38px; border-radius: 7px; background: var(--sunk); }
+
+/* Welcome guide: a two-panel modal with a holographic art side, big step number and a progress bar. */
+.ob-backdrop { position: fixed; inset: 0; z-index: 40; background: rgba(10, 11, 24, .6); backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; padding: 16px; overflow-y: auto; }
+.ob { width: 100%; max-width: 920px; display: grid; grid-template-columns: 1.05fr 1fr; background: var(--surface); border: 1px solid var(--line); border-radius: 22px; overflow: hidden; box-shadow: 0 30px 80px rgba(10, 11, 24, .45); animation: ob-in .28s ease-out; }
+.ob-art { position: relative; display: flex; align-items: center; justify-content: center; padding: 40px 28px; min-height: 380px; background: radial-gradient(120% 90% at 0% 0%, var(--holo-a), transparent 60%), radial-gradient(110% 90% at 100% 100%, var(--holo-b), transparent 60%), radial-gradient(90% 80% at 100% 0%, var(--holo-c), transparent 65%), var(--sunk); }
+.ob-step { position: absolute; top: 14px; left: 22px; font-size: 76px; line-height: 1; font-weight: 600; color: var(--ink); opacity: .13; letter-spacing: -.04em; }
+.ob-visual { width: 100%; max-width: 400px; animation: ob-rise .35s ease-out; }
+.ob-visual .mk { box-shadow: 0 18px 44px rgba(10, 11, 24, .28); }
+.ob-body { display: flex; flex-direction: column; gap: 18px; padding: 28px 32px 28px; }
+.ob-top { display: flex; align-items: center; justify-content: space-between; }
+.ob-bar { height: 4px; border-radius: 4px; background: var(--sunk); overflow: hidden; }
+.ob-bar i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--accent), var(--holo-b)); transition: width .3s ease; }
+.ob-copy { flex: 1; animation: ob-rise .35s ease-out; }
+.ob-copy h3 { margin: 0 0 12px; font-family: var(--f-display); font-size: clamp(34px, 5vw, 48px); line-height: .98; letter-spacing: .01em; text-transform: uppercase; }
+.ob-copy p { margin: 0; font-size: 16px; line-height: 1.55; color: var(--muted); }
+.ob-nav { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+@keyframes ob-in { from { opacity: 0; transform: translateY(14px) scale(.98); } to { opacity: 1; transform: none; } }
+@keyframes ob-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (max-width: 760px) {
+  .ob { grid-template-columns: 1fr; max-height: calc(100dvh - 32px); overflow-y: auto; }
+  .ob-art { min-height: 0; padding: 28px 16px 20px; }
+  .ob-step { font-size: 54px; }
+  .ob-body { padding: 20px 20px 22px; }
+}
+@media (prefers-reduced-motion: reduce) { .ob, .ob-visual, .ob-copy { animation: none; } .ob-bar i { transition: none; } }
