@@ -104,7 +104,14 @@ export default function AdminPanel({
     try {
       const data = JSON.parse(await file.text()) as ImportSet[];
       if (!Array.isArray(data)) throw new Error("Filen har fel format.");
-      const have = new Set((await supabase.from("sets").select("id")).data?.map((r: { id: string }) => r.id) ?? []);
+      // Page through all ids (one request returns at most 1000 rows).
+      const have = new Set<string>();
+      for (let from = 0; ; from += 1000) {
+        const { data: ids, error: idErr } = await supabase.from("sets").select("id").order("id").range(from, from + 999);
+        if (idErr) throw idErr;
+        (ids || []).forEach((r: { id: string }) => have.add(r.id));
+        if (!ids || ids.length < 1000) break;
+      }
       let done = 0;
       let skipped = 0;
       let failed = 0;
