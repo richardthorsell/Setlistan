@@ -23,7 +23,7 @@ export function PrivacyEn() {
           </thead>
           <tbody>
             <tr><td>E-mail address and password (the password is stored only as an encrypted hash)</td><td>Create an account and sign in</td><td>Contract (providing the service)</td><td>As long as the account exists</td></tr>
-            <tr><td>Your collection: ticked cards, copies, parallels, serial numbers, favourite albums, favourite cards and wishlist</td><td>Show what you have and what you are missing</td><td>Contract</td><td>As long as the account exists</td></tr>
+            <tr><td>Your collection: ticked cards, copies, parallels, serial numbers, favourite albums, favourite cards, followed players and wishlist</td><td>Show what you have and what you are missing</td><td>Contract</td><td>As long as the account exists</td></tr>
             <tr><td>Name and e-mail on the waitlist</td><td>Invite you to the beta and e-mail you about it</td><td>Consent</td><td>Until you get an invitation and create an account, or ask us to remove you</td></tr>
             <tr><td>Feedback and set suggestions (text and your e-mail)</td><td>Improve the service and add requested sets</td><td>Contract and legitimate interest</td><td>As long as the account exists</td></tr>
             <tr><td>Technical information (IP address, browser, time) in server logs</td><td>Operation, troubleshooting and security</td><td>Legitimate interest</td><td>According to the providers' log routines</td></tr>
