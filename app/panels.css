@@ -134,4 +134,6 @@
 /* Wishlist heart next to the favourite star */
 .cardwrap .star.wish { right: 34px; }
 .star.wish:hover, .star.wish.on { color: var(--warn); }
+.cardwrap .star.dup { right: 64px; }
+.star.dup:hover, .star.dup.on { color: var(--have); }
 .tag.dup { color: var(--have); background: color-mix(in srgb, var(--have) 12%, transparent); }
