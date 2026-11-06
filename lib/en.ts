@@ -361,4 +361,6 @@ export const EN: Record<string, string> = {
   "Inget saknas. Samlingen är komplett!": "Nothing is missing. The collection is complete!",
   "Inga dubbletter just nu.": "No duplicates right now.",
   "extra": "extra",
+  "Önskelista: jag jagar det här kortet": "Wishlist: I am chasing this card",
+  "på önskelistan": "to the wishlist",
 };
