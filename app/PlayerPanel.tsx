@@ -74,12 +74,19 @@ export default function PlayerPanel({ supabase, onClose, onOpenSet }: { supabase
     }
     let live = true;
     setCards(null);
-    supabase.rpc("player_cards", { p_key: sel.player_key }).then(({ data, error }) => {
-      if (!live) return;
-      if (error) return setErr(t("Kunde inte läsa spelarens kort."));
+    // One request returns at most 1000 rows, so page through the result.
+    (async () => {
+      const all: PCard[] = [];
+      for (let from = 0; from < 3000; from += 1000) {
+        const { data, error } = await supabase.rpc("player_cards", { p_key: sel.player_key }).range(from, from + 999);
+        if (!live) return;
+        if (error) return setErr(t("Kunde inte läsa spelarens kort."));
+        all.push(...((data as PCard[]) || []));
+        if (!data || data.length < 1000) break;
+      }
       setErr(null);
-      setCards((data as PCard[]) || []);
-    });
+      setCards(all);
+    })();
     return () => {
       live = false;
     };
