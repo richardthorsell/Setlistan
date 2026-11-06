@@ -131,3 +131,6 @@
 .wish-item { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
 .wish-item .grow { min-width: 160px; }
 .panel.wish { max-width: 860px; }
+/* Wishlist heart next to the favourite star */
+.cardwrap .star.wish { right: 34px; }
+.star.wish:hover, .star.wish.on { color: var(--warn); }
