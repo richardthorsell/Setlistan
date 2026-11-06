@@ -20,6 +20,7 @@ export function Welcome({ onDone }: { onDone: () => void }) {
     { t: t("Saknade kort"), d: t("Filtrera på Saknas och exportera listan, så vet du precis vad du letar efter."), v: <MockMissing /> },
     { t: t("Vad är det värt?"), d: t("Tryck på T vid ett kort för att se vad liknande kort har sålts för på Tradera. Under Nytt ser du alltid vad som har ändrats i Setlistan."), v: <MockTradera /> },
   ];
+  const TONES = ["var(--accent)", "var(--have)", "#E0559A", "var(--rc)", "#2F7FE0"];
   const [i, setI] = useState(0);
   const last = i === STEPS.length - 1;
 
@@ -35,7 +36,7 @@ export function Welcome({ onDone }: { onDone: () => void }) {
 
   return (
     <div className="ob-backdrop">
-      <section className="ob" role="dialog" aria-modal="true" aria-label={t("Introduktion")}>
+      <section className="ob" style={{ ["--tone" as string]: TONES[i] } as React.CSSProperties} role="dialog" aria-modal="true" aria-label={t("Introduktion")}>
         <div className="ob-art">
           <span className="ob-step mono" aria-hidden="true">{String(i + 1).padStart(2, "0")}</span>
           <div className="ob-visual" key={i}>{STEPS[i].v}</div>
