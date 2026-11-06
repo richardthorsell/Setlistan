@@ -362,5 +362,6 @@ export const EN: Record<string, string> = {
   "Inga dubbletter just nu.": "No duplicates right now.",
   "extra": "extra",
   "Önskelista: jag jagar det här kortet": "Wishlist: I am chasing this card",
+  "Dubblett: jag har flera av det här kortet": "Duplicate: I have more than one of this card",
   "på önskelistan": "to the wishlist",
 };
