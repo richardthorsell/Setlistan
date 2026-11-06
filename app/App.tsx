@@ -81,7 +81,7 @@ export default function App() {
   const [q, setQ] = useState("");
   const [secIdx, setSecIdx] = useState(0);
   const [filter, setFilter] = useState<Filter>("all");
-  const [view, setView] = useState<"grid" | "list">("grid");
+  const [view, setView] = useState<"grid" | "list">("list");
   const [find, setFind] = useState("");
   const [team, setTeam] = useState("");
   const [quick, setQuick] = useState("");
@@ -991,8 +991,8 @@ export default function App() {
               </select>
             )}
             <div className="seg" role="group" aria-label={t("Vy")}>
-              <button type="button" aria-pressed={view === "grid"} onClick={() => setView("grid")}>{t("Pärm")}</button>
               <button type="button" aria-pressed={view === "list"} onClick={() => setView("list")}>{t("Lista")}</button>
+              <button type="button" aria-pressed={view === "grid"} onClick={() => setView("grid")}>{t("Pärm")}</button>
             </div>
           </div>
 
