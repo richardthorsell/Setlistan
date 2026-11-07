@@ -1,10 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
+import { adminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 export const maxDuration = 20;
 
 // Sold items from Traderas REST API v4 (beta): POST /v4/search/advanced with itemStatus "Ended".
-// Tradera allows 10,000 calls per method and 24 h. Results are cached for 24 h and every call is reserved
+// Tradera allows 10,000 calls per method and 24 h. Results are cached for 72 h (TTL_MS) and every call is reserved
 // against a per-user and a global quota in the database (see tradera_reserve) to keep abuse bounded.
 const URL_ADVANCED = "https://api.tradera.com/v4/search/advanced";
 const TTL_MS = 72 * 3600 * 1000; // answers are reused for three days: fewer calls to Tradera
@@ -80,10 +81,12 @@ function cleanStats(s: unknown): Stats {
   return { count: nz(x.count) ?? 0, median: nz(x.median), min: nz(x.min), max: nz(x.max) };
 }
 
-type Db = Awaited<ReturnType<typeof createClient>>;
+type Admin = ReturnType<typeof adminClient>;
 
 // Every search is logged without any user information: only the query, what it was about (set and card) and the result.
-async function logSearch(db: Db, key: string, ctx: string, stats: Stats, seen: number, total: number, cached: boolean) {
+// Written with the service role (users cannot call the log functions); skipped when the key is not configured.
+async function logSearch(db: Admin, key: string, ctx: string, stats: Stats, seen: number, total: number, cached: boolean) {
+  if (!db) return;
   await db.rpc("tradera_log", { p_key: key, p_ctx: ctx, p_seen: seen, p_total: total, p_sold: stats.count, p_median: stats.median, p_min: stats.min, p_max: stats.max, p_cached: cached });
 }
 
@@ -101,6 +104,10 @@ export async function GET(req: Request) {
   } = await supabase.auth.getUser();
   if (!user) return Response.json({ error: "Logga in för att se sålda kort härifrån.", searchUrl }, { status: 401 });
 
+  // Cache, history and search log are written with the service role so that signed-in users cannot forge them.
+  const admin = adminClient();
+  if (!admin) console.warn("tradera: SUPABASE_SERVICE_ROLE_KEY is not set, so results are not cached, stored or logged");
+
   const key = "sold:" + q.toLowerCase().split(" ").filter(Boolean).join(" ");
   const { data: cached } = await supabase.from("tradera_cache").select("total, items, fetched_at").eq("key", key).maybeSingle();
   // A stored answer of any age; used fresh (within the TTL) or as a fallback when Tradera cannot be reached.
@@ -109,7 +116,7 @@ export async function GET(req: Request) {
     const p = cached.items as { items?: unknown; stats?: unknown; seen?: unknown };
     const stats = cleanStats(p.stats);
     const seen = nz(p.seen) ?? 0;
-    await logSearch(supabase, key, ctx, stats, seen, cached.total, true);
+    await logSearch(admin, key, ctx, stats, seen, cached.total, true);
     return Response.json({ items: clean(p.items, searchUrl), stats, seen, total: cached.total, cached: true, stale, searchUrl });
   };
   if (cached && Date.now() - new Date(cached.fetched_at).getTime() < TTL_MS) {
@@ -170,9 +177,11 @@ export async function GET(req: Request) {
   const stats = statsOf(items);
   const shown = clean(items, searchUrl);
   const total = nz(data.totalNumberOfItems) ?? all;
-  await supabase.rpc("tradera_cache_put", { p_key: key, p_total: total, p_items: { items: shown, stats, seen: all } });
-  // History: every sold auction once (by Tradera's own id) and the search itself, without any user information.
-  await supabase.rpc("tradera_store_auctions", { p_items: items });
-  await logSearch(supabase, key, ctx, stats, all, total, false);
+  if (admin) {
+    await admin.rpc("tradera_cache_put", { p_key: key, p_total: total, p_items: { items: shown, stats, seen: all } });
+    // History: every sold auction once (by Tradera's own id) and the search itself, without any user information.
+    await admin.rpc("tradera_store_auctions", { p_items: items });
+  }
+  await logSearch(admin, key, ctx, stats, all, total, false);
   return Response.json({ items: shown, stats, seen: all, total, cached: false, searchUrl });
 }

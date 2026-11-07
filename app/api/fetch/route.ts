@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { SPORTS, tokens } from "@/lib/checklist";
+import { SPORTS, dedupeTokens } from "@/lib/checklist";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -153,11 +153,12 @@ export async function POST(req: Request) {
 
   // A set that is already in the library is never fetched again (free and instant).
   if (!isUrl) {
-    const qt = tokens(query);
+    // Seasons and single years are kept apart ("2026" must not match the 2025/26 season).
+    const qt = dedupeTokens(query);
     if (qt.length >= 3) {
       const { data: existing } = await supabase.from("sets").select("id, name, short_name, keywords").eq("status", "ready");
       const hit = (existing || []).find((s) => {
-        const have = new Set(tokens(`${s.name} ${s.short_name || ""} ${s.keywords}`));
+        const have = new Set(dedupeTokens(`${s.name} ${s.short_name || ""} ${s.keywords}`));
         return qt.every((w) => have.has(w));
       });
       if (hit) return new Response(JSON.stringify({ t: "done", setId: hit.id, m: `Setet finns redan i biblioteket: ${hit.name}` }) + "\n", { headers: HEADERS });
@@ -184,9 +185,17 @@ export async function POST(req: Request) {
     .lt("created_at", new Date(Date.now() - 10 * 60 * 1000).toISOString());
 
   const setId = `${slug(query)}-${Date.now().toString(36)}`;
-  const { data: job } = await supabase.from("fetch_jobs").insert({ query, set_id: setId }).select("id").single();
+  // The job row is what the daily limit and the monthly budget are counted from, so no row means no fetch.
+  // Only admins can write it (fetch_job_start / fetch_job_finish); users cannot insert or edit fetch_jobs themselves.
+  const { data: jobId, error: jobErr } = await supabase.rpc("fetch_job_start", { p_query: query, p_set_id: setId });
+  if (jobErr || jobId == null) return Response.json({ error: "Kunde inte starta hämtningen." }, { status: 500 });
+  const finishJob = (status: "done" | "failed", error: string | null, usage: { input_tokens: number; output_tokens: number; cost_usd: number }) =>
+    supabase.rpc("fetch_job_finish", { p_id: jobId, p_status: status, p_error: error, p_in: usage.input_tokens, p_out: usage.output_tokens, p_cost: usage.cost_usd });
   const { error: setErr } = await supabase.from("sets").insert({ id: setId, name: query, keywords: query, status: "fetching", sport: sportHint ?? "ovrigt" });
-  if (setErr) return Response.json({ error: "Kunde inte skapa setet i databasen." }, { status: 500 });
+  if (setErr) {
+    await finishJob("failed", "could not create set", { input_tokens: 0, output_tokens: 0, cost_usd: 0 });
+    return Response.json({ error: "Kunde inte skapa setet i databasen." }, { status: 500 });
+  }
 
   const prompt = `Find the checklist for the trading card set ${isUrl ? "on this page: " + query : `"${query}"`} and save it. Be quick and frugal: you have about two minutes.
 
@@ -371,7 +380,7 @@ When you are done, call finish with the set's full name, its sport${sportHint ? 
       const usage = { input_tokens: inTok + cacheTok, output_tokens: outTok, cost_usd: Number(cost().toFixed(4)) };
       if (totalCards === 0) {
         await supabase.from("sets").delete().eq("id", setId);
-        if (job) await supabase.from("fetch_jobs").update({ status: "failed", error: failure ?? "no cards", ...usage }).eq("id", job.id);
+        await finishJob("failed", failure ?? "no cards", usage);
         send({ t: "error", m: failure ?? (meta?.notes || "Ingen tillförlitlig checklista hittades. Prova ett mer exakt namn eller klistra in en adress till listan.") });
       } else {
         await supabase
@@ -385,7 +394,7 @@ When you are done, call finish with the set's full name, its sport${sportHint ? 
             notes: meta?.notes || failure || "",
           })
           .eq("id", setId);
-        if (job) await supabase.from("fetch_jobs").update({ status: "done", error: failure, ...usage }).eq("id", job.id);
+        await finishJob("done", failure, usage);
         send({ t: "done", setId, m: `Klart: ${totalCards} kort.${failure ? " " + failure : ""}` });
       }
       controller.close();

@@ -49,6 +49,22 @@ export const tokens = (s: string) =>
     .filter(Boolean)
     .map((w) => (/^20\d\d$/.test(w) ? w.slice(2) : w));
 
+// Tokens for deciding whether a set is already in the library. Unlike tokens(), a season ("2025/26" or "25/26") and a
+// single year are kept apart: "2026" matches "2026/27" and "2026", but not the 2025/26 season. A season also counts as
+// its start year, so "2025" still finds "2025/26".
+export function dedupeTokens(s: string): string[] {
+  const out: string[] = [];
+  let rest = String(s || "").replace(/\b(?:20)?(\d\d)\s*[/–-]\s*(?:20)?(\d\d)\b/g, (_m, a: string, b: string) => {
+    out.push(`s${a}${b}`, `y${a}`);
+    return " ";
+  });
+  rest = rest.replace(/\b20(\d\d)\b/g, (_m, y: string) => {
+    out.push(`y${y}`);
+    return " ";
+  });
+  return [...out, ...norm(rest).split(" ").filter(Boolean)];
+}
+
 export type Parallel = { id: number; section_id: number | null; name: string; print_run: number | null; position: number };
 export const parallelLabel = (p: { name: string; print_run: number | null }) =>
   p.print_run === 1 ? `${p.name} 1/1` : p.print_run ? `${p.name} /${p.print_run}` : p.name;
@@ -82,6 +98,8 @@ export function ranges(nums: number[]) {
   return out.join(", ");
 }
 
+const PASTE_NOISE = new Set(["TOTAL", "TOTALS", "SUBTOTAL", "PAGE", "PAGES", "CARDS", "CHECKLIST", "COUNT"]);
+
 // One card per line: "1 Max Dowman, Arsenal", "BM 1 | Max Dowman | Arsenal", "23 Jaden Dixon - Arsenal RC".
 // A line starting with ### names the next subset.
 export function parsePaste(text: string): PastedSection[] {
@@ -95,13 +113,24 @@ export function parsePaste(text: string): PastedSection[] {
       pendingName = h[1].trim();
       continue;
     }
-    const m = line.match(/^(\d?[A-Za-z]{1,5})?[\s\-#]*?(\d{1,4})[\s.:|)\-–]+(.+)$/);
+    // A code that ends in a digit ("SBC2 271 Name") needs a separator before the number, so that "BM12 Name" is still BM + 12.
+    const m = line.match(/^(?:([A-Za-z]{1,5}\d)[\s\-#]+|(\d?[A-Za-z]{1,5})[\s\-#]*?)?(\d{1,4})[\s.:|)\-–]+(.+)$/);
     if (!m) continue;
-    const code = (m[1] || "").toUpperCase();
-    const no = parseInt(m[2], 10);
-    let rest = m[3];
-    const rc = /\b(RC|rookie)\b/i.test(rest);
-    rest = rest.replace(/\(?\b(RC|rookie card|rookie)\b\)?/gi, "").trim();
+    const code = (m[1] || m[2] || "").toUpperCase();
+    const no = parseInt(m[3], 10);
+    let rest = m[4];
+    // Headings and totals are not cards: "Total 100 cards", "Page 12 ...", or a year heading such as "2024 Topps Chrome".
+    if (PASTE_NOISE.has(code)) continue;
+    if (!code && no >= 1900 && no <= 2100 && !/[|,\t]|\s[-–]\s/.test(rest)) continue;
+    // Rookie marker: "(RC)" anywhere, or RC / rookie as the last word. A club such as "RC Lens" is not a rookie marker.
+    let rc = false;
+    for (const re of [/\s*\(\s*(?:RC|rookie(?: card)?)\s*\)/gi, /[\s,|\-–]*\b(?:RC|rookie(?: card)?)\b\s*$/i]) {
+      const next = rest.replace(re, "");
+      if (next !== rest) {
+        rc = true;
+        rest = next.trim();
+      }
+    }
     const parts = rest.split(/\s*\|\s*|\s+[-–]\s+|\s*,\s*|\t+/).filter(Boolean);
     const key = code || "#";
     if (!map.has(key)) map.set(key, { code, name: pendingName || code || "Bas", cards: [] });
@@ -133,5 +162,6 @@ export function quickIds(sections: Section[], input: string) {
     const z = m[3] ? +m[3] : a;
     for (const c of sec.cards) if (c.no >= Math.min(a, z) && c.no <= Math.max(a, z)) ids.push(c.id);
   }
-  return { ids, bad };
+  // Overlapping ranges ("1-10, 5") would otherwise count a card twice.
+  return { ids: [...new Set(ids)], bad };
 }
