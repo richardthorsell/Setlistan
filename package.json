@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "seed": "node scripts/build-seed.mjs"
+    "seed": "node scripts/build-seed.mjs",
+    "test": "node --experimental-strip-types --disable-warning=ExperimentalWarning --test lib/checklist.test.ts lib/waitlist.test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.136.0",
