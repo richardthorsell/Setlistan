@@ -9,7 +9,7 @@ import EbayPanel from "./EbayPanel";
 import WishPanel from "./WishPanel";
 import PlayerPanel from "./PlayerPanel";
 import SellPanel from "./SellPanel";
-import type { Wish } from "./CardPar";
+import type { Wish, Trade } from "./CardPar";
 import AuthBox from "./AuthBox";
 import AdminPanel from "./AdminPanel";
 import { FeedbackBox, WaitlistBox } from "./BetaPanels";
@@ -21,7 +21,8 @@ import { SiteFooter } from "./LegalPage";
 import { WhatsNew, Welcome, type Update } from "./Onboarding";
 import { LangSwitch, useT } from "@/lib/i18n";
 
-type Filter = "all" | "missing" | "have" | "fav" | "dups" | "wish";
+type Filter = "all" | "missing" | "have" | "fav" | "dups" | "wish" | "sale" | "incoming";
+const NO_TRADE: Trade = { for_sale: 0, buy_price: null, sell_price: null, incoming: false, note: null };
 type LogLine = { m: string; k?: string };
 const PAGE = 1000;
 const localKey = (setId: string) => `setlistan:owned:${setId}`;
@@ -117,6 +118,7 @@ export default function App() {
   // Copies per card ("b:<card>" for the base card, "<card>:<parallel>" for a parallel); only counts above one are stored.
   const [qty, setQty] = useState<Map<string, number>>(new Map());
   const [wishes, setWishes] = useState<Map<number, Wish>>(new Map());
+  const [trades, setTrades] = useState<Map<number, Trade>>(new Map());
   const [showWish, setShowWish] = useState(false);
   const [showPlayers, setShowPlayers] = useState(false);
   const [showSell, setShowSell] = useState(false);
@@ -366,7 +368,10 @@ export default function App() {
         } else minePar = readLocalPar(openId);
         let mineFav = new Set<number>();
         const mineWish = new Map<number, Wish>();
+        const mineTrade = new Map<number, Trade>();
         if (uid) {
+          const tr = await fetchAll<{ card_id: number } & Trade>((a, b) => supabase.from("card_trade").select("card_id, for_sale, buy_price, sell_price, incoming, note").eq("set_id", openId).order("card_id").range(a, b));
+          for (const r of tr) mineTrade.set(r.card_id, { for_sale: r.for_sale, buy_price: r.buy_price, sell_price: r.sell_price, incoming: r.incoming, note: r.note });
           const rows = await fetchAll<{ card_id: number }>((a, b) => supabase.from("favorite_cards").select("card_id").eq("set_id", openId).range(a, b));
           mineFav = new Set(rows.map((r) => r.card_id));
           const w = await fetchAll<{ card_id: number; priority: number; max_price: number | null; note: string | null }>((a, b) => supabase.from("wishlist").select("card_id, priority, max_price, note").eq("set_id", openId).order("card_id").range(a, b));
@@ -380,6 +385,7 @@ export default function App() {
         setFavCards(mineFav);
         setQty(mineQty);
         setWishes(mineWish);
+        setTrades(mineTrade);
       } catch {
         if (!stop) say(t("Kunde inte läsa setet just nu."));
       } finally {
@@ -676,9 +682,49 @@ export default function App() {
 
   // Copies. Zero removes the card from the collection; more than one makes duplicates.
   const baseQtyOf = (cardId: number) => (owned.has(cardId) ? qty.get("b:" + cardId) ?? 1 : 0);
+
+  // Copies for sale, values and "on its way". A row exists only while a card has any of this.
+  const tradeOf = (cardId: number) => trades.get(cardId) ?? NO_TRADE;
+  const forSaleOf = (cardId: number) => Math.min(tradeOf(cardId).for_sale, baseQtyOf(cardId));
+  const setTrade = async (cardId: number, patch: Partial<Trade>) => {
+    if (!openId) return;
+    if (!user) return say(t("Logga in för att spara det här."));
+    const prev = trades.get(cardId) ?? null;
+    const next: Trade = { ...(prev ?? NO_TRADE), ...patch };
+    const empty = next.for_sale === 0 && next.buy_price === null && next.sell_price === null && !next.incoming && !next.note;
+    const apply = (v: Trade | null) =>
+      setTrades((m) => {
+        const n = new Map(m);
+        if (v) n.set(cardId, v);
+        else n.delete(cardId);
+        return n;
+      });
+    apply(empty ? null : next);
+    const r = empty
+      ? await supabase.from("card_trade").delete().eq("card_id", cardId)
+      : await supabase.from("card_trade").upsert({ card_id: cardId, set_id: openId, ...next, updated_at: new Date().toISOString() }, { onConflict: "user_id,card_id" });
+    if (r.error) {
+      apply(prev);
+      say(t("Kunde inte spara. Ladda om sidan och försök igen."));
+    }
+  };
+  // Sold one copy: one copy fewer, and one fewer for sale.
+  const sellOne = async (cardId: number) => {
+    const q = baseQtyOf(cardId);
+    if (q < 1) return;
+    const ft = forSaleOf(cardId);
+    await setBaseQty(cardId, q - 1);
+    if (ft > 0 && q - 1 >= ft) setTrade(cardId, { for_sale: ft - 1 });
+  };
+  const arrived = async (cardId: number) => {
+    await setBaseQty(cardId, 1);
+    setTrade(cardId, { incoming: false, note: null });
+  };
+
   const setBaseQty = async (cardId: number, n: number) => {
     if (!openId) return;
     if (!user) return say(t("Logga in för att ange antal."));
+    if ((trades.get(cardId)?.for_sale ?? 0) > Math.max(n, 0)) setTrade(cardId, { for_sale: Math.max(n, 0) });
     const nextOwned = new Set(owned);
     const nextQty = new Map(qty);
     if (n <= 0) {
@@ -705,9 +751,11 @@ export default function App() {
     const { error } = await supabase.from("owned_parallels").update({ qty: n }).eq("card_id", cardId).eq("parallel_id", pid);
     if (error) say(t("Kunde inte spara. Ladda om sidan och försök igen."));
   };
-  const isDup = (c: Card) => baseQtyOf(c.id) > 1 || cardPars(c).some((p) => (qty.get(`${c.id}:${p.id}`) ?? 1) > 1 && ownedPar.has(`${c.id}:${p.id}`));
-  const dupExtra = (c: Card) => Math.max(0, baseQtyOf(c.id) - 1) + cardPars(c).reduce((n, p) => n + (ownedPar.has(`${c.id}:${p.id}`) ? Math.max(0, (qty.get(`${c.id}:${p.id}`) ?? 1) - 1) : 0), 0);
+  const isDup = (c: Card) => baseQtyOf(c.id) - 1 - forSaleOf(c.id) > 0 || cardPars(c).some((p) => (qty.get(`${c.id}:${p.id}`) ?? 1) > 1 && ownedPar.has(`${c.id}:${p.id}`));
+  const dupExtra = (c: Card) => Math.max(0, baseQtyOf(c.id) - 1 - forSaleOf(c.id)) + cardPars(c).reduce((n, p) => n + (ownedPar.has(`${c.id}:${p.id}`) ? Math.max(0, (qty.get(`${c.id}:${p.id}`) ?? 1) - 1) : 0), 0);
   const dupCount = sections.reduce((n, sec) => n + sec.cards.filter(isDup).length, 0);
+  const saleCount = sections.reduce((n, sec) => n + sec.cards.filter((c) => forSaleOf(c.id) > 0).length, 0);
+  const incomingCount = [...trades.values()].filter((x) => x.incoming).length;
 
   // Wishlist: a card you are chasing, with priority, maximum price and a note.
   const setWish = async (cardId: number, w: Wish | null) => {
@@ -782,13 +830,21 @@ export default function App() {
       if (filter === "fav" && !favCards.has(c.id)) return;
       if (filter === "dups" && !isDup(c)) return;
       if (filter === "wish" && !wishes.has(c.id)) return;
+      if (filter === "sale" && forSaleOf(c.id) < 1) return;
+      if (filter === "incoming" && !tradeOf(c.id).incoming) return;
       if (team && c.team !== team) return;
       if (f && !norm(`${label(sec, c)} ${c.name} ${c.team} ${c.tags.join(" ")}`).includes(f)) return;
       items.push({ sec, c, pos: `s.${Math.floor(i / 9) + 1}·${(i % 9) + 1}` });
     }),
   );
   const tagEls = (c: Card) => c.tags.map((t) => <span key={t} className={`tag ${t === "RC" ? "rc" : "fs"}`}>{t}</span>);
-  const dupChip = (c: Card) => (isDup(c) ? <span className="tag dup" title={`${dupExtra(c)} ${t("Dubbletter").toLowerCase()}`}>⧉ +{dupExtra(c)}</span> : null);
+  const dupChip = (c: Card) => (
+    <>
+      {isDup(c) ? <span className="tag dup" title={`${dupExtra(c)} ${t("Dubbletter").toLowerCase()}`}>⧉ +{dupExtra(c)}</span> : null}
+      {forSaleOf(c.id) > 0 && <span className="tag sale">{t("Till salu")} ×{forSaleOf(c.id)}</span>}
+      {tradeOf(c.id).incoming && <span className="tag inc">{t("På väg")}</span>}
+    </>
+  );
   const mine = current && user && (role !== null || (current.created_by === user.id && !current.verified));
   const origin = (s: SetStat) => (s.verified ? t("Verifierad lista") : s.source === "inklistrad" ? t("Inklistrad") : t("Hämtad"));
   // What a Tradera search is about. t("Detta set") searches on the player, the brand and the set's own words
@@ -881,6 +937,10 @@ export default function App() {
           qty={qty}
           baseQty={baseQtyOf(parCard.card.id)}
           wish={wishes.get(parCard.card.id) ?? null}
+          trade={trades.get(parCard.card.id) ?? null}
+          onTrade={(p) => setTrade(parCard.card.id, p.incoming === false ? { ...p, note: null } : p)}
+          onSellOne={() => sellOne(parCard.card.id)}
+          onArrived={() => arrived(parCard.card.id)}
           onBaseQty={(n) => setBaseQty(parCard.card.id, n)}
           onQty={(pid, n) => setParQty(parCard.card.id, pid, n)}
           onWish={(w) => setWish(parCard.card.id, w)}
@@ -1038,8 +1098,8 @@ export default function App() {
 
           <div className="controls">
             <div className="seg" role="group" aria-label={t("Visa")}>
-              {(["all", "missing", "have", "dups", "wish", "fav"] as Filter[]).map((k) => (
-                <button key={k} type="button" aria-pressed={filter === k} onClick={() => setFilter(k)}>{{ all: t("Alla"), missing: t("Saknas"), have: t("Har"), fav: `★ ${t("Favoriter")}${favCards.size ? ` ${favCards.size}` : ""}`, dups: `${t("Dubbletter")}${dupCount ? ` ${dupCount}` : ""}`, wish: `♡ ${t("Önskas")}${wishes.size ? ` ${wishes.size}` : ""}` }[k]}</button>
+              {(["all", "missing", "have", "dups", "sale", "incoming", "wish", "fav"] as Filter[]).map((k) => (
+                <button key={k} type="button" aria-pressed={filter === k} onClick={() => setFilter(k)}>{{ all: t("Alla"), missing: t("Saknas"), have: t("Har"), fav: `★ ${t("Favoriter")}${favCards.size ? ` ${favCards.size}` : ""}`, dups: `${t("Dubbletter")}${dupCount ? ` ${dupCount}` : ""}`, sale: `${t("Till salu")}${saleCount ? ` ${saleCount}` : ""}`, incoming: `${t("På väg")}${incomingCount ? ` ${incomingCount}` : ""}`, wish: `♡ ${t("Önskas")}${wishes.size ? ` ${wishes.size}` : ""}` }[k]}</button>
               ))}
             </div>
             <input type="search" placeholder={t("Spelare, lag eller nummer")} value={find} onChange={(e) => setFind(e.target.value)} aria-label={t("Sök i setet")} />
