@@ -930,6 +930,7 @@ export default function App() {
             {dupCount > 0 && <button className="btn" type="button" onClick={() => shareList("dups")}>{t("Dela dubbletter som länk")}</button>}
             {user && <button className="btn ghost" type="button" onClick={unshareLists}>{t("Stäng av delning")}</button>}
             <button className="btn" type="button" onClick={() => setTradera(traderaScope())}>{t("Sålda på Tradera")}</button>
+            <button className="btn" type="button" onClick={() => setEbay(traderaScope())}>{t("Auktioner på eBay")}</button>
             {mine && <button className="btn ghost danger" type="button" onClick={() => setConfirmDel(true)}>{t("Ta bort set")}</button>}
           </div>
           {!user && <div className="note">{t("Du är inte inloggad. Avprickningarna sparas i den här webbläsaren och flyttas till ditt konto när du loggar in.")}</div>}
