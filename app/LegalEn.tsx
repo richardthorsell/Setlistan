@@ -24,6 +24,7 @@ export function PrivacyEn() {
           <tbody>
             <tr><td>E-mail address and password (the password is stored only as an encrypted hash)</td><td>Create an account and sign in</td><td>Contract (providing the service)</td><td>As long as the account exists</td></tr>
             <tr><td>Your collection: ticked cards, copies, parallels, serial numbers, favourite albums, favourite cards, followed players and wishlist</td><td>Show what you have and what you are missing</td><td>Contract</td><td>As long as the account exists</td></tr>
+            <tr><td>Cards you mark as for sale, prices you enter yourself (cost and asking price) and cards that are on their way, with your own note about the purchase</td><td>Show the value of your collection, prepare sales and keep track of purchases that have not arrived</td><td>Contract</td><td>As long as the account exists</td></tr>
             <tr><td>Name and e-mail on the waitlist</td><td>Invite you to the beta and e-mail you about it</td><td>Consent</td><td>Until you get an invitation and create an account, or ask us to remove you</td></tr>
             <tr><td>Feedback and set suggestions (text and your e-mail)</td><td>Improve the service and add requested sets</td><td>Contract and legitimate interest</td><td>As long as the account exists</td></tr>
             <tr><td>Technical information (IP address, browser, time) in server logs</td><td>Operation, troubleshooting and security</td><td>Legitimate interest</td><td>According to the providers' log routines</td></tr>
@@ -33,6 +34,10 @@ export function PrivacyEn() {
       </div>
       <p>
         Tradera searches are saved in a history showing what was searched and what it cost, but with no link to you. We do not sell your data and do not use it for advertising or profiling.
+      </p>
+
+      <p>
+        Sales posts you create in the app (for Facebook, Tradera or eBay) are created in your browser and are not stored by us. eBay searches are not stored in our database. The note you write about a purchase should not contain personal data about others, such as a seller&apos;s name or address.
       </p>
 
       <p>
