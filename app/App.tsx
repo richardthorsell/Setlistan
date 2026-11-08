@@ -122,6 +122,29 @@ export default function App() {
   const [showSell, setShowSell] = useState(false);
   const [heroQ, setHeroQ] = useState("");
   const [playerQ, setPlayerQ] = useState("");
+  const [playerSel, setPlayerSel] = useState<{ player_key: string; display_name: string } | null>(null);
+  const [followed, setFollowed] = useState<{ player_key: string; display_name: string; have?: number; total?: number }[]>([]);
+
+  // Followed players for the start page, with how many of their cards you have. Reloaded when the player panel closes.
+  useEffect(() => {
+    if (!user || showPlayers) return;
+    let live = true;
+    (async () => {
+      const { data } = await supabase.from("favorite_players").select("player_key, display_name").order("created_at", { ascending: false });
+      if (!live) return;
+      const list = ((data as { player_key: string; display_name: string }[]) || []).slice(0, 12);
+      setFollowed(list);
+      for (const f of list) {
+        const { data: cs } = await supabase.rpc("player_cards", { p_key: f.player_key }).range(0, 999);
+        if (!live) return;
+        const rows = (cs as { qty: number | null }[]) || [];
+        setFollowed((p) => p.map((x) => (x.player_key === f.player_key ? { ...x, have: rows.filter((c) => c.qty !== null).length, total: rows.length } : x)));
+      }
+    })();
+    return () => {
+      live = false;
+    };
+  }, [user, showPlayers, supabase]);
   const [wishCount, setWishCount] = useState(0);
   const [confirmDel, setConfirmDel] = useState(false);
   const [copyText, setCopyText] = useState<string | null>(null);
@@ -794,7 +817,7 @@ export default function App() {
           {user ? (
             <>
               <nav className="mainnav" aria-label={t("Meny")}>
-                <button className="navbtn" type="button" aria-pressed={showPlayers} onClick={() => { setPlayerQ(""); setShowPlayers((v) => !v); }}>{t("Spelare")}</button>
+                <button className="navbtn" type="button" aria-pressed={showPlayers} onClick={() => { setPlayerQ(""); setPlayerSel(null); setShowPlayers((v) => !v); }}>{t("Spelare")}</button>
                 <button className="navbtn" type="button" aria-pressed={showWish} onClick={() => setShowWish((v) => !v)}>{t("Önskelista")}{wishCount ? ` ${wishCount}` : ""}</button>
                 <button className="navbtn" type="button" aria-pressed={showSell} onClick={() => setShowSell((v) => !v)}>{t("Sälj")}</button>
               </nav>
@@ -866,7 +889,7 @@ export default function App() {
           onClose={() => setParCard(null)}
         />
       )}
-      {showPlayers && user && <PlayerPanel supabase={supabase} initialQ={playerQ} onClose={() => setShowPlayers(false)} onOpenSet={(id) => openSet(id)} />}
+      {showPlayers && user && <PlayerPanel supabase={supabase} initialQ={playerQ} initialSel={playerSel} onClose={() => setShowPlayers(false)} onOpenSet={(id) => openSet(id)} />}
       {showSell && user && <SellPanel supabase={supabase} onClose={() => setShowSell(false)} />}
       {showWish && user && <WishPanel supabase={supabase} onClose={() => setShowWish(false)} onChanged={(n) => setWishCount(n)} />}
       {ebay && <EbayPanel key={ebay.narrow + "|" + ebay.broad} scope={ebay} signedIn={!!user} onClose={() => setEbay(null)} />}
@@ -882,6 +905,7 @@ export default function App() {
           onSubmit={(e) => {
             e.preventDefault();
             setPlayerQ(heroQ.trim());
+            setPlayerSel(null);
             setShowPlayers(true);
           }}
         >
@@ -889,6 +913,30 @@ export default function App() {
           <button className="btn primary big" type="submit">{t("Sök spelare")}</button>
         </form>
         <p className="hero-sub">{t("Hitta alla en spelares kort i alla set, eller välj ett set här under.")}</p>
+        {followed.length > 0 && (
+          <div className="hero-follow">
+            <div className="label fav-head">{t("Spelare du följer")}</div>
+            <div className="shelf">
+              {followed.map((f) => {
+                const pct = f.total ? Math.round(((f.have || 0) / f.total) * 100) : 0;
+                return (
+                  <div key={f.player_key} className="shelf-item fav-card">
+                    <button className="fav-open" type="button" onClick={() => { setPlayerQ(""); setPlayerSel({ player_key: f.player_key, display_name: f.display_name }); setShowPlayers(true); }}>
+                      <strong>{f.display_name}</strong>
+                      {f.total !== undefined && (
+                        <>
+                          <span className="bar"><i style={{ width: `${pct}%` }} /></span>
+                          <span className="sub mono">{f.have || 0} / {f.total}{f.total >= 1000 ? "+" : ""} · {pct} %</span>
+                        </>
+                      )}
+                    </button>
+                    <span className="star on" aria-hidden="true">★</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </header>
 
       {paste && (
