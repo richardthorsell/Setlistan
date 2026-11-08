@@ -5,7 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import "./panels.css";
 import { useT } from "@/lib/i18n";
 
-type Row = { id: number; set: string; code: string; no: number; name: string; team: string; qty: number };
+type Row = { id: number; set: string; code: string; no: number; name: string; team: string; qty: number; price?: number | null; buy?: number | null };
 type Pick = { cond: string; price: string };
 type Platform = "facebook" | "tradera" | "ebay" | "text";
 type Block = { key: string; title?: string; meta?: string; body: string };
@@ -28,7 +28,7 @@ const tag = (r: Row) => `${r.code ? r.code + " " : ""}${r.no}`;
 // for Facebook, Tradera or eBay to paste next to your own photos. Nothing here is saved.
 export default function SellPanel({ supabase, onClose }: { supabase: SupabaseClient; onClose: () => void }) {
   const t = useT();
-  const [showAll, setShowAll] = useState(false);
+  const [src, setSrc] = useState<"sale" | "dups" | "all">("sale");
   const [rows, setRows] = useState<Row[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [find, setFind] = useState("");
@@ -52,10 +52,22 @@ export default function SellPanel({ supabase, onClose }: { supabase: SupabaseCli
     setRows(null);
     (async () => {
       const all: Row[] = [];
-      for (let from = 0; from < 5000; from += 1000) {
-        let q = supabase.from("owned").select("card_id, qty, cards(no, name, team, sections(code, name)), sets(name)");
-        if (!showAll) q = q.gt("qty", 1);
-        const { data, error } = await q.order("card_id").range(from, from + 999);
+      const pre: Record<number, Pick> = {};
+      const add = (o: any, qty: number, extra: Partial<Row> = {}) => {
+        const c = Array.isArray(o.cards) ? o.cards[0] : o.cards;
+        const s = Array.isArray(o.sets) ? o.sets[0] : o.sets;
+        const sec = c && (Array.isArray(c.sections) ? c.sections[0] : c.sections);
+        if (!c) return;
+        all.push({ id: o.card_id, set: s?.name || "", code: sec?.code || "", no: c.no, name: c.name || "", team: c.team || "", qty, ...extra });
+      };
+      if (src === "sale") {
+        // Cards marked "till salu": prices you have set are filled in, and all of them start selected.
+        const { data, error } = await supabase
+          .from("card_trade")
+          .select("card_id, for_sale, buy_price, sell_price, cards(no, name, team, sections(code, name)), sets(name)")
+          .gt("for_sale", 0)
+          .order("card_id")
+          .range(0, 999);
         if (!live) return;
         if (error) {
           setErr(t("Kunde inte läsa dina kort."));
@@ -63,23 +75,34 @@ export default function SellPanel({ supabase, onClose }: { supabase: SupabaseCli
           return;
         }
         for (const o of ((data as any[]) || [])) {
-          const c = Array.isArray(o.cards) ? o.cards[0] : o.cards;
-          const s = Array.isArray(o.sets) ? o.sets[0] : o.sets;
-          const sec = c && (Array.isArray(c.sections) ? c.sections[0] : c.sections);
-          if (!c) continue;
-          all.push({ id: o.card_id, set: s?.name || "", code: sec?.code || "", no: c.no, name: c.name || "", team: c.team || "", qty: o.qty || 1 });
+          add(o, o.for_sale, { price: o.sell_price, buy: o.buy_price });
+          pre[o.card_id] = { cond: "NM", price: o.sell_price != null ? String(Math.round(o.sell_price)) : "" };
         }
-        if (!data || data.length < 1000) break;
+      } else {
+        for (let from = 0; from < 5000; from += 1000) {
+          let q = supabase.from("owned").select("card_id, qty, cards(no, name, team, sections(code, name)), sets(name)");
+          if (src === "dups") q = q.gt("qty", 1);
+          const { data, error } = await q.order("card_id").range(from, from + 999);
+          if (!live) return;
+          if (error) {
+            setErr(t("Kunde inte läsa dina kort."));
+            setRows([]);
+            return;
+          }
+          for (const o of ((data as any[]) || [])) add(o, o.qty || 1);
+          if (!data || data.length < 1000) break;
+        }
       }
       all.sort((a, b) => a.set.localeCompare(b.set, "sv") || a.code.localeCompare(b.code) || a.no - b.no);
       setErr(null);
       setRows(all);
+      if (src === "sale") setSel((p) => ({ ...pre, ...p }));
     })();
     return () => {
       live = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showAll]);
+  }, [src]);
 
   const shown = useMemo(() => {
     const w = find.toLowerCase().split(" ").filter(Boolean);
@@ -178,13 +201,27 @@ export default function SellPanel({ supabase, onClose }: { supabase: SupabaseCli
         <div className="row">
           <input className="grow t-input" placeholder={t("Sök bland dina kort")} aria-label={t("Sök bland dina kort")} value={find} onChange={(e) => setFind(e.target.value)} />
           <div className="seg" role="group" aria-label={t("Vilka kort")}>
-            <button type="button" aria-pressed={!showAll} onClick={() => setShowAll(false)}>{t("Dubbletter")}</button>
-            <button type="button" aria-pressed={showAll} onClick={() => setShowAll(true)}>{t("Alla mina")}</button>
+            <button type="button" aria-pressed={src === "sale"} onClick={() => setSrc("sale")}>{t("Till salu")}</button>
+            <button type="button" aria-pressed={src === "dups"} onClick={() => setSrc("dups")}>{t("Dubbletter")}</button>
+            <button type="button" aria-pressed={src === "all"} onClick={() => setSrc("all")}>{t("Alla mina")}</button>
           </div>
         </div>
 
         {rows === null && <div className="note">{t("Läser dina kort …")}</div>}
-        {rows && !rows.length && !err && <div className="note">{showAll ? t("Du har inte prickat av några kort än.") : t("Du har inga dubbletter. Välj Alla mina för att sälja andra kort.")}</div>}
+        {rows && !rows.length && !err && (
+          <div className="note">
+            {src === "sale"
+              ? t("Inget är markerat som till salu än. Öppna ett kort med Mer-knappen och sätt Till salu, eller välj Dubbletter.")
+              : src === "all"
+                ? t("Du har inte prickat av några kort än.")
+                : t("Du har inga dubbletter. Välj Alla mina för att sälja andra kort.")}
+          </div>
+        )}
+        {src === "sale" && rows && rows.length > 0 && (() => {
+          const v = rows.reduce((n, r) => n + (r.price ?? 0) * r.qty, 0);
+          const b = rows.reduce((n, r) => n + (r.buy ?? 0) * r.qty, 0);
+          return <div className="note">{t("Till salu-värde")} {Math.round(v)} kr · {t("Inköpt för")} {Math.round(b)} kr {t("(av angivna priser)")}</div>;
+        })()}
         {rows && rows.length > 0 && !shown.length && <div className="note">{t("Inga kort matchar sökningen.")}</div>}
 
         <div className="sell-list">
