@@ -188,3 +188,4 @@
 .sell-out { display: flex; flex-direction: column; gap: 10px; border-top: 1.5px solid var(--line); padding-top: 12px; }
 .sell-block { display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 1.5px solid var(--line); border-radius: 10px; background: var(--sunk); }
 .sell-block textarea { width: 100%; font-family: var(--f-body); }
+.hero-follow { width: 100%; text-align: left; margin-top: 6px; }
