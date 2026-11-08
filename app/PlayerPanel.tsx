@@ -10,9 +10,9 @@ type Fav = { player_key: string; display_name: string };
 type PCard = { card_id: number; set_id: string; set_name: string; sport: string | null; section_code: string; section_name: string; no: number; name: string; team: string | null; qty: number | null };
 
 // Search a player across all sets, follow him, and see every card of his with have/missing.
-export default function PlayerPanel({ supabase, onClose, onOpenSet }: { supabase: SupabaseClient; onClose: () => void; onOpenSet: (id: string) => void }) {
+export default function PlayerPanel({ supabase, initialQ = "", onClose, onOpenSet }: { supabase: SupabaseClient; initialQ?: string; onClose: () => void; onOpenSet: (id: string) => void }) {
   const t = useT();
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(initialQ);
   const [hits, setHits] = useState<Hit[] | null>(null);
   const [searching, setSearching] = useState(false);
   const [favs, setFavs] = useState<Fav[]>([]);
