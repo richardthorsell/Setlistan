@@ -195,3 +195,12 @@
 .tag.inc { color: var(--rc); background: color-mix(in srgb, var(--rc) 18%, transparent); }
 .controls .seg { max-width: 100%; overflow-x: auto; }
 .trade-box { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+
+/* Admin: one section at a time */
+.admin-tabs { max-width: 100%; overflow-x: auto; flex-wrap: nowrap; }
+.admin-tabs button { white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+.admin-attn { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.attn { display: flex; align-items: baseline; gap: 10px; text-align: left; padding: 12px 14px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--surface); }
+.attn:hover { border-color: var(--accent); }
+.attn b { font-size: 24px; }
+.attn span { color: var(--muted); font-size: 13.5px; }
