@@ -101,7 +101,7 @@ export default function SellPanel({ supabase, onClose }: { supabase: SupabaseCli
   const suggest = async (r: Row) => {
     setBusyId(r.id);
     try {
-      const q = `${r.name} ${r.set}`.slice(0, 100);
+      const q = `${r.name} ${r.set.split(" ")[0]}`.slice(0, 100);
       const res = await fetch("/api/tradera?q=" + encodeURIComponent(q) + "&ctx=" + encodeURIComponent(r.set));
       const j = await res.json().catch(() => ({}));
       if (res.ok && j.stats?.median) {
