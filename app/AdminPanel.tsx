@@ -40,6 +40,8 @@ export default function AdminPanel({
   onChanged: () => Promise<void>;
   say: (m: string) => void;
 }) {
+  // One section at a time; the start page shows only the numbers and what needs attention.
+  const [tab, setTab] = useState<"start" | "inbox" | "library" | "people" | "news" | "usage">("start");
   const [overview, setOverview] = useState<Overview | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [admins, setAdmins] = useState<Admin[]>([]);
@@ -281,7 +283,31 @@ export default function AdminPanel({
         <span className="pill src">{role === "superuser" ? "Superuser" : "Admin"}</span>
       </div>
 
-      {overview && (
+      <div className="seg admin-tabs" role="tablist" aria-label="Avsnitt">
+        {([
+          ["start", "Översikt", 0],
+          ["inbox", "Inkorg", sugNew.length + fb.filter((f) => !f.handled_at).length],
+          ["library", "Bibliotek", 0],
+          ["people", "Personer", 0],
+          ["news", "Nyheter", 0],
+          ["usage", "Användning", 0],
+        ] as ["start" | "inbox" | "library" | "people" | "news" | "usage", string, number][]).map(([k, l, n]) => (
+          <button key={k} type="button" role="tab" aria-selected={tab === k} aria-pressed={tab === k} onClick={() => setTab(k)}>
+            {l}{n > 0 && <span className="badge">{n}</span>}
+          </button>
+        ))}
+      </div>
+
+      {tab === "start" && (
+        <div className="admin-attn">
+          <button type="button" className="attn" onClick={() => setTab("inbox")}><b className="mono">{sugNew.length}</b><span>nya önskade set</span></button>
+          <button type="button" className="attn" onClick={() => setTab("inbox")}><b className="mono">{fb.filter((f) => !f.handled_at).length}</b><span>ohanterad feedback</span></button>
+          <button type="button" className="attn" onClick={() => setTab("library")}><b className="mono">{todoTotal}</b><span>set att granska</span></button>
+          <button type="button" className="attn" onClick={() => setTab("people")}><b className="mono">{wait.filter((w) => !w.invited_at).length}</b><span>på väntelistan, ej inbjudna</span></button>
+        </div>
+      )}
+
+      {tab === "start" && overview && (
         <div className="stats">
           <div><b className="mono">{overview.users}</b><span>konton</span></div>
           <div><b className="mono">{overview.collectors}</b><span>samlar aktivt</span></div>
@@ -293,6 +319,7 @@ export default function AdminPanel({
         </div>
       )}
 
+      {tab === "inbox" && (<>
       <div className="label">Önskade set ({sugNew.length} nya)</div>
       {sugNew.length ? (
         <div className="admin-table">
@@ -327,6 +354,9 @@ export default function AdminPanel({
         </>
       )}
 
+      </>)}
+
+      {tab === "library" && (<>
       <div className="label">Biblioteket · att granska ({todoTotal})</div>
       <div className="row">
         <input className="grow" type="search" placeholder="Sök set, till exempel Prizm eller Bundesliga" aria-label="Sök bland seten" value={libQ} onChange={(e) => setLibQ(e.target.value)} />
@@ -395,6 +425,9 @@ export default function AdminPanel({
       </div>
       {importMsg && <div className="note">{importMsg}</div>}
 
+      </>)}
+
+      {tab === "usage" && (<>
       <div className="label">Tradera-historik</div>
       <div className="stats">
         <div><b className="mono">{th.searches}</b><span>sökningar sparade</span></div>
@@ -433,6 +466,9 @@ export default function AdminPanel({
         <div className="note">Inga hämtningar än.</div>
       )}
 
+      </>)}
+
+      {tab === "news" && (<>
       <div className="label">Nytt i Setlistan</div>
       <form className="row" onSubmit={postNews}>
         <input className="grow" required maxLength={120} placeholder="Rubrik" aria-label="Rubrik" value={nTitle} onChange={(e) => setNTitle(e.target.value)} />
@@ -451,6 +487,9 @@ export default function AdminPanel({
         </div>
       )}
 
+      </>)}
+
+      {tab === "people" && (<>
       <div className="label">Väntelista ({wait.length})</div>
       {wait.length ? (
         <div className="admin-table">
@@ -468,6 +507,9 @@ export default function AdminPanel({
         <div className="note">Ingen på väntelistan än.</div>
       )}
 
+      </>)}
+
+      {tab === "inbox" && (<>
       <div className="label">Feedback ({fb.filter((f) => !f.handled_at).length} ohanterad)</div>
       {fb.length ? (
         <div className="admin-table">
@@ -484,6 +526,9 @@ export default function AdminPanel({
         <div className="note">Ingen feedback än.</div>
       )}
 
+      </>)}
+
+      {tab === "people" && (<>
       <div className="label">Administratörer</div>
       <div className="admin-table">
         {admins.map((a) => (
@@ -509,6 +554,7 @@ export default function AdminPanel({
         <div className="note">Bara en superuser kan lägga till eller ta bort administratörer.</div>
       )}
       <div className="note">Rollen gäller först när personen har loggat in med en bekräftad e-postadress.</div>
+      </>)}
     </section>
   );
 }
