@@ -8,6 +8,7 @@ import TraderaPanel, { type TraderaScope } from "./TraderaPanel";
 import EbayPanel from "./EbayPanel";
 import WishPanel from "./WishPanel";
 import PlayerPanel from "./PlayerPanel";
+import SellPanel from "./SellPanel";
 import type { Wish } from "./CardPar";
 import AuthBox from "./AuthBox";
 import AdminPanel from "./AdminPanel";
@@ -118,6 +119,9 @@ export default function App() {
   const [wishes, setWishes] = useState<Map<number, Wish>>(new Map());
   const [showWish, setShowWish] = useState(false);
   const [showPlayers, setShowPlayers] = useState(false);
+  const [showSell, setShowSell] = useState(false);
+  const [heroQ, setHeroQ] = useState("");
+  const [playerQ, setPlayerQ] = useState("");
   const [wishCount, setWishCount] = useState(0);
   const [confirmDel, setConfirmDel] = useState(false);
   const [copyText, setCopyText] = useState<string | null>(null);
@@ -789,29 +793,36 @@ export default function App() {
         <div className="account">
           {user ? (
             <>
-              <span>{t("Inloggad som")}{" "}{user.email}</span>
-              {role && (
-                <button className="btn small" type="button" aria-pressed={showAdmin} onClick={() => setShowAdmin((v) => !v)}>
-                  {role === "superuser" ? t("Superuser") : t("Admin")}
-                </button>
-              )}
-              <button
-                className="btn small"
-                type="button"
-                onClick={() => {
-                  setNewsSince(seenAt);
-                  setShowNews(true);
-                  markSeen(false);
-                }}
-              >{t("Nytt")}{unseen > 0 && <span className="badge">{unseen}</span>}
-              </button>
-              <button className="btn small" type="button" onClick={() => setShowFeedback((v) => !v)}>{t("Feedback")}</button>
-              <LangSwitch />
-          {user && <button className="btn small" type="button" onClick={() => setShowWelcome(true)}>{t("Guide")}</button>}
-          {user && <button className="btn small" type="button" aria-pressed={showPlayers} onClick={() => setShowPlayers((v) => !v)}>{t("Spelare")}</button>}
-          {user && <button className="btn small" type="button" aria-pressed={showWish} onClick={() => setShowWish((v) => !v)}>{t("Önskelista")}{wishCount ? ` ${wishCount}` : ""}</button>}
-          <button className="btn small" type="button" aria-pressed={showAccount} onClick={() => setShowAccount((v) => !v)}>{t("Konto")}</button>
-              <button className="btn small ghost" type="button" onClick={() => supabase.auth.signOut()}>{t("Logga ut")}</button>
+              <nav className="mainnav" aria-label={t("Meny")}>
+                <button className="navbtn" type="button" aria-pressed={showPlayers} onClick={() => { setPlayerQ(""); setShowPlayers((v) => !v); }}>{t("Spelare")}</button>
+                <button className="navbtn" type="button" aria-pressed={showWish} onClick={() => setShowWish((v) => !v)}>{t("Önskelista")}{wishCount ? ` ${wishCount}` : ""}</button>
+                <button className="navbtn" type="button" aria-pressed={showSell} onClick={() => setShowSell((v) => !v)}>{t("Sälj")}</button>
+              </nav>
+              <details className="menu" onClick={(e) => { if ((e.target as HTMLElement).closest(".menu-pop button")) e.currentTarget.removeAttribute("open"); }}>
+                <summary className="btn small">
+                  {t("Meny")}
+                  {unseen > 0 && <span className="badge">{unseen}</span>}
+                </summary>
+                <div className="menu-pop">
+                  <div className="menu-who">{t("Inloggad som")}{" "}{user.email}</div>
+                  <button type="button" onClick={() => setShowAccount((v) => !v)}>{t("Konto")}</button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNewsSince(seenAt);
+                      setShowNews(true);
+                      markSeen(false);
+                    }}
+                  >{t("Nytt")}{unseen > 0 && <span className="badge">{unseen}</span>}</button>
+                  <button type="button" onClick={() => setShowWelcome(true)}>{t("Guide")}</button>
+                  <button type="button" onClick={() => setShowFeedback((v) => !v)}>{t("Feedback")}</button>
+                  {role && (
+                    <button type="button" onClick={() => setShowAdmin((v) => !v)}>{role === "superuser" ? t("Superuser") : t("Admin")}</button>
+                  )}
+                  <div className="menu-lang"><LangSwitch /></div>
+                  <button type="button" onClick={() => supabase.auth.signOut()}>{t("Logga ut")}</button>
+                </div>
+              </details>
             </>
           ) : (
             <>
@@ -855,16 +866,29 @@ export default function App() {
           onClose={() => setParCard(null)}
         />
       )}
-      {showPlayers && user && <PlayerPanel supabase={supabase} onClose={() => setShowPlayers(false)} onOpenSet={(id) => openSet(id)} />}
+      {showPlayers && user && <PlayerPanel supabase={supabase} initialQ={playerQ} onClose={() => setShowPlayers(false)} onOpenSet={(id) => openSet(id)} />}
+      {showSell && user && <SellPanel supabase={supabase} onClose={() => setShowSell(false)} />}
       {showWish && user && <WishPanel supabase={supabase} onClose={() => setShowWish(false)} onChanged={(n) => setWishCount(n)} />}
       {ebay && <EbayPanel key={ebay.narrow + "|" + ebay.broad} scope={ebay} signedIn={!!user} onClose={() => setEbay(null)} />}
       {tradera && <TraderaPanel key={tradera.narrow + "|" + tradera.broad} scope={tradera} signedIn={!!user} onClose={() => setTradera(null)} />}
 
-      <header className="top">
+      <header className="top hero">
         <div className="brand">
           <h1>Setlistan</h1>
           <p>{t("Sök fram en checklista, pricka av korten du har och se direkt vilka som fattas.")}</p>
         </div>
+        <form
+          className="hero-search"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setPlayerQ(heroQ.trim());
+            setShowPlayers(true);
+          }}
+        >
+          <input type="search" className="hero-input" placeholder={t("Sök spelare, till exempel Mats Sundin")} aria-label={t("Sök spelare")} value={heroQ} onChange={(e) => setHeroQ(e.target.value)} />
+          <button className="btn primary big" type="submit">{t("Sök spelare")}</button>
+        </form>
+        <p className="hero-sub">{t("Hitta alla en spelares kort i alla set, eller välj ett set här under.")}</p>
       </header>
 
       {paste && (
