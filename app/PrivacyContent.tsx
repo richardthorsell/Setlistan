@@ -26,6 +26,7 @@ export default function PrivacyContent() {
           <tbody>
             <tr><td>E-postadress och lösenord (lösenordet sparas bara som krypterad hash)</td><td>Skapa konto och logga in</td><td>Avtal (att tillhandahålla tjänsten)</td><td>Så länge kontot finns</td></tr>
             <tr><td>Din samling: avprickade kort, antal, paralleller, serienummer, favoritalbum, favoritkort, följda spelare och önskelista</td><td>Visa vad du har och saknar</td><td>Avtal</td><td>Så länge kontot finns</td></tr>
+            <tr><td>Kort du markerar som till salu, priser du själv anger (inköpspris och försäljningspris) samt kort som är på väg, med en egen anteckning om köpet</td><td>Visa värdet på din samling, förbereda försäljning och hålla koll på köp som inte kommit</td><td>Avtal</td><td>Så länge kontot finns</td></tr>
             <tr><td>Namn och e-post på väntelistan</td><td>Bjuda in dig till betan och mejla dig om det</td><td>Samtycke</td><td>Tills du får en inbjudan och skapar konto, eller tills du ber oss ta bort dig</td></tr>
             <tr><td>Feedback och förslag på set (text och din e-post)</td><td>Förbättra tjänsten och lägga in önskade set</td><td>Avtal och berättigat intresse</td><td>Så länge kontot finns</td></tr>
             <tr><td>Teknisk information (IP-adress, webbläsare, tidpunkt) i serverloggar</td><td>Drift, felsökning och säkerhet</td><td>Berättigat intresse</td><td>Enligt leverantörernas loggrutiner</td></tr>
@@ -35,6 +36,10 @@ export default function PrivacyContent() {
       </div>
       <p>
         Tradera-sökningar sparas i en historik som visar vad som sökts och vad det kostade, men utan någon koppling till dig. Vi säljer inte dina uppgifter och använder dem inte för reklam eller profilering.
+      </p>
+
+      <p>
+        Säljposter du skapar i appen (för Facebook, Tradera eller eBay) skapas i din webbläsare och sparas inte hos oss. Sökningar på eBay sparas inte i vår databas. Texten du antecknar om ett köp ska inte innehålla personuppgifter om andra, till exempel en säljares namn eller adress.
       </p>
 
       <p>
