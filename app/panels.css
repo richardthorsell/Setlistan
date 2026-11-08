@@ -189,3 +189,9 @@
 .sell-block { display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 1.5px solid var(--line); border-radius: 10px; background: var(--sunk); }
 .sell-block textarea { width: 100%; font-family: var(--f-body); }
 .hero-follow { width: 100%; text-align: left; margin-top: 6px; }
+
+/* For sale and on its way */
+.tag.sale { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.tag.inc { color: var(--rc); background: color-mix(in srgb, var(--rc) 18%, transparent); }
+.controls .seg { max-width: 100%; overflow-x: auto; }
+.trade-box { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
