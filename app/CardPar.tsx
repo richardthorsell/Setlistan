@@ -7,15 +7,24 @@ import { useT } from "@/lib/i18n";
 
 export type Wish = { priority: number; max_price: number | null; note: string | null };
 
-function Stepper({ value, min, onChange, label }: { value: number; min: number; onChange: (n: number) => void; label: string }) {
+// Copies for sale, what the card cost, what it is listed for, and whether a bought card is still on its way.
+export type Trade = { for_sale: number; buy_price: number | null; sell_price: number | null; incoming: boolean; note: string | null };
+
+function Stepper({ value, min, max = 999, onChange, label }: { value: number; min: number; max?: number; onChange: (n: number) => void; label: string }) {
   return (
     <span className="stepper" role="group" aria-label={label}>
       <button type="button" className="btn small" aria-label="−" disabled={value <= min} onClick={() => onChange(value - 1)}>−</button>
       <b className="mono">{value}</b>
-      <button type="button" className="btn small" aria-label="+" disabled={value >= 999} onClick={() => onChange(value + 1)}>+</button>
+      <button type="button" className="btn small" aria-label="+" disabled={value >= max} onClick={() => onChange(value + 1)}>+</button>
     </span>
   );
 }
+
+const toNum = (s: string) => {
+  if (s.trim() === "") return null;
+  const n = Number(s.replace(",", "."));
+  return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) / 100 : undefined;
+};
 
 // Everything about one card: how many copies, which parallels (with serial numbers and copies), and the wishlist.
 export default function CardPar({
@@ -26,9 +35,13 @@ export default function CardPar({
   qty,
   baseQty,
   wish,
+  trade,
   onBaseQty,
   onQty,
   onWish,
+  onTrade,
+  onSellOne,
+  onArrived,
   onToggle,
   onSerial,
   onClose,
@@ -40,15 +53,28 @@ export default function CardPar({
   qty: Map<string, number>;
   baseQty: number;
   wish: Wish | null;
+  trade: Trade | null;
   onBaseQty: (n: number) => void;
   onQty: (parallelId: number, n: number) => void;
   onWish: (w: Wish | null) => void;
+  onTrade: (patch: Partial<Trade>) => void;
+  onSellOne: () => void;
+  onArrived: () => void;
   onToggle: (parallelId: number, on: boolean) => void;
   onSerial: (parallelId: number, value: string) => void;
   onClose: () => void;
 }) {
   const t = useT();
   const [price, setPrice] = useState(wish?.max_price != null ? String(wish.max_price) : "");
+  const [buy, setBuy] = useState(trade?.buy_price != null ? String(trade.buy_price) : "");
+  const [sell, setSell] = useState(trade?.sell_price != null ? String(trade.sell_price) : "");
+  const forSale = Math.min(trade?.for_sale ?? 0, baseQty);
+  const savePrices = () => {
+    const b = toNum(buy);
+    const s = toNum(sell);
+    if (b !== undefined && b !== (trade?.buy_price ?? null)) onTrade({ buy_price: b });
+    if (s !== undefined && s !== (trade?.sell_price ?? null)) onTrade({ sell_price: s });
+  };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -112,6 +138,39 @@ export default function CardPar({
             })}
           </div>
         )}
+
+        <div className="wish-box trade-box">
+          <div className="label">{t("Till salu och värde")}</div>
+          {baseQty > 0 && (
+            <div className="par-row">
+              <span className="grow">{t("Till salu")}<span className="note"> · {forSale > 0 ? `${forSale} ${t("av")} ${baseQty}` : t("Inte till salu")}</span></span>
+              <Stepper value={forSale} min={0} max={baseQty} onChange={(n) => onTrade({ for_sale: n })} label={t("Antal till salu")} />
+              {forSale > 0 && <button className="btn small" type="button" onClick={onSellOne}>{t("Sålt ett")}</button>}
+            </div>
+          )}
+          <div className="row">
+            <input className="t-input" inputMode="decimal" style={{ width: 140 }} placeholder={t("Inköpspris kr")} aria-label={t("Inköpspris i kronor")} value={buy} onChange={(e) => setBuy(e.target.value)} onBlur={savePrices} />
+            <input className="t-input" inputMode="decimal" style={{ width: 140 }} placeholder={t("Pris till salu kr")} aria-label={t("Pris till salu i kronor")} value={sell} onChange={(e) => setSell(e.target.value)} onBlur={savePrices} />
+          </div>
+          <label className="check">
+            <input type="checkbox" checked={!!trade?.incoming} onChange={(e) => onTrade({ incoming: e.target.checked })} />
+            <span><b>{t("På väg")}</b> {t("Jag har köpt kortet och väntar på det")}</span>
+          </label>
+          {trade?.incoming && (
+            <div className="row">
+              <input
+                className="grow t-input"
+                key={trade.note ?? ""}
+                placeholder={t("Säljare, var och när du köpte det")}
+                aria-label={t("Anteckning om köpet")}
+                maxLength={200}
+                defaultValue={trade.note ?? ""}
+                onBlur={(e) => e.target.value.trim() !== (trade.note ?? "") && onTrade({ note: e.target.value.trim() || null })}
+              />
+              {baseQty === 0 && <button className="btn small primary" type="button" onClick={onArrived}>{t("Kortet har kommit")}</button>}
+            </div>
+          )}
+        </div>
 
         <div className="wish-box">
           <label className="check">
