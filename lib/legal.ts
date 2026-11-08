@@ -5,5 +5,5 @@ export const LEGAL = {
   controller: "Setlistans ägare",
   contactEmail: "",
   site: "setlistan.se",
-  updated: "5 november 2026",
+  updated: "8 november 2026",
 };
