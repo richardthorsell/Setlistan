@@ -258,6 +258,18 @@ export default function App() {
       setUpdates((n.data as Update[]) || []);
       setSeenAt(s.data?.updates_seen_at ?? null);
       if (!s.error && !s.data?.onboarded_at) setShowWelcome(true);
+      // Signed-in users who have already seen the welcome get "what's new" at once when something has been added since last time.
+      if (!s.error && s.data?.onboarded_at) {
+        const seen = s.data?.updates_seen_at ?? null;
+        const fresh = ((n.data as Update[]) || []).some((x) => seen === null || x.created_at > seen);
+        if (fresh) {
+          setNewsSince(seen);
+          setShowNews(true);
+          const now = new Date().toISOString();
+          await supabase.from("user_state").upsert({ user_id: u.id, updates_seen_at: now });
+          setSeenAt(now);
+        }
+      }
     },
     [supabase],
   );
