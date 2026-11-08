@@ -175,7 +175,7 @@
 .hero-input { flex: 1; min-width: 0; height: 52px; border-radius: 12px; border: 2px solid var(--line); background: var(--surface); padding: 0 16px; font-size: 16px; }
 .hero-input:focus { border-color: var(--accent); outline: none; }
 .hero-sub { margin: 0; font-size: 13.5px; color: var(--muted); }
-@media (max-width: 560px) { .hero-search { flex-direction: column; } .hero-search .btn.big { width: 100%; } }
+@media (max-width: 560px) { .hero-search { flex-direction: column; } .hero-input { flex: none; width: 100%; } .hero-search .btn.big { width: 100%; justify-content: center; } }
 
 /* Sell panel */
 .panel.sell { max-width: 760px; }
