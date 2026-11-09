@@ -9,6 +9,9 @@ import EbayPanel from "./EbayPanel";
 import WishPanel from "./WishPanel";
 import PlayerPanel from "./PlayerPanel";
 import PlayerSet from "./PlayerSet";
+import QuestionPrompt from "./QuestionPrompt";
+import QuestionsPanel from "./QuestionsPanel";
+import MergePanel from "./MergePanel";
 import SellPanel from "./SellPanel";
 import type { Wish, Trade } from "./CardPar";
 import AuthBox from "./AuthBox";
@@ -127,6 +130,8 @@ export default function App() {
   const [heroQ, setHeroQ] = useState("");
   const [playerQ, setPlayerQ] = useState("");
   const [playerSet, setPlayerSet] = useState<{ player_key: string; display_name: string } | null>(null);
+  const [showQuestions, setShowQuestions] = useState(false);
+  const [showMerge, setShowMerge] = useState(false);
   const [followed, setFollowed] = useState<{ player_key: string; display_name: string; have?: number; total?: number }[]>([]);
 
   // Followed players for the start page, with how many of their cards you have. Reloaded when the player panel closes.
@@ -923,6 +928,12 @@ export default function App() {
                   {role && (
                     <button type="button" onClick={() => setShowAdmin((v) => !v)}>{role === "superuser" ? t("Superuser") : t("Admin")}</button>
                   )}
+                  {role === "superuser" && (
+                    <>
+                      <button type="button" onClick={() => setShowQuestions((v) => !v)}>{t("Frågor")}</button>
+                      <button type="button" onClick={() => setShowMerge((v) => !v)}>{t("Slå ihop")}</button>
+                    </>
+                  )}
                   <button type="button" onClick={() => supabase.auth.signOut()}>{t("Logga ut")}</button>
                 </div>
               </details>
@@ -948,6 +959,9 @@ export default function App() {
         />
       )}
       {showNews && user && <WhatsNew updates={updates} since={newsSince} onClose={() => setShowNews(false)} />}
+      {user && !showWelcome && <QuestionPrompt supabase={supabase} />}
+      {showQuestions && role === "superuser" && user && <QuestionsPanel supabase={supabase} onClose={() => setShowQuestions(false)} />}
+      {showMerge && role === "superuser" && user && <MergePanel supabase={supabase} sets={sets} onChanged={loadSets} say={say} onClose={() => setShowMerge(false)} />}
       {showAuth && !user && <AuthBox supabase={supabase} onClose={() => setShowAuth(false)} />}
       {showAdmin && role && user && (
         <AdminPanel supabase={supabase} role={role} sets={sets} myEmail={(user.email || "").toLowerCase()} onChanged={loadSets} say={say} />
