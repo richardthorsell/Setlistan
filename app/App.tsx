@@ -884,6 +884,7 @@ export default function App() {
       <div className="topbar">
         <span className="label">{t("Samlarkort · checklistor")}</span>
         <div className="account">
+          <LangSwitch />
           {user ? (
             <>
               <nav className="mainnav" aria-label={t("Meny")}>
@@ -912,7 +913,6 @@ export default function App() {
                   {role && (
                     <button type="button" onClick={() => setShowAdmin((v) => !v)}>{role === "superuser" ? t("Superuser") : t("Admin")}</button>
                   )}
-                  <div className="menu-lang"><LangSwitch /></div>
                   <button type="button" onClick={() => supabase.auth.signOut()}>{t("Logga ut")}</button>
                 </div>
               </details>
