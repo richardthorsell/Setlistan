@@ -157,7 +157,7 @@ export default function PlayerPanel({ supabase, initialQ = "", initialSel = null
                 {hits.map((h) => (
                   <button key={h.player_key} type="button" className="pl-row" onClick={() => setSel({ player_key: h.player_key, display_name: h.display_name })}>
                     <b>{h.display_name}</b>
-                    <span className="note" title={`${h.cards} ${t("kort")}`}>{h.variants ?? h.cards} {t("kort")} · {h.sets} {t("set")}</span>
+                    <span className="note">{h.cards} {t("baskort")}{(h.variants ?? h.cards) > h.cards ? ` + ${(h.variants ?? h.cards) - h.cards} ${t("paralleller")}` : ""} · {h.sets} {t("set")}</span>
                   </button>
                 ))}
               </div>
