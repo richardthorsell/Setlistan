@@ -185,6 +185,8 @@
 }
 .pl-line { display: flex; gap: 6px; align-items: center; }
 .pl-line .pl-card { flex: 1; min-width: 0; }
+.pl-line .star { width: 32px; height: 32px; font-size: 19px; line-height: 1; }
+@media (max-width: 560px) { .pl-line { gap: 3px; } .pl-line .star { width: 28px; height: 28px; } .pl-line .pl-card { padding: 7px 6px; gap: 6px; } }
 
 /* Start page: the player search is the centre of the page. */
 .hero { align-items: center; text-align: center; gap: 18px; padding: 18px 0 6px; }
