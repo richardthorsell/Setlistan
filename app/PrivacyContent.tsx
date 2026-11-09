@@ -8,7 +8,7 @@ import { PrivacyEn } from "./LegalEn";
 export default function PrivacyContent() {
   const t = useT();
   const { lang } = useLang();
-  if (lang === "en") return <PrivacyEn />;
+  if (lang !== "sv") return <PrivacyEn />;
   const contact = LEGAL.contactEmail ? <a href={`mailto:${LEGAL.contactEmail}`}>{LEGAL.contactEmail}</a> : <>{t("Feedback-knappen i appen")}</>;
   return (
     <LegalPage title={t("Integritetspolicy")} intro="Här står vilka personuppgifter Setlistan behandlar, varför, hur länge och vilka rättigheter du har enligt dataskyddsförordningen (GDPR).">
