@@ -22,7 +22,7 @@ type ImportSet = {
 type Sug = { id: string; email: string | null; query: string; status: "ny" | "klar" | "avvisad"; created_at: string };
 type Th = { id: number; key: string; ctx: string; sold: number; median: number | null; from_cache: boolean; created_at: string };
 type Admin = { email: string; role: "admin" | "superuser"; added_at: string };
-type Account = { email: string; created_at: string; last_sign_in_at: string | null; cards: number; sets_n: number };
+type Account = { email: string; created_at: string; last_sign_in_at: string | null; cards: number; sets_n: number; nudged_at: string | null };
 
 const when = (iso: string) => new Date(iso).toLocaleString("sv-SE", { dateStyle: "short", timeStyle: "short" });
 
@@ -197,6 +197,39 @@ export default function AdminPanel({
     if (!r.ok) return say(j.error || "Kunde inte bjuda in.");
     await load();
     say(`Inbjudan skickad till ${w.email}`);
+  };
+  const NUDGE_DAYS = 7;
+  const [nudging, setNudging] = useState(false);
+  // Signed in at least once, nothing ticked off yet, and not nudged within the last week. Admins are left out.
+  const canNudge = (a: Account) => !!a.last_sign_in_at && a.cards === 0 && !admins.some((x) => x.email.toLowerCase() === a.email) && (!a.nudged_at || Date.now() - new Date(a.nudged_at).getTime() > NUDGE_DAYS * 86400000);
+  const sendNudge = async (email: string) => {
+    const r = await fetch("/api/nudge", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) });
+    const j = await r.json().catch(() => ({}));
+    return r.ok ? "" : String(j.error || "Kunde inte skicka.");
+  };
+  const nudgeOne = async (a: Account) => {
+    if (!window.confirm(`Skicka ett mejl till ${a.email} som uppmuntrar att börja pricka av kort?`)) return;
+    const err = await sendNudge(a.email);
+    await load();
+    say(err || `Nudge skickad till ${a.email}`);
+  };
+  const nudgeAll = async () => {
+    const list = accounts.filter(canNudge);
+    if (!list.length || !window.confirm(`Skicka ett mejl till ${list.length} konton som loggat in men inte börjat samla?`)) return;
+    setNudging(true);
+    let ok = 0;
+    let fail = "";
+    for (const a of list) {
+      const err = await sendNudge(a.email);
+      if (err) {
+        fail = err;
+        break;
+      }
+      ok++;
+    }
+    setNudging(false);
+    await load();
+    say(fail ? `${ok} av ${list.length} skickade. ${fail}` : `${ok} nudgar skickade`);
   };
   const delWait = async (id: string) => {
     const { error } = await supabase.from("waitlist").delete().eq("id", id);
@@ -505,6 +538,11 @@ export default function AdminPanel({
 
       {tab === "people" && (<>
       <div className="label">Konton ({accounts.length}, {accounts.filter((a) => a.cards > 0).length} har börjat samla)</div>
+      {accounts.some(canNudge) && (
+        <div className="actions">
+          <button className="btn small" type="button" disabled={nudging} onClick={nudgeAll}>Nudga alla som inte kommit igång ({accounts.filter(canNudge).length})</button>
+        </div>
+      )}
       {accounts.length ? (
         <div className="admin-table">
           {accounts.map((a) => (
@@ -513,6 +551,7 @@ export default function AdminPanel({
               <span className="grow">{a.email} {collectMark(a.email)}</span>
               <span className="note">{a.cards > 0 ? `${a.cards} kort i ${a.sets_n} set` : "ingen samling än"}</span>
               <span className="note">{a.last_sign_in_at ? `inloggad ${when(a.last_sign_in_at)}` : "aldrig inloggad"}</span>
+              {canNudge(a) ? <button className="btn small" type="button" disabled={nudging} onClick={() => nudgeOne(a)}>Nudga</button> : a.nudged_at ? <span className="note" title="Senast nudgad">nudgad {when(a.nudged_at)}</span> : null}
             </div>
           ))}
         </div>
