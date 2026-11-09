@@ -19,7 +19,7 @@ import AccountPanel from "./AccountPanel";
 import CardPar from "./CardPar";
 import { SiteFooter } from "./LegalPage";
 import { WhatsNew, Welcome, type Update } from "./Onboarding";
-import { LangSwitch, useT } from "@/lib/i18n";
+import { LangSwitch, useNote, useT } from "@/lib/i18n";
 
 type Filter = "all" | "missing" | "have" | "fav" | "dups" | "wish" | "sale" | "incoming";
 const NO_TRADE: Trade = { for_sale: 0, buy_price: null, sell_price: null, incoming: false, note: null };
@@ -73,6 +73,7 @@ const Tick = () => (
 
 export default function App() {
   const t = useT();
+  const note = useNote();
   const supabase = useMemo(() => createClient(), []);
   const [user, setUser] = useState<User | null>(null);
   const [sets, setSets] = useState<SetStat[]>([]);
@@ -1060,7 +1061,7 @@ export default function App() {
               <button className="btn small" type="button" aria-pressed={favs.has(current.id)} onClick={() => toggleFav(current.id)}>
                 {favs.has(current.id) ? t("★ Favorit") : t("☆ Lägg i favoriter")}
               </button>
-              <div className="sub">{scoped.length} {t("delset")} · {total} {t("kort")}{selPar ? ` · ${parallelLabel(selPar)}` : ""}{current.notes ? ` · ${current.notes}` : ""}</div>
+              <div className="sub">{scoped.length} {t("delset")} · {total} {t("kort")}{selPar ? ` · ${parallelLabel(selPar)}` : ""}{current.notes ? ` · ${note(current.notes)}` : ""}</div>
             </div>
             <div className="tally">
               <div className="num mono">{have}<small> / {total}</small></div>
