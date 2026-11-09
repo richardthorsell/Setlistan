@@ -16,12 +16,14 @@ export default function PlayerCardPar({
   card,
   onBaseQty,
   onParCount,
+  onWish: onWishChange,
   onClose,
 }: {
   supabase: SupabaseClient;
   card: ParCardRef;
   onBaseQty: (n: number) => void;
   onParCount: (n: number) => void;
+  onWish?: (on: boolean) => void;
   onClose: () => void;
 }) {
   const t = useT();
@@ -130,11 +132,13 @@ export default function PlayerCardPar({
   const setWish = async (w: Wish | null) => {
     const prev = wish;
     setWishState(w);
+    onWishChange?.(!!w);
     const r = w
       ? await supabase.from("wishlist").upsert({ card_id: id, set_id: card.set_id, priority: w.priority, max_price: w.max_price, note: w.note }, { onConflict: "user_id,card_id" })
       : await supabase.from("wishlist").delete().eq("card_id", id);
     if (r.error) {
       setWishState(prev);
+      onWishChange?.(!!prev);
       setErr(t("Kunde inte spara önskelistan."));
     }
   };
