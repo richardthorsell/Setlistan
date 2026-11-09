@@ -22,6 +22,7 @@ type ImportSet = {
 type Sug = { id: string; email: string | null; query: string; status: "ny" | "klar" | "avvisad"; created_at: string };
 type Th = { id: number; key: string; ctx: string; sold: number; median: number | null; from_cache: boolean; created_at: string };
 type Admin = { email: string; role: "admin" | "superuser"; added_at: string };
+type Account = { email: string; created_at: string; last_sign_in_at: string | null; cards: number; sets_n: number };
 
 const when = (iso: string) => new Date(iso).toLocaleString("sv-SE", { dateStyle: "short", timeStyle: "short" });
 
@@ -181,6 +182,13 @@ export default function AdminPanel({
     await load();
   };
   const [wait, setWait] = useState<Wait[]>([]);
+  // E-mail (lower case) -> number of owned cards, for everyone who has started collecting.
+  const [collect, setCollect] = useState<Record<string, number>>({});
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const collectMark = (email: string) => {
+    const n = collect[email.toLowerCase()];
+    return n ? <span title={`Har börjat samla (${n} kort)`} aria-label={`Har börjat samla, ${n} kort`}>🃏</span> : null;
+  };
   const [fb, setFb] = useState<Fb[]>([]);
 
   const invite = async (w: Wait) => {
@@ -227,6 +235,12 @@ export default function AdminPanel({
     if (o.data) setOverview(o.data as Overview);
     setJobs((j.data as Job[]) || []);
     setAdmins((a.data as Admin[]) || []);
+    const ac = await supabase.rpc("admin_accounts");
+    const list = ((ac.data as Account[]) || []).map((r) => ({ ...r, cards: Number(r.cards), sets_n: Number(r.sets_n) }));
+    const map: Record<string, number> = {};
+    for (const r of list) if (r.cards > 0) map[r.email] = r.cards;
+    setAccounts(list);
+    setCollect(map);
   }, [supabase]);
 
   useEffect(() => {
@@ -490,13 +504,29 @@ export default function AdminPanel({
       </>)}
 
       {tab === "people" && (<>
+      <div className="label">Konton ({accounts.length}, {accounts.filter((a) => a.cards > 0).length} har börjat samla)</div>
+      {accounts.length ? (
+        <div className="admin-table">
+          {accounts.map((a) => (
+            <div key={a.email} className="admin-row">
+              <span className="mono note">{when(a.created_at)}</span>
+              <span className="grow">{a.email} {collectMark(a.email)}</span>
+              <span className="note">{a.cards > 0 ? `${a.cards} kort i ${a.sets_n} set` : "ingen samling än"}</span>
+              <span className="note">{a.last_sign_in_at ? `inloggad ${when(a.last_sign_in_at)}` : "aldrig inloggad"}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="note">Inga konton.</div>
+      )}
+
       <div className="label">Väntelista ({wait.length})</div>
       {wait.length ? (
         <div className="admin-table">
           {wait.map((w) => (
             <div key={w.id} className="admin-row">
               <span className="mono note">{when(w.created_at)}</span>
-              <span className="grow">{w.name} · {w.email}</span>
+              <span className="grow">{w.name} · {w.email} {collectMark(w.email)}</span>
               {w.invited_at ? <span className="pill src">Inbjuden</span> : null}
               <button className="btn small" type="button" onClick={() => invite(w)}>{w.invited_at ? "Bjud in igen" : "Bjud in"}</button>
               <button className="btn small ghost danger" type="button" onClick={() => delWait(w.id)}>Ta bort</button>
@@ -533,7 +563,7 @@ export default function AdminPanel({
       <div className="admin-table">
         {admins.map((a) => (
           <div key={a.email} className="admin-row">
-            <span className="grow">{a.email}</span>
+            <span className="grow">{a.email} {collectMark(a.email)}</span>
             <span className="pill">{a.role === "superuser" ? "Superuser" : "Admin"}</span>
             {role === "superuser" && a.email !== myEmail && (
               <button className="btn small ghost danger" type="button" onClick={() => removeAdmin(a.email)}>Ta bort</button>
