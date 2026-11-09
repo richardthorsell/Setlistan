@@ -619,6 +619,8 @@ export default function App() {
       await loadSets();
       openSet(id);
     } catch {
+      // Do not leave a half-saved set in the shared library (sections and cards cascade).
+      await supabase.from("sets").delete().eq("id", id);
       say(t("Kunde inte spara setet."));
     }
   };
