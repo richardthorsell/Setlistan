@@ -5,6 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import "./panels.css";
 import { useT } from "@/lib/i18n";
 import PlayerCardPar from "./PlayerCardPar";
+import TraderaPanel, { type TraderaScope } from "./TraderaPanel";
 
 type Hit = { player_key: string; display_name: string; cards: number; sets: number; variants?: number };
 type Fav = { player_key: string; display_name: string };
@@ -23,6 +24,9 @@ export default function PlayerPanel({ supabase, initialQ = "", initialSel = null
   const [err, setErr] = useState<string | null>(null);
   const [parCard, setParCard] = useState<PCard | null>(null);
   const [parCounts, setParCounts] = useState<Map<number, number>>(new Map());
+  const [favCards, setFavCards] = useState<Set<number>>(new Set());
+  const [wishIds, setWishIds] = useState<Set<number>>(new Set());
+  const [tradera, setTradera] = useState<TraderaScope | null>(null);
 
   // Followed players, loaded once (t changes on every render so it must not be a dependency).
   useEffect(() => {
@@ -91,13 +95,24 @@ export default function PlayerPanel({ supabase, initialQ = "", initialSel = null
       setCards(all);
       // How many parallels of each card are ticked, for the button.
       const counts = new Map<number, number>();
+      const favs2 = new Set<number>();
+      const wishes2 = new Set<number>();
       const ids = all.map((c) => c.card_id);
       for (let i = 0; i < ids.length; i += 150) {
-        const { data: op } = await supabase.from("owned_parallels").select("card_id").in("card_id", ids.slice(i, i + 150));
+        const part = ids.slice(i, i + 150);
+        const [op, fc, wl] = await Promise.all([
+          supabase.from("owned_parallels").select("card_id").in("card_id", part),
+          supabase.from("favorite_cards").select("card_id").in("card_id", part),
+          supabase.from("wishlist").select("card_id").in("card_id", part),
+        ]);
         if (!live) return;
-        for (const r of (op as { card_id: number }[]) || []) counts.set(r.card_id, (counts.get(r.card_id) || 0) + 1);
+        for (const r of (op.data as { card_id: number }[]) || []) counts.set(r.card_id, (counts.get(r.card_id) || 0) + 1);
+        for (const r of (fc.data as { card_id: number }[]) || []) favs2.add(r.card_id);
+        for (const r of (wl.data as { card_id: number }[]) || []) wishes2.add(r.card_id);
       }
       setParCounts(counts);
+      setFavCards(favs2);
+      setWishIds(wishes2);
     })();
     return () => {
       live = false;
@@ -132,6 +147,55 @@ export default function PlayerPanel({ supabase, initialQ = "", initialSel = null
       setCards((p) => (p || []).map((x) => (x.card_id === c.card_id ? { ...x, qty: c.qty } : x)));
       setErr(t("Kunde inte spara."));
     }
+  };
+
+  const flip = (set: (f: (p: Set<number>) => Set<number>) => void, id: number, on: boolean) =>
+    set((p) => {
+      const n = new Set(p);
+      if (on) n.add(id);
+      else n.delete(id);
+      return n;
+    });
+  const toggleFavCard = async (c: PCard) => {
+    const was = favCards.has(c.card_id);
+    flip(setFavCards, c.card_id, !was);
+    const r = was ? await supabase.from("favorite_cards").delete().eq("card_id", c.card_id) : await supabase.from("favorite_cards").insert({ card_id: c.card_id, set_id: c.set_id });
+    if (r.error) {
+      flip(setFavCards, c.card_id, was);
+      setErr(t("Kunde inte spara."));
+    }
+  };
+  const toggleWish = async (c: PCard) => {
+    const was = wishIds.has(c.card_id);
+    flip(setWishIds, c.card_id, !was);
+    const r = was
+      ? await supabase.from("wishlist").delete().eq("card_id", c.card_id)
+      : await supabase.from("wishlist").upsert({ card_id: c.card_id, set_id: c.set_id, priority: 2, max_price: null, note: null }, { onConflict: "user_id,card_id" });
+    if (r.error) {
+      flip(setWishIds, c.card_id, was);
+      setErr(t("Kunde inte spara."));
+    }
+  };
+  // Duplicate toggle: one copy becomes two, and back.
+  const toggleDup = async (c: PCard) => {
+    const n = (c.qty ?? 0) > 1 ? 1 : 2;
+    setCards((p) => (p || []).map((x) => (x.card_id === c.card_id ? { ...x, qty: n } : x)));
+    const r = await supabase.from("owned").upsert({ card_id: c.card_id, set_id: c.set_id, qty: n }, { onConflict: "user_id,card_id" });
+    if (r.error) {
+      setCards((p) => (p || []).map((x) => (x.card_id === c.card_id ? { ...x, qty: c.qty } : x)));
+      setErr(t("Kunde inte spara."));
+    }
+  };
+  const traderaScope = (c: PCard): TraderaScope => {
+    const words = c.set_name.split(" ").filter(Boolean);
+    const brand = words[0] || "";
+    const rest = words.slice(1).filter((w) => w.length >= 3 && !/^[\d/.-]+$/.test(w));
+    return {
+      set: c.set_name,
+      card: `${c.section_code ? c.section_code + " " : ""}${c.no} · ${c.name}`,
+      narrow: [c.name, brand, ...rest].filter(Boolean).join(" "),
+      broad: [c.name, brand].filter(Boolean).join(" "),
+    };
   };
 
   const have = (cards || []).filter((c) => c.qty !== null).length;
@@ -227,7 +291,11 @@ export default function PlayerPanel({ supabase, initialQ = "", initialSel = null
                           <span className="grow">{c.section_name}</span>
                           {c.qty !== null && c.qty > 1 && <span className="tag dup">⧉ +{c.qty - 1}</span>}
                         </button>
-                        <button type="button" className={`pbtn${parCounts.get(c.card_id) ? " on" : ""}`} title={t("Antal, paralleller och önskelista")} aria-label={`${t("Mer om")} ${c.name}`} onClick={() => setParCard(c)}>{t("Par.")}{parCounts.get(c.card_id) ? ` ${parCounts.get(c.card_id)}` : ""}</button>
+                        <button type="button" className={`pbtn${parCounts.get(c.card_id) ? " on" : ""}`} title={t("Antal, paralleller och önskelista")} aria-label={`${t("Mer om")} ${c.name}`} onClick={() => setParCard(c)}>{t("Par.")}{parCounts.get(c.card_id) ? ` ${parCounts.get(c.card_id)}` : ""}{wishIds.has(c.card_id) ? " ♡" : ""}</button>
+                        <button className={`star${favCards.has(c.card_id) ? " on" : ""}`} type="button" aria-pressed={favCards.has(c.card_id)} title={t("Favorit: extra värdefull")} aria-label={`${c.name}: ${t("Favorit: extra värdefull")}`} onClick={() => toggleFavCard(c)}>{favCards.has(c.card_id) ? "★" : "☆"}</button>
+                        <button className={`star wish${wishIds.has(c.card_id) ? " on" : ""}`} type="button" aria-pressed={wishIds.has(c.card_id)} title={t("Önskelista: jag jagar det här kortet")} aria-label={`${c.name}: ${t("Önskelista: jag jagar det här kortet")}`} onClick={() => toggleWish(c)}>{wishIds.has(c.card_id) ? "♥" : "♡"}</button>
+                        <button className={`star dup${(c.qty ?? 0) > 1 ? " on" : ""}`} type="button" aria-pressed={(c.qty ?? 0) > 1} title={t("Dubblett: jag har flera av det här kortet")} aria-label={`${c.name}: ${t("Dubblett")}`} onClick={() => toggleDup(c)}>⧉</button>
+                        <button className="tbtn" type="button" title={t("Visa sålda på Tradera")} aria-label={`${c.name}: ${t("Visa sålda på Tradera")}`} onClick={() => setTradera(traderaScope(c))}>T</button>
                       </div>
                     ))}
                   </div>
@@ -237,16 +305,17 @@ export default function PlayerPanel({ supabase, initialQ = "", initialSel = null
           </>
         )}
       </section>
+      {tradera && <TraderaPanel key={tradera.narrow + "|" + tradera.broad} scope={tradera} signedIn onClose={() => setTradera(null)} />}
       {parCard && (
         <PlayerCardPar
           supabase={supabase}
           card={parCard}
           onBaseQty={(n) => setCards((p) => (p || []).map((x) => (x.card_id === parCard.card_id ? { ...x, qty: n > 0 ? n : null } : x)))}
           onParCount={(n) => setParCounts((m) => new Map(m).set(parCard.card_id, n))}
+          onWish={(on) => flip(setWishIds, parCard.card_id, on)}
           onClose={() => setParCard(null)}
         />
       )}
     </div>
   );
 }
-
