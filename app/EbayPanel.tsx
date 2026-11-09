@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { TraderaScope } from "./TraderaPanel";
 import "./panels.css";
-import { useLang, useT } from "@/lib/i18n";
+import { localeOf, useLang, useT } from "@/lib/i18n";
 
 type Item = { id: string; title: string; price: number | null; currency: string; bids: number; ends: string; url: string; thumb: string };
 type Result = { items: Item[]; seen: number; withBids: number; total: number; searchUrl: string };
@@ -25,9 +25,9 @@ export default function EbayPanel({ scope, signedIn, onClose }: { scope: Tradera
 
   const when = (iso: string) => {
     const d = new Date(iso);
-    return Number.isNaN(d.getTime()) ? "" : d.toLocaleString(lang === "en" ? "en-GB" : "sv-SE", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    return Number.isNaN(d.getTime()) ? "" : d.toLocaleString(localeOf(lang), { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
   };
-  const money = (i: Item) => (i.price === null ? "" : `${SYMBOL[i.currency] ?? i.currency + " "}${i.price.toLocaleString(lang === "en" ? "en-GB" : "sv-SE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+  const money = (i: Item) => (i.price === null ? "" : `${SYMBOL[i.currency] ?? i.currency + " "}${i.price.toLocaleString(localeOf(lang), { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
 
   const run = useCallback(async (query: string) => {
     if (query.trim().length < 3) return;
