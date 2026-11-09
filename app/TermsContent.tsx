@@ -8,7 +8,7 @@ import { TermsEn } from "./LegalEn";
 export default function TermsContent() {
   const t = useT();
   const { lang } = useLang();
-  if (lang === "en") return <TermsEn />;
+  if (lang !== "sv") return <TermsEn />;
   const contact = LEGAL.contactEmail ? <a href={`mailto:${LEGAL.contactEmail}`}>{LEGAL.contactEmail}</a> : <>{t("Feedback-knappen i appen")}</>;
   return (
     <LegalPage title={t("Användarvillkor")} intro="Villkoren gäller när du använder Setlistan. Genom att skapa ett konto eller använda tjänsten godkänner du dem.">
