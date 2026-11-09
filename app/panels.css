@@ -164,7 +164,11 @@
 .menu-pop button { text-align: left; border: 0; background: transparent; height: 38px; padding: 0 10px; border-radius: 8px; font-size: 14px; font-weight: 600; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .menu-pop button:hover { background: var(--sunk); }
 .menu-who { padding: 6px 10px 8px; font-size: 12.5px; color: var(--muted); border-bottom: 1px solid var(--line); margin-bottom: 4px; overflow-wrap: anywhere; }
-.menu-lang { padding: 4px 10px; }
+/* Language choice: always visible in the top corner, both options shown, the active one filled. */
+.langtoggle { display: inline-flex; border: 1.5px solid var(--line); border-radius: 999px; overflow: hidden; background: var(--surface); }
+.langtoggle button { height: 34px; min-width: 42px; padding: 0 10px; border: 0; background: transparent; color: var(--muted); font-weight: 800; font-size: 13px; letter-spacing: .04em; cursor: pointer; }
+.langtoggle button:hover { color: var(--ink); background: var(--sunk); }
+.langtoggle button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
 @media (max-width: 560px) { .topbar .label { display: none; } .mainnav { margin-left: 0; } }
 
 /* Start page: the player search is the centre of the page. */
