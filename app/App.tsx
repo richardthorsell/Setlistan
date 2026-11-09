@@ -1061,7 +1061,7 @@ export default function App() {
               <button className="btn small" type="button" aria-pressed={favs.has(current.id)} onClick={() => toggleFav(current.id)}>
                 {favs.has(current.id) ? t("★ Favorit") : t("☆ Lägg i favoriter")}
               </button>
-              <div className="sub">{scoped.length} {t("delset")} · {total} {t("kort")}{selPar ? ` · ${parallelLabel(selPar)}` : ""}{current.notes ? ` · ${note(current.notes)}` : ""}</div>
+              <div className="sub">{scoped.length} {t("delset")} · {total} {t("kort")}{selPar ? ` · ${parallelLabel(selPar)}` : ""}{note(current.notes || "") ? ` · ${note(current.notes || "")}` : ""}</div>
             </div>
             <div className="tally">
               <div className="num mono">{have}<small> / {total}</small></div>
