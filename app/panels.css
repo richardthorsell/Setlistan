@@ -4,6 +4,7 @@
 .tbtn { width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid var(--line); background: var(--surface); color: var(--muted); font: 700 11px var(--f-mono); display: grid; place-items: center; padding: 0; flex: none; }
 .tbtn:hover { border-color: var(--accent); color: var(--accent); }
 .cardwrap .tbtn { position: absolute; top: 30px; right: 8px; }
+.cardwrap .tbtn.ebay { right: 36px; }
 .lwrap { display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--line); padding-right: 10px; }
 .lwrap:first-child { border-top: 0; }
 .lwrap .lrow { flex: 1; border-top: 0; min-width: 0; }
