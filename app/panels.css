@@ -142,6 +142,10 @@
 .pl-sets { display: flex; flex-direction: column; gap: 14px; }
 .pl-set { display: flex; flex-direction: column; gap: 4px; }
 .pl-card { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border: 1.5px solid var(--line); border-radius: 8px; background: var(--surface); text-align: left; font-size: 13.5px; }
+.pl-item { display: flex; flex-direction: column; gap: 4px; }
+.pl-line { display: flex; align-items: stretch; gap: 6px; }
+.pl-line .pl-card { flex: 1; min-width: 0; }
+.pl-pars { margin: 0 0 4px 10px; border: 1px dashed var(--line); border-radius: 10px; background: var(--surface); }
 .pl-card .grow { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
 .pl-card[aria-pressed="true"] { border-color: var(--have); background: color-mix(in srgb, var(--have) 8%, var(--surface)); }
 .pl-box { width: 20px; height: 20px; border-radius: 5px; border: 1.5px solid var(--line); display: grid; place-items: center; font-size: 13px; font-weight: 800; color: var(--have); flex: none; }

@@ -368,6 +368,7 @@ export const EN: Record<string, string> = {
   "Spelare": "Players",
   "Kunde inte söka just nu.": "Could not search right now.",
   "Kunde inte läsa spelarens kort.": "Could not read the player's cards.",
+  "Kunde inte läsa parallellerna.": "Could not read the parallels.",
   "Kunde inte spara.": "Could not save.",
   "Sök spelare": "Search players",
   "Sök spelare, till exempel Mats Sundin": "Search players, for example Mats Sundin",

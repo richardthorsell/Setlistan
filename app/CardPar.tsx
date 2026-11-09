@@ -10,7 +10,7 @@ export type Wish = { priority: number; max_price: number | null; note: string | 
 // Copies for sale, what the card cost, what it is listed for, and whether a bought card is still on its way.
 export type Trade = { for_sale: number; buy_price: number | null; sell_price: number | null; incoming: boolean; note: string | null };
 
-function Stepper({ value, min, max = 999, onChange, label }: { value: number; min: number; max?: number; onChange: (n: number) => void; label: string }) {
+export function Stepper({ value, min, max = 999, onChange, label }: { value: number; min: number; max?: number; onChange: (n: number) => void; label: string }) {
   return (
     <span className="stepper" role="group" aria-label={label}>
       <button type="button" className="btn small" aria-label="−" disabled={value <= min} onClick={() => onChange(value - 1)}>−</button>
