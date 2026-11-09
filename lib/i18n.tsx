@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { EN } from "./en";
+import { EXTRA } from "./extra";
 import { NOTES_EN, translateNote } from "./notes";
 
 // Swedish is the source language; every Swedish text is wrapped in t("…") and looked up in the chosen language's dictionary.
@@ -82,7 +83,7 @@ export const useLang = () => useContext(Ctx);
 
 export function useT() {
   const { lang, dict } = useContext(Ctx);
-  return (sv: string) => (lang === "sv" ? sv : dict[sv] ?? EN[sv] ?? sv);
+  return (sv: string) => (lang === "sv" ? sv : EXTRA[lang]?.[sv] ?? dict[sv] ?? EN[sv] ?? sv);
 }
 
 // Set notes come from the importers (Swedish); this translates the known sentences.
