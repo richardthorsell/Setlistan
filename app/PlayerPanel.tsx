@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import "./panels.css";
 import { useT } from "@/lib/i18n";
+import PlayerCardPar from "./PlayerCardPar";
 
 type Hit = { player_key: string; display_name: string; cards: number; sets: number; variants?: number };
 type Fav = { player_key: string; display_name: string };
@@ -20,6 +21,8 @@ export default function PlayerPanel({ supabase, initialQ = "", initialSel = null
   const [cards, setCards] = useState<PCard[] | null>(null);
   const [onlyMissing, setOnlyMissing] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [parCard, setParCard] = useState<PCard | null>(null);
+  const [parCounts, setParCounts] = useState<Map<number, number>>(new Map());
 
   // Followed players, loaded once (t changes on every render so it must not be a dependency).
   useEffect(() => {
@@ -33,13 +36,13 @@ export default function PlayerPanel({ supabase, initialQ = "", initialSel = null
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
+      if (e.key !== "Escape" || parCard) return;
       if (sel) setSel(null);
       else onClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose, sel]);
+  }, [onClose, sel, parCard]);
 
   // Debounced search.
   useEffect(() => {
@@ -86,6 +89,15 @@ export default function PlayerPanel({ supabase, initialQ = "", initialSel = null
       }
       setErr(null);
       setCards(all);
+      // How many parallels of each card are ticked, for the button.
+      const counts = new Map<number, number>();
+      const ids = all.map((c) => c.card_id);
+      for (let i = 0; i < ids.length; i += 150) {
+        const { data: op } = await supabase.from("owned_parallels").select("card_id").in("card_id", ids.slice(i, i + 150));
+        if (!live) return;
+        for (const r of (op as { card_id: number }[]) || []) counts.set(r.card_id, (counts.get(r.card_id) || 0) + 1);
+      }
+      setParCounts(counts);
     })();
     return () => {
       live = false;
@@ -208,12 +220,15 @@ export default function PlayerPanel({ supabase, initialQ = "", initialSel = null
                     </div>
                     <div className="note">{got}/{g.items.length}</div>
                     {g.items.map((c) => (
-                      <button key={c.card_id} type="button" className="pl-card" aria-pressed={c.qty !== null} onClick={() => tick(c)}>
-                        <span className="pl-box">{c.qty !== null ? "✓" : ""}</span>
-                        <span className="mono">{c.section_code ? c.section_code + " " : ""}{c.no}</span>
-                        <span className="grow">{c.section_name}</span>
-                        {c.qty !== null && c.qty > 1 && <span className="tag dup">⧉ +{c.qty - 1}</span>}
-                      </button>
+                      <div key={c.card_id} className="pl-line">
+                        <button type="button" className="pl-card" aria-pressed={c.qty !== null} onClick={() => tick(c)}>
+                          <span className="pl-box">{c.qty !== null ? "✓" : ""}</span>
+                          <span className="mono">{c.section_code ? c.section_code + " " : ""}{c.no}</span>
+                          <span className="grow">{c.section_name}</span>
+                          {c.qty !== null && c.qty > 1 && <span className="tag dup">⧉ +{c.qty - 1}</span>}
+                        </button>
+                        <button type="button" className={`pbtn${parCounts.get(c.card_id) ? " on" : ""}`} title={t("Antal, paralleller och önskelista")} aria-label={`${t("Mer om")} ${c.name}`} onClick={() => setParCard(c)}>{t("Par.")}{parCounts.get(c.card_id) ? ` ${parCounts.get(c.card_id)}` : ""}</button>
+                      </div>
                     ))}
                   </div>
                 );
@@ -222,6 +237,16 @@ export default function PlayerPanel({ supabase, initialQ = "", initialSel = null
           </>
         )}
       </section>
+      {parCard && (
+        <PlayerCardPar
+          supabase={supabase}
+          card={parCard}
+          onBaseQty={(n) => setCards((p) => (p || []).map((x) => (x.card_id === parCard.card_id ? { ...x, qty: n > 0 ? n : null } : x)))}
+          onParCount={(n) => setParCounts((m) => new Map(m).set(parCard.card_id, n))}
+          onClose={() => setParCard(null)}
+        />
+      )}
     </div>
   );
 }
+
