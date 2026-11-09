@@ -43,10 +43,10 @@ export function useT() {
 
 export function LangSwitch() {
   const { lang, setLang } = useLang();
-  const next: Lang = lang === "en" ? "sv" : "en";
   return (
-    <button className="btn small ghost" type="button" lang={next} aria-label={next === "en" ? "Switch to English" : "Byt till svenska"} onClick={() => setLang(next)}>
-      {next === "en" ? "English" : "Svenska"}
-    </button>
+    <div className="langtoggle" role="group" aria-label="Språk / Language">
+      <button type="button" lang="sv" title="Svenska" aria-label="Byt till svenska" aria-pressed={lang !== "en"} onClick={() => setLang("sv")}>SV</button>
+      <button type="button" lang="en" title="English" aria-label="Switch to English" aria-pressed={lang === "en"} onClick={() => setLang("en")}>EN</button>
+    </div>
   );
 }
