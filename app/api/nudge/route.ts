@@ -38,7 +38,7 @@ export async function POST(req: Request) {
       `<ol><li>Sök på en spelare eller ett set.</li><li>Tryck på de kort du har.</li><li>Se direkt vilka som saknas.</li></ol>` +
       `<p><a href="${url}">${url}</a></p>` +
       `<p>Saknar du ett set eller är något oklart? Skriv till oss med Feedback-knappen i appen så fixar vi det.</p>` +
-      `<p>Hälsningar,<br>Setlistan</p>`,
+      `<p>Hälsningar,<br>Richard</p>`,
   );
   if (!ok) return Response.json({ error: "Mejlet kunde inte skickas. Kontrollera Resend-nyckeln och avsändardomänen." }, { status: 502 });
   await supabase.rpc("admin_mark_nudged", { p_email: email });
