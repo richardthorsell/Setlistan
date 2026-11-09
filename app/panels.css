@@ -188,6 +188,12 @@
 .pl-line .pl-card { flex: 1; min-width: 0; }
 .pl-line .star { width: 32px; height: 32px; font-size: 19px; line-height: 1; }
 @media (max-width: 560px) { .pl-line { gap: 3px; } .pl-line .star { width: 28px; height: 28px; } .pl-line .pl-card { padding: 7px 6px; gap: 6px; } }
+/* Phone: the icons of a card row go on their own line under the card, so the name keeps its width. */
+@media (max-width: 560px) {
+  .lwrap { flex-wrap: wrap; padding: 0 8px 8px 0; row-gap: 2px; }
+  .lwrap .lrow { flex: 1 1 100%; }
+  .lwrap .pbtn { margin-left: 12px; }
+}
 
 /* Start page: the player search is the centre of the page. */
 .hero { align-items: center; text-align: center; gap: 18px; padding: 18px 0 6px; }
