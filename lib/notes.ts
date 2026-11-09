@@ -42,16 +42,30 @@ function fixMojibake(s: string): string {
   }
 }
 
+// Where a list was fetched from is not shown to users, so sentences that only name the source are dropped.
+const SOURCE = /^(Importerad från|Checklista från|Hämtad från|Källa:)|enligt hockeydb\.com/;
+
 export function translateNote(note: string, dict: Record<string, string>): string {
   const s = fixMojibake(note);
-  if (!Object.keys(dict).length) return s;
   const parens: string[] = [];
   const dates: string[] = [];
   const norm = s
     .replace(/\((?:[^()]|\([^()]*\))*\)/g, (m) => (parens.push(m), "(…)"))
     .replace(/\d{4}-\d\d-\d\d/g, (m) => (dates.push(m), "{d}"));
-  const out = norm.split(/(?<=\.)\s+(?=[A-ZÅÄÖ])/).map((x) => dict[x] ?? x);
-  let pi = 0;
-  let di = 0;
-  return out.join(" ").replace(/\(…\)|\{d\}/g, (m) => (m === "{d}" ? dates[di++] ?? m : parens[pi++] ?? m));
+  let po = 0;
+  let dO = 0;
+  const out: string[] = [];
+  for (const x of norm.split(/(?<=\.)\s+(?=[A-ZÅÄÖ])/)) {
+    const pc = (x.match(/\(…\)/g) || []).length;
+    const dc = (x.match(/\{d\}/g) || []).length;
+    const ps = parens.slice(po, po + pc);
+    const ds = dates.slice(dO, dO + dc);
+    po += pc;
+    dO += dc;
+    if (SOURCE.test(x)) continue;
+    let pi = 0;
+    let di = 0;
+    out.push((dict[x] ?? x).replace(/\(…\)|\{d\}/g, (m) => (m === "{d}" ? ds[di++] ?? m : ps[pi++] ?? m)));
+  }
+  return out.join(" ");
 }
