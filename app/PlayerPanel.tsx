@@ -5,7 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import "./panels.css";
 import { useT } from "@/lib/i18n";
 
-type Hit = { player_key: string; display_name: string; cards: number; sets: number };
+type Hit = { player_key: string; display_name: string; cards: number; sets: number; variants?: number };
 type Fav = { player_key: string; display_name: string };
 type PCard = { card_id: number; set_id: string; set_name: string; sport: string | null; section_code: string; section_name: string; no: number; name: string; team: string | null; qty: number | null };
 
@@ -157,7 +157,7 @@ export default function PlayerPanel({ supabase, initialQ = "", initialSel = null
                 {hits.map((h) => (
                   <button key={h.player_key} type="button" className="pl-row" onClick={() => setSel({ player_key: h.player_key, display_name: h.display_name })}>
                     <b>{h.display_name}</b>
-                    <span className="note">{h.cards} {t("kort")} · {h.sets} {t("set")}</span>
+                    <span className="note" title={`${h.cards} ${t("kort")}`}>{h.variants ?? h.cards} {t("kort")} · {h.sets} {t("set")}</span>
                   </button>
                 ))}
               </div>
