@@ -165,10 +165,10 @@
 .menu-pop button:hover { background: var(--sunk); }
 .menu-who { padding: 6px 10px 8px; font-size: 12.5px; color: var(--muted); border-bottom: 1px solid var(--line); margin-bottom: 4px; overflow-wrap: anywhere; }
 /* Language choice: always visible in the top corner, both options shown, the active one filled. */
-.langtoggle { display: inline-flex; border: 1.5px solid var(--line); border-radius: 999px; overflow: hidden; background: var(--surface); }
-.langtoggle button { height: 34px; min-width: 42px; padding: 0 10px; border: 0; background: transparent; color: var(--muted); font-weight: 800; font-size: 13px; letter-spacing: .04em; cursor: pointer; }
-.langtoggle button:hover { color: var(--ink); background: var(--sunk); }
-.langtoggle button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.langsel { display: inline-flex; align-items: center; border: 1.5px solid var(--line); border-radius: 999px; background: var(--surface); }
+.langsel select { appearance: none; -webkit-appearance: none; height: 34px; padding: 0 30px 0 14px; border: 0; border-radius: 999px; background: transparent url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%23778'/></svg>") no-repeat right 12px center; color: var(--ink); font-weight: 800; font-size: 13px; cursor: pointer; }
+.langsel select:hover { background-color: var(--sunk); }
+.langsel select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 @media (max-width: 560px) { .topbar .label { display: none; } .mainnav { margin-left: 0; } }
 
 /* Start page: the player search is the centre of the page. */
