@@ -4,11 +4,11 @@ import { useEffect, useState } from "react";
 import { MockMissing, MockSearch, MockSet, MockTick, MockTradera } from "./Visuals";
 import "./panels.css";
 import "./landing.css";
-import { useLang, useT } from "@/lib/i18n";
+import { type Lang, localeOf, useLang, useT } from "@/lib/i18n";
 
 export type Update = { id: string; title: string; body: string; created_at: string };
 
-const when = (iso: string, lang: string) => new Date(iso).toLocaleDateString(lang === "en" ? "en-GB" : "sv-SE", { year: "numeric", month: "short", day: "numeric" });
+const when = (iso: string, lang: Lang) => new Date(iso).toLocaleDateString(localeOf(lang), { year: "numeric", month: "short", day: "numeric" });
 
 // First-run guide, shown once after the first sign-in.
 export function Welcome({ onDone }: { onDone: () => void }) {
