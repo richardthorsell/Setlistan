@@ -8,6 +8,7 @@ import TraderaPanel, { type TraderaScope } from "./TraderaPanel";
 import EbayPanel from "./EbayPanel";
 import WishPanel from "./WishPanel";
 import PlayerPanel from "./PlayerPanel";
+import PlayerSet from "./PlayerSet";
 import SellPanel from "./SellPanel";
 import type { Wish, Trade } from "./CardPar";
 import AuthBox from "./AuthBox";
@@ -125,12 +126,12 @@ export default function App() {
   const [showSell, setShowSell] = useState(false);
   const [heroQ, setHeroQ] = useState("");
   const [playerQ, setPlayerQ] = useState("");
-  const [playerSel, setPlayerSel] = useState<{ player_key: string; display_name: string } | null>(null);
+  const [playerSet, setPlayerSet] = useState<{ player_key: string; display_name: string } | null>(null);
   const [followed, setFollowed] = useState<{ player_key: string; display_name: string; have?: number; total?: number }[]>([]);
 
   // Followed players for the start page, with how many of their cards you have. Reloaded when the player panel closes.
   useEffect(() => {
-    if (!user || showPlayers) return;
+    if (!user || showPlayers || playerSet) return;
     let live = true;
     (async () => {
       const { data } = await supabase.from("favorite_players").select("player_key, display_name").order("created_at", { ascending: false });
@@ -147,7 +148,7 @@ export default function App() {
     return () => {
       live = false;
     };
-  }, [user, showPlayers, supabase]);
+  }, [user, showPlayers, playerSet, supabase]);
   const [wishCount, setWishCount] = useState(0);
   const [confirmDel, setConfirmDel] = useState(false);
   const [copyText, setCopyText] = useState<string | null>(null);
@@ -410,7 +411,15 @@ export default function App() {
     };
   }, [openId, uid, supabase, say]);
 
+  // A followed player opens like a set: all of the player's cards, with the same tools.
+  const openPlayer = (p: { player_key: string; display_name: string }) => {
+    setPlayerSet(p);
+    setOpenId(null);
+    history.replaceState(null, "", "#");
+    setTimeout(() => document.getElementById("set")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+  };
   const openSet = (id: string) => {
+    setPlayerSet(null);
     setOpenId(id);
     setSecIdx(0);
     setParSel(null);
@@ -889,7 +898,7 @@ export default function App() {
           {user ? (
             <>
               <nav className="mainnav" aria-label={t("Meny")}>
-                <button className="navbtn" type="button" aria-pressed={showPlayers} onClick={() => { setPlayerQ(""); setPlayerSel(null); setShowPlayers((v) => !v); }}>{t("Spelare")}</button>
+                <button className="navbtn" type="button" aria-pressed={showPlayers} onClick={() => { setPlayerQ(""); setShowPlayers((v) => !v); }}>{t("Spelare")}</button>
                 <button className="navbtn" type="button" aria-pressed={showWish} onClick={() => setShowWish((v) => !v)}>{t("Önskelista")}{wishCount ? ` ${wishCount}` : ""}</button>
                 <button className="navbtn" type="button" aria-pressed={showSell} onClick={() => setShowSell((v) => !v)}>{t("Sälj")}</button>
               </nav>
@@ -964,7 +973,7 @@ export default function App() {
           onClose={() => setParCard(null)}
         />
       )}
-      {showPlayers && user && <PlayerPanel supabase={supabase} initialQ={playerQ} initialSel={playerSel} onClose={() => setShowPlayers(false)} onOpenSet={(id) => openSet(id)} />}
+      {showPlayers && user && <PlayerPanel supabase={supabase} initialQ={playerQ} onClose={() => setShowPlayers(false)} onOpenPlayer={(p) => { setShowPlayers(false); openPlayer(p); }} />}
       {showSell && user && <SellPanel supabase={supabase} onClose={() => setShowSell(false)} />}
       {showWish && user && <WishPanel supabase={supabase} onClose={() => setShowWish(false)} onChanged={(n) => setWishCount(n)} />}
       {ebay && <EbayPanel key={ebay.narrow + "|" + ebay.broad} scope={ebay} signedIn={!!user} onClose={() => setEbay(null)} />}
@@ -980,7 +989,6 @@ export default function App() {
           onSubmit={(e) => {
             e.preventDefault();
             setPlayerQ(heroQ.trim());
-            setPlayerSel(null);
             setShowPlayers(true);
           }}
         >
@@ -996,7 +1004,7 @@ export default function App() {
                 const pct = f.total ? Math.round(((f.have || 0) / f.total) * 100) : 0;
                 return (
                   <div key={f.player_key} className="shelf-item fav-card">
-                    <button className="fav-open" type="button" onClick={() => { setPlayerQ(""); setPlayerSel({ player_key: f.player_key, display_name: f.display_name }); setShowPlayers(true); }}>
+                    <button className="fav-open" type="button" onClick={() => openPlayer({ player_key: f.player_key, display_name: f.display_name })}>
                       <strong>{f.display_name}</strong>
                       {f.total !== undefined && (
                         <>
@@ -1049,6 +1057,8 @@ export default function App() {
           <div className="empty">{t("Läser biblioteket …")}</div>
         )}
       </section>
+
+      {playerSet && user && <PlayerSet key={playerSet.player_key} supabase={supabase} player={playerSet} onClose={() => setPlayerSet(null)} onOpenSet={(id) => openSet(id)} say={say} />}
 
       {current && (
         <section className="set" id="set">
@@ -1172,6 +1182,7 @@ export default function App() {
                     <span className="tick"><Tick /></span>
                   </button>
                   <button className="tbtn" type="button" title={t("Visa sålda på Tradera")} aria-label={`Sålda ${c.name} på Tradera`} onClick={() => setTradera(traderaScope(c, sec))}>T</button>
+                  <button className="tbtn ebay" type="button" title={t("Auktioner på eBay")} aria-label={`${c.name}: ${t("Auktioner på eBay")}`} onClick={() => setEbay(traderaScope(c, sec))}>E</button>
                   <button className={`star${favCards.has(c.id) ? " on" : ""}`} type="button" aria-pressed={favCards.has(c.id)} title={t("Favorit: extra värdefull")} aria-label={`${favCards.has(c.id) ? t("Ta bort") : t("Markera")} ${c.name} som favorit`} onClick={() => toggleFavCard(c.id)}>{favCards.has(c.id) ? "★" : "☆"}</button>
                   <button className={`star wish${wishes.has(c.id) ? " on" : ""}`} type="button" aria-pressed={wishes.has(c.id)} title={t("Önskelista: jag jagar det här kortet")} aria-label={`${wishes.has(c.id) ? t("Ta bort") : t("Lägg")} ${c.name} ${t("på önskelistan")}`} onClick={() => setWish(c.id, wishes.has(c.id) ? null : { priority: 2, max_price: null, note: null })}>{wishes.has(c.id) ? "♥" : "♡"}</button>
                   <button className={`star dup${baseQtyOf(c.id) > 1 ? " on" : ""}`} type="button" aria-pressed={baseQtyOf(c.id) > 1} title={t("Dubblett: jag har flera av det här kortet")} aria-label={`${c.name}: ${t("Dubblett")}`} onClick={() => setBaseQty(c.id, baseQtyOf(c.id) > 1 ? 1 : 2)}>⧉</button>
@@ -1205,6 +1216,7 @@ export default function App() {
                   <button className={`star wish${wishes.has(c.id) ? " on" : ""}`} type="button" aria-pressed={wishes.has(c.id)} title={t("Önskelista: jag jagar det här kortet")} aria-label={`${wishes.has(c.id) ? t("Ta bort") : t("Lägg")} ${c.name} ${t("på önskelistan")}`} onClick={() => setWish(c.id, wishes.has(c.id) ? null : { priority: 2, max_price: null, note: null })}>{wishes.has(c.id) ? "♥" : "♡"}</button>
                   <button className={`star dup${baseQtyOf(c.id) > 1 ? " on" : ""}`} type="button" aria-pressed={baseQtyOf(c.id) > 1} title={t("Dubblett: jag har flera av det här kortet")} aria-label={`${c.name}: ${t("Dubblett")}`} onClick={() => setBaseQty(c.id, baseQtyOf(c.id) > 1 ? 1 : 2)}>⧉</button>
                   <button className="tbtn" type="button" title={t("Visa sålda på Tradera")} aria-label={`Sålda ${c.name} på Tradera`} onClick={() => setTradera(traderaScope(c, sec))}>T</button>
+                  <button className="tbtn ebay" type="button" title={t("Auktioner på eBay")} aria-label={`${c.name}: ${t("Auktioner på eBay")}`} onClick={() => setEbay(traderaScope(c, sec))}>E</button>
                 </div>
               ))}
             </div>
