@@ -560,12 +560,12 @@ export default function App() {
     return lines.length > 1 ? lines.join("\n") : `${current?.name}: ${t("komplett!")}`;
   };
   const copyMissing = async () => {
-    const t = missingText();
+    const text = missingText();
     try {
-      await navigator.clipboard.writeText(t);
+      await navigator.clipboard.writeText(text);
       say(t("Saknade kort kopierade"));
     } catch {
-      setCopyText(t);
+      setCopyText(text);
     }
   };
   const downloadCsv = (onlyMissing: boolean) => {
