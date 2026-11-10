@@ -31,7 +31,7 @@ export default function FeedbackThread({ supabase, id, email, onChanged, say }: 
     if (!r.ok) return say(String(j.error || "Kunde inte skicka."));
     setText("");
     setOpen(false);
-    say(j.mailed ? `Svaret är skickat och mejlat till ${email}` : "Svaret är sparat och syns i tjänsten. Mejlet kunde inte skickas.");
+    say(j.mailed ? `Svaret är sparat. ${email} har fått ett mejl och läser det genom att logga in.` : "Svaret är sparat och syns i tjänsten när användaren loggar in. Mejlnotisen kunde inte skickas.");
     await load();
     onChanged();
   };
@@ -55,7 +55,7 @@ export default function FeedbackThread({ supabase, id, email, onChanged, say }: 
         </>
       ) : (
         <div>
-          <button className="btn small" type="button" disabled={!email} onClick={() => setOpen(true)}>{msgs && msgs.length ? "Svara igen" : "Svara"}</button>
+          <button className="btn small primary" type="button" onClick={() => setOpen(true)}>{msgs && msgs.length ? "Svara igen" : "Svara"}</button>
         </div>
       )}
     </div>
