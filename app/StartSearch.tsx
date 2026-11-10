@@ -72,35 +72,37 @@ export default function StartSearch({
       {busy && <div className="note">{t("Söker …")}</div>}
       {term.length >= 3 && (
         <div className="start-results">
-          {hits && hits.length > 0 && (
-            <>
-              <div className="label">{t("Spelare")} ({hits.length >= 30 ? "30+" : hits.length})</div>
-              <div className="pl-list">
-                {hits.map((h) => (
-                  <button key={h.player_key} type="button" className="pl-row" onClick={() => { onOpenPlayer({ player_key: h.player_key, display_name: h.display_name }); done(); }}>
-                    <b>{h.display_name}</b>
-                    <span className="note">{h.cards} {t("baskort")}{(h.variants ?? h.cards) > h.cards ? ` + ${(h.variants ?? h.cards) - h.cards} ${t("paralleller")}` : ""} · {h.sets} {t("set")}</span>
-                  </button>
-                ))}
+          {!busy && hits && !hits.length && !setMatches.length ? (
+            <div className="note">{t("Inget hittades.")}</div>
+          ) : (
+            <div className="start-cols">
+              <div className="start-col">
+                <div className="label">{t("Set")} ({setMatches.length})</div>
+                <div className="pl-list start-scroll">
+                  {setMatches.map((s) => (
+                    <button key={s.id} type="button" className="pl-row" onClick={() => { onOpenSet(s.id); done(); }}>
+                      <b>{s.name}</b>
+                      <span className="note">{t(sportLabel(s.sport))}</span>
+                    </button>
+                  ))}
+                  {!setMatches.length && <div className="note">{t("Inga album matchar.")}</div>}
+                </div>
               </div>
-            </>
-          )}
-          {setMatches.length > 0 && (
-            <>
-              <div className="label">{t("Set")} ({setMatches.length})</div>
-              <div className="pl-list start-scroll">
-                {setMatches.map((s) => (
-                  <button key={s.id} type="button" className="pl-row" onClick={() => { onOpenSet(s.id); done(); }}>
-                    <b>{s.name}</b>
-                    <span className="note">{t(sportLabel(s.sport))}</span>
-                  </button>
-                ))}
+              <div className="start-col">
+                <div className="label">{t("Spelare")} ({hits ? (hits.length >= 100 ? "100+" : hits.length) : "…"})</div>
+                <div className="pl-list start-scroll">
+                  {(hits || []).map((h) => (
+                    <button key={h.player_key} type="button" className="pl-row" onClick={() => { onOpenPlayer({ player_key: h.player_key, display_name: h.display_name }); done(); }}>
+                      <b>{h.display_name}</b>
+                      <span className="note">{h.cards} {t("baskort")}{(h.variants ?? h.cards) > h.cards ? ` + ${(h.variants ?? h.cards) - h.cards} ${t("paralleller")}` : ""} · {h.sets} {t("set")}</span>
+                    </button>
+                  ))}
+                  {hits && !hits.length && <div className="note">{t("Inga spelare hittades.")}</div>}
+                </div>
               </div>
-            </>
+            </div>
           )}
-          {!busy && hits && !hits.length && !setMatches.length && <div className="note">{t("Inget hittades.")}</div>}
         </div>
-      )}
-    </div>
+      )}    </div>
   );
 }
