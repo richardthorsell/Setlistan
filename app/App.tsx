@@ -221,9 +221,10 @@ export default function App() {
     let live = true;
     supabase
       .from("feedback_messages")
-      .select("id", { count: "exact", head: true })
+      .select("id, feedback!inner(user_id)", { count: "exact", head: true })
       .eq("sender", "admin")
       .is("read_at", null)
+      .eq("feedback.user_id", uid)
       .then(({ count }) => live && setUnreadMsgs(count || 0));
     return () => {
       live = false;
@@ -1028,7 +1029,7 @@ export default function App() {
 
       {showWait && !user && <WaitlistBox onClose={() => setShowWait(false)} />}
       {showFeedback && user && <FeedbackBox onClose={() => setShowFeedback(false)} say={say} />}
-      {showMsgs && user && <Messages supabase={supabase} onClose={() => setShowMsgs(false)} onRead={() => setUnreadMsgs(0)} say={say} />}
+      {showMsgs && user && <Messages supabase={supabase} userId={user.id} onClose={() => setShowMsgs(false)} onRead={() => setUnreadMsgs(0)} say={say} />}
       {showAccount && user && <AccountPanel supabase={supabase} email={user.email || ""} isAdmin={role !== null} onClose={() => setShowAccount(false)} say={say} />}
       {showWelcome && user && (
         <Welcome
