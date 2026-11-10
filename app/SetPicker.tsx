@@ -83,7 +83,7 @@ export default function SetPicker({ sets, counts, openId, favs, sport, setSport,
                 ))}
               </select>
             </div>
-            <div className="note mono">{list.length} av {sets.length} album</div>
+            <div className="note mono">{list.length} av {sets.length} set</div>
             <div className="picker-list" role="listbox" aria-label={t("Album")}>
               {list.map((s) => {
                 const n = counts[s.id] || 0;
