@@ -19,7 +19,7 @@ export default function Landing({ supabase, message }: { supabase: SupabaseClien
     { t: t("Se vad som saknas"), d: t("Filtrera på det du saknar, exportera listan och ta med den till kortmässan."), v: <MockMissing /> },
     { t: t("Vad är det värt?"), d: t("Se vad liknande kort faktiskt har sålts för på Tradera, direkt från kortet."), v: <MockTradera /> },
   ];
-  const [panel, setPanel] = useState<"wait" | "login" | null>(null);
+  const [panel, setPanel] = useState<"wait" | "login" | "invite" | null>(null);
 
   return (
     <div className="wrap landing">
@@ -37,7 +37,7 @@ export default function Landing({ supabase, message }: { supabase: SupabaseClien
           <p className="lead">{t("Sök fram en checklista, pricka av korten du har och se direkt vilka som fattas.")}</p>
           <div className="row">
             <button className="btn primary big" type="button" onClick={() => setPanel("wait")}>{t("Gå med i väntelistan")}</button>
-            <button className="btn big" type="button" onClick={() => setPanel("login")}>{t("Jag har en inbjudan")}</button>
+            <button className="btn big" type="button" onClick={() => setPanel("invite")}>{t("Jag har en inbjudan")}</button>
           </div>
           <div className="note">{t("Setlistan är i beta och öppnas för inbjudna i omgångar.")}</div>
         </header>
@@ -46,7 +46,7 @@ export default function Landing({ supabase, message }: { supabase: SupabaseClien
 
       {message && <div className="note warn">{message}</div>}
       {panel === "wait" && <WaitlistBox onClose={() => setPanel(null)} />}
-      {panel === "login" && <AuthBox supabase={supabase} onClose={() => setPanel(null)} />}
+      {(panel === "login" || panel === "invite") && <AuthBox supabase={supabase} initialMode={panel === "invite" ? "signup" : "login"} onClose={() => setPanel(null)} />}
 
       <section className="features" aria-label={t("Det här kan du göra")}>
         {FEATURES.map((f, i) => (
