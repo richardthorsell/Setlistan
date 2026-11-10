@@ -168,12 +168,14 @@ export default function AdminPanel({
   const [news, setNews] = useState<{ id: string; title: string; created_at: string }[]>([]);
   const [nTitle, setNTitle] = useState("");
   const [nBody, setNBody] = useState("");
+  const [nImportant, setNImportant] = useState(false);
   const postNews = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { error } = await supabase.from("app_updates").insert({ title: nTitle.trim(), body: nBody.trim() });
+    const { error } = await supabase.from("app_updates").insert({ title: nTitle.trim(), body: nBody.trim(), important: nImportant });
     if (error) return say("Kunde inte publicera uppdateringen.");
     setNTitle("");
     setNBody("");
+    setNImportant(false);
     await load();
     say("Uppdateringen är publicerad");
   };
@@ -521,6 +523,7 @@ export default function AdminPanel({
       <form className="row" onSubmit={postNews}>
         <input className="grow" required maxLength={120} placeholder="Rubrik" aria-label="Rubrik" value={nTitle} onChange={(e) => setNTitle(e.target.value)} />
         <input className="grow" required maxLength={1000} placeholder="Vad är nytt?" aria-label="Text" value={nBody} onChange={(e) => setNBody(e.target.value)} />
+        <label className="check"><input type="checkbox" checked={nImportant} onChange={(e) => setNImportant(e.target.checked)} /> <span>Viktig: öppnas som ruta</span></label>
         <button className="btn small primary" type="submit">Publicera</button>
       </form>
       {news.length > 0 && (
