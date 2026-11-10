@@ -8,7 +8,6 @@ import type { SetStat } from "@/lib/checklist";
 
 type Ov = { sets_started: number; cards_owned: number; dup_cards: number; for_sale_cards: number; for_sale_value: number | string; wish_count: number; wish_high: number; incoming_count: number };
 
-const nameOf = (s: SetStat) => s.short_name || s.name;
 const jump = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
 
 // The start page overview: a few numbers about your collection, each leading on to the view where you act on it.
@@ -17,10 +16,9 @@ export default function Overview({
   sets,
   counts,
   favs,
-  followedCount,
+  followed,
   refreshKey,
-  onOpenSet,
-  onMissing,
+  onMySets,
   onSell,
   onWish,
 }: {
@@ -28,10 +26,9 @@ export default function Overview({
   sets: SetStat[];
   counts: Record<string, number>;
   favs: Set<string>;
-  followedCount: number;
+  followed: { have?: number; total?: number }[];
   refreshKey: string;
-  onOpenSet: (id: string) => void;
-  onMissing: () => void;
+  onMySets: () => void;
   onSell: () => void;
   onWish: () => void;
 }) {
@@ -49,18 +46,21 @@ export default function Overview({
     };
   }, [supabase, refreshKey]);
 
-  const { started, closest, missingTotal, missingSets } = useMemo(() => {
+  // How much of the cards in the sets you have started you own.
+  const setStats = useMemo(() => {
     const started = sets.filter((s) => (counts[s.id] || 0) > 0);
-    const closest = started
-      .filter((s) => s.card_count > 0 && (counts[s.id] || 0) < s.card_count)
-      .sort((a, b) => (counts[b.id] || 0) / b.card_count - (counts[a.id] || 0) / a.card_count)[0];
-    const mine = sets.filter((s) => favs.has(s.id) || (counts[s.id] || 0) > 0);
-    const missingTotal = mine.reduce((n, s) => n + Math.max(0, s.card_count - (counts[s.id] || 0)), 0);
-    return { started, closest, missingTotal, missingSets: mine.filter((s) => s.card_count > (counts[s.id] || 0)).length };
-  }, [sets, counts, favs]);
+    const have = started.reduce((n, s) => n + (counts[s.id] || 0), 0);
+    const total = started.reduce((n, s) => n + s.card_count, 0);
+    return { n: started.length, pct: total ? Math.round((have / total) * 100) : 0 };
+  }, [sets, counts]);
+  const playerPct = useMemo(() => {
+    const total = followed.reduce((n, f) => n + (f.total || 0), 0);
+    const have = followed.reduce((n, f) => n + (f.have || 0), 0);
+    return total ? Math.round((have / total) * 100) : 0;
+  }, [followed]);
 
   if (!ov) return null;
-  if (ov.cards_owned === 0 && favs.size === 0 && followedCount === 0 && ov.wish_count === 0) {
+  if (ov.cards_owned === 0 && favs.size === 0 && followed.length === 0 && ov.wish_count === 0) {
     return (
       <div className="ov-start">
         <b>{t("Kom igång")}</b>
@@ -70,21 +70,20 @@ export default function Overview({
   }
 
   const value = Math.round(Number(ov.for_sale_value) || 0);
-  const pct = closest ? Math.round(((counts[closest.id] || 0) / closest.card_count) * 100) : 0;
   const wishSub = [ov.wish_high > 0 ? `${ov.wish_high} ${t("Hög").toLowerCase()}` : "", ov.incoming_count > 0 ? `${ov.incoming_count} ${t("På väg").toLowerCase()}` : ""].filter(Boolean).join(" · ");
   const saleSub = [value > 0 ? `${value} kr` : "", ov.dup_cards > 0 ? `${ov.dup_cards} ${t("Dubbletter").toLowerCase()}` : ""].filter(Boolean).join(" · ");
 
   return (
     <div className="ov-grid" role="group" aria-label={t("Översikt")}>
-      <button type="button" className="ov-tile" onClick={() => (closest ? onOpenSet(closest.id) : jump("fav-sets"))}>
+      <button type="button" className="ov-tile" onClick={onMySets}>
         <span className="label">{t("Mina set")}</span>
-        <span className="ov-num">{started.length}</span>
-        <span className="ov-sub">{closest ? `${t("Närmast klart")}: ${nameOf(closest)} · ${pct} %` : t("Inga påbörjade än")}</span>
+        <span className="ov-num">{setStats.n}</span>
+        <span className="ov-sub">{setStats.n > 0 ? `${setStats.pct} % ${t("av korten")}` : t("Inga påbörjade än")}</span>
       </button>
-      <button type="button" className="ov-tile" onClick={onMissing}>
-        <span className="label">{t("Saknas")}</span>
-        <span className="ov-num">{missingTotal}</span>
-        <span className="ov-sub">{missingSets > 0 ? `${t("i")} ${missingSets} ${t("set")}` : t("Favorisera ett set för att se vad som saknas")}</span>
+      <button type="button" className="ov-tile" onClick={() => jump("followed")}>
+        <span className="label">{t("Mina spelare")}</span>
+        <span className="ov-num">{followed.length}</span>
+        <span className="ov-sub">{followed.length > 0 ? `${playerPct} % ${t("av korten")}` : t("Följ en spelare från en sökning")}</span>
       </button>
       <button type="button" className="ov-tile" onClick={onSell}>
         <span className="label">{t("Till salu")}</span>
@@ -95,11 +94,6 @@ export default function Overview({
         <span className="label">{t("Önskelista")}</span>
         <span className="ov-num">{ov.wish_count}</span>
         <span className="ov-sub">{wishSub || t("Inget på önskelistan än")}</span>
-      </button>
-      <button type="button" className="ov-tile" onClick={() => jump("followed")}>
-        <span className="label">{t("Spelare du följer")}</span>
-        <span className="ov-num">{followedCount}</span>
-        <span className="ov-sub">{followedCount > 0 ? t("Visas här under") : t("Följ en spelare från en sökning")}</span>
       </button>
     </div>
   );
