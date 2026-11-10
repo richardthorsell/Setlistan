@@ -2,6 +2,7 @@
 // so the other languages keep looking up the original keys and keep their translations.
 const EXACT: Record<string, string> = {
   "delset": "serier",
+  "Hitta alla en spelares kort i alla set, eller välj ett set här under.": "Hitta en spelares kort i alla set, eller välj ett set här under.",
   "Sök fram en checklista, pricka av korten du har och se direkt vilka som fattas.": "Sök fram ett set, pricka av korten du har och se direkt vilka som fattas.",
   "Klistra in checklista": "Klistra in set",
   "Verifierad checklista": "Verifierat set",
