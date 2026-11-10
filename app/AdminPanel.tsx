@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { type SetStat, SPORTS, matches } from "@/lib/checklist";
+import FeedbackThread from "./FeedbackThread";
 
 type Overview = { users: number; collectors: number; owned: number; sets: number; fetches_24h: number; fetch_cost_month: number; tradera_calls_24h: number };
 type Job = { id: number; query: string; status: string; error: string | null; set_id: string | null; created_at: string; cost_usd: number };
@@ -583,11 +584,14 @@ export default function AdminPanel({
       {fb.length ? (
         <div className="admin-table">
           {fb.map((f) => (
-            <div key={f.id} className="admin-row">
+            <div key={f.id}>
+            <div className="admin-row">
               <span className="mono note">{when(f.created_at)}</span>
               <span className="pill">{{ idea: "Idé", bug: "Fel", other: "Annat" }[f.kind] || f.kind}</span>
               <span className="grow" style={{ whiteSpace: "pre-wrap" }}>{f.text}{f.email ? ` — ${f.email}` : ""}</span>
               <button className="btn small ghost" type="button" onClick={() => handled(f)}>{f.handled_at ? "Öppna igen" : "Klar"}</button>
+            </div>
+            <FeedbackThread supabase={supabase} id={f.id} email={f.email} onChanged={load} say={say} />
             </div>
           ))}
         </div>
