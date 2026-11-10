@@ -4,7 +4,7 @@ import { LangProvider } from "@/lib/i18n";
 
 export const metadata: Metadata = {
   title: "Setlistan",
-  description: "Sök fram checklistor för samlarkort, pricka av dem du har och se vilka som saknas.",
+  description: "Sök fram set för samlarkort, pricka av dem du har och se vilka som saknas.",
 };
 
 export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover" };

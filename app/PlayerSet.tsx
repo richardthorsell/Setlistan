@@ -8,6 +8,7 @@ import { ranges, slug } from "@/lib/checklist";
 import PlayerCardPar from "./PlayerCardPar";
 import TraderaPanel, { type TraderaScope } from "./TraderaPanel";
 import EbayPanel from "./EbayPanel";
+import Tip from "./Tip";
 
 type Player = { player_key: string; display_name: string };
 type PCard = { card_id: number; set_id: string; set_name: string; sport: string | null; section_code: string; section_name: string; no: number; name: string; team: string | null; qty: number | null };
@@ -316,6 +317,7 @@ export default function PlayerSet({
         <span className="bar"><i style={{ width: `${pct}%` }} /></span>
         <span className="mono">{pct} %</span>
       </div>
+      <Tip id="player">{t("Det här är alla spelarens kort i alla set. Tryck på ett kort för att markera det. Följ spelaren så ligger han kvar på startsidan.")}</Tip>
       <div className="actions">
         <details className="menu" onClick={(e) => { if ((e.target as HTMLElement).closest(".menu-pop button")) e.currentTarget.removeAttribute("open"); }}>
           <summary className="btn">{t("Exportera och dela")}</summary>
