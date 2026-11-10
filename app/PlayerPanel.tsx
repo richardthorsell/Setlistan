@@ -60,7 +60,7 @@ export default function PlayerPanel({ supabase, initialQ = "", sets, onOpenSet, 
 
   // Sets whose name matches the search, so one box finds both players and sets.
   const ql = q.trim().toLowerCase();
-  const setHits = ql.length >= 3 ? sets.filter((s) => s.name.toLowerCase().includes(ql)).slice(0, 8) : [];
+  const setMatches = ql.length >= 3 ? sets.filter((s) => s.name.toLowerCase().includes(ql)).slice(0, 8) : [];
 
   return (
     <div className="t-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
@@ -73,7 +73,7 @@ export default function PlayerPanel({ supabase, initialQ = "", sets, onOpenSet, 
         <input className="t-input" style={{ width: "100%" }} placeholder={t("Sök spelare, till exempel Mats Sundin")} aria-label={t("Sök spelare")} value={q} onChange={(e) => setQ(e.target.value)} autoFocus />
         {q.trim().length > 0 && q.trim().length < 3 && <div className="note">{t("Skriv minst tre tecken.")}</div>}
         {searching && <div className="note">{t("Söker …")}</div>}
-        {hits && !hits.length && !searching && !setHits.length && <div className="note">{t("Inga spelare hittades.")}</div>}
+        {hits && !hits.length && !searching && !setMatches.length && <div className="note">{t("Inga spelare hittades.")}</div>}
         {hits && (
           <div className="pl-list">
             {hits.map((h) => (
@@ -84,11 +84,11 @@ export default function PlayerPanel({ supabase, initialQ = "", sets, onOpenSet, 
             ))}
           </div>
         )}
-        {setHits.length > 0 && (
+        {setMatches.length > 0 && (
           <>
             <div className="label" style={{ marginTop: 6 }}>{t("Set")}</div>
             <div className="pl-list">
-              {setHits.map((s) => (
+              {setMatches.map((s) => (
                 <button key={s.id} type="button" className="pl-row" onClick={() => onOpenSet(s.id)}>
                   <b>{s.name}</b>
                 </button>
@@ -96,7 +96,7 @@ export default function PlayerPanel({ supabase, initialQ = "", sets, onOpenSet, 
             </div>
           </>
         )}
-        {!hits && !setHits.length && (
+        {!hits && !setMatches.length && (
           <>
             <div className="label" style={{ marginTop: 6 }}>{t("Spelare du följer")}</div>
             {favs.length ? (
