@@ -8,7 +8,7 @@ type Msg = { id: number; sender: "admin" | "user"; text: string; created_at: str
 const when = (iso: string) => new Date(iso).toLocaleString("sv-SE", { dateStyle: "short", timeStyle: "short" });
 
 // Under a feedback row in the inbox: the replies so far, and a box to answer. The answer is e-mailed to the user and shown in the app.
-export default function FeedbackThread({ supabase, id, email, onChanged, say }: { supabase: SupabaseClient; id: string; email: string | null; onChanged: () => void; say: (m: string) => void }) {
+export default function FeedbackThread({ supabase, id, email, mine, onChanged, say }: { supabase: SupabaseClient; id: string; email: string | null; mine?: boolean; onChanged: () => void; say: (m: string) => void }) {
   const [msgs, setMsgs] = useState<Msg[] | null>(null);
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
@@ -53,7 +53,7 @@ export default function FeedbackThread({ supabase, id, email, onChanged, say }: 
             <button className="btn small ghost" type="button" onClick={() => setOpen(false)}>Avbryt</button>
           </div>
         </>
-      ) : (
+      ) : mine ? null : (
         <div>
           <button className="btn small primary" type="button" onClick={() => setOpen(true)}>{msgs && msgs.length ? "Svara igen" : "Svara"}</button>
         </div>
