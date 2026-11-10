@@ -982,7 +982,6 @@ export default function App() {
           {user ? (
             <>
               <nav className="mainnav" aria-label={t("Meny")}>
-                <button className="navbtn" type="button" aria-pressed={showPlayers} onClick={() => { setPlayerQ(""); setShowPlayers((v) => !v); }}>{t("Spelare")}</button>
                 <button className="navbtn" type="button" aria-pressed={showWish} onClick={() => setShowWish((v) => !v)}>{t("Önskelista")}{wishCount ? ` ${wishCount}` : ""}</button>
                 <button className="navbtn" type="button" aria-pressed={showSell} onClick={() => setShowSell((v) => !v)}>{t("Sälj")}</button>
               </nav>
