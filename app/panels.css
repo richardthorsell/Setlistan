@@ -178,7 +178,7 @@
   .account { width: 100%; }
   .account .langsel { order: 0; }
   .menu { order: 1; margin-left: auto; }
-  .mainnav { order: 2; flex: 1 0 100%; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .mainnav { order: 2; flex: 1 0 100%; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 6px; }
   .navbtn { height: 42px; padding: 0 8px; background: var(--sunk); color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .menu summary { height: 38px; }
   .menu-pop { min-width: min(260px, calc(100vw - 32px)); }
