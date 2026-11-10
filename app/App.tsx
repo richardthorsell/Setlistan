@@ -11,6 +11,8 @@ import PlayerPanel from "./PlayerPanel";
 import PlayerSet from "./PlayerSet";
 import Tip from "./Tip";
 import StartSearch from "./StartSearch";
+import Overview from "./Overview";
+import MissingPanel from "./MissingPanel";
 import QuestionPrompt from "./QuestionPrompt";
 import QuestionsPanel from "./QuestionsPanel";
 import MergePanel from "./MergePanel";
@@ -100,6 +102,7 @@ export default function App() {
   const [undoFn, setUndoFn] = useState<(() => void) | null>(null);
   const [moreF, setMoreF] = useState(false);
   const [libOpen, setLibOpen] = useState(false);
+  const [showMissing, setShowMissing] = useState(false);
   const [role, setRole] = useState<"admin" | "superuser" | null>(null);
   const [showAuth, setShowAuth] = useState(false);
   const [showWait, setShowWait] = useState(false);
@@ -170,7 +173,7 @@ export default function App() {
   const lastChanged = useRef<number[]>([]);
   const uid = user?.id ?? null;
   // Panels have addresses (#spelare, #onskelista, #salj, #konto): a link opens one and Back closes it.
-  const panelKey = showPlayers ? "spelare" : showWish ? "onskelista" : showSell ? "salj" : showAccount ? "konto" : null;
+  const panelKey = showPlayers ? "spelare" : showWish ? "onskelista" : showSell ? "salj" : showAccount ? "konto" : showMissing ? "saknas" : null;
   const pushedPanel = useRef(false);
   const panelFirst = useRef(true);
   useEffect(() => {
@@ -180,6 +183,7 @@ export default function App() {
       setShowWish(h === "onskelista");
       setShowSell(h === "salj");
       setShowAccount(h === "konto");
+      setShowMissing(h === "saknas");
     };
     sync();
     window.addEventListener("popstate", sync);
@@ -200,7 +204,7 @@ export default function App() {
         history.pushState(null, "", "#" + panelKey);
         pushedPanel.current = true;
       }
-    } else if (["spelare", "onskelista", "salj", "konto"].includes(h)) {
+    } else if (["spelare", "onskelista", "salj", "konto", "saknas"].includes(h)) {
       if (pushedPanel.current) {
         pushedPanel.current = false;
         history.back();
@@ -497,12 +501,12 @@ export default function App() {
     const { error } = await supabase.from("favorite_players").delete().eq("player_key", key);
     if (error) say(t("Kunde inte spara."));
   };
-  const openSet = (id: string) => {
+  const openSet = (id: string, filterTo?: Filter) => {
     setPlayerSet(null);
     setOpenId(id);
     setSecIdx(0);
     setParSel(null);
-    setFilter("all");
+    setFilter(filterTo ?? "all");
     setFind("");
     setTeam("");
     setQ("");
@@ -1069,6 +1073,7 @@ export default function App() {
       {showPlayers && user && <PlayerPanel supabase={supabase} initialQ={playerQ} sets={sets} onOpenSet={(id) => { setShowPlayers(false); openSet(id); }} onClose={() => setShowPlayers(false)} onOpenPlayer={(p) => { setShowPlayers(false); openPlayer(p); }} />}
       {showSell && user && <SellPanel supabase={supabase} onClose={() => setShowSell(false)} />}
       {showWish && user && <WishPanel supabase={supabase} onClose={() => setShowWish(false)} onChanged={(n) => setWishCount(n)} />}
+      {showMissing && user && <MissingPanel sets={sets} counts={counts} favs={favs} onOpen={(id) => { setShowMissing(false); openSet(id, "missing"); }} onClose={() => setShowMissing(false)} />}
       {ebay && <EbayPanel key={ebay.narrow + "|" + ebay.broad} scope={ebay} signedIn={!!user} onClose={() => setEbay(null)} />}
       {tradera && <TraderaPanel key={tradera.narrow + "|" + tradera.broad} scope={tradera} signedIn={!!user} onClose={() => setTradera(null)} />}
 
@@ -1079,6 +1084,7 @@ export default function App() {
         </div>
         <StartSearch supabase={supabase} sets={sets} onOpenPlayer={openPlayer} onOpenSet={openSet} onBrowse={() => setLibOpen((v) => !v)} />
         <p className="hero-sub">{t("Hitta alla en spelares kort i alla set, eller välj ett set här under.")}</p>
+        <Overview supabase={supabase} sets={sets} counts={counts} favs={favs} followedCount={followed.length} refreshKey={`${showSell}${showWish}${showMissing}${playerSet ? 1 : 0}${openId ?? ""}`} onOpenSet={openSet} onMissing={() => setShowMissing(true)} onSell={() => setShowSell(true)} onWish={() => setShowWish(true)} />
       </header>
 
       {paste && (
@@ -1112,7 +1118,7 @@ export default function App() {
       <section>
         {sets.length ? (
           <SetPicker sets={sets} counts={counts} openId={openId} favs={favs} sport={sport} setSport={setSport} onOpen={openSet} onToggleFav={toggleFav} onSuggest={suggest} suggested={suggested} libOpen={libOpen} onLibOpen={setLibOpen} before={followed.length > 0 && (
-          <div className="hero-follow">
+          <div className="hero-follow" id="followed">
             <div className="label fav-head">{t("Spelare du följer")}</div>
             <div className="shelf">
               {followed.map((f) => {
