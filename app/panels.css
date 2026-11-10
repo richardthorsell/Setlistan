@@ -190,6 +190,9 @@
 @media (max-width: 560px) { .pl-line { gap: 3px; } .pl-line .star { width: 28px; height: 28px; } .pl-line .pl-card { padding: 7px 6px; gap: 6px; } }
 /* Export menu opens to the left edge, the counter stays visible on a phone, and the parallel mode is easy to see. */
 .menu-pop.left { left: 0; right: auto; }
+.start-search { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 680px; text-align: left; }
+.start-search .seg { align-self: flex-start; flex-wrap: wrap; }
+.start-results { display: flex; flex-direction: column; gap: 6px; }
 .tip { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; border-radius: 10px; border: 1.5px solid var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); font-size: 14px; }
 details.trade-box > summary { cursor: pointer; }
 .topbar .wordmark { font-weight: 800; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink); }
