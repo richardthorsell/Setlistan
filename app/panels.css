@@ -1,7 +1,7 @@
 /* Tradera button on cards, serial numbers and the Tradera panel. */
 .cardwrap { position: relative; }
 .cardwrap .card { width: 100%; }
-.tbtn { width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid var(--line); background: var(--surface); color: var(--muted); font: 700 11px var(--f-mono); display: grid; place-items: center; padding: 0; flex: none; }
+.tbtn { width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid var(--line); background: var(--surface); color: var(--muted); font: 700 12px var(--f-mono); display: grid; place-items: center; padding: 0; flex: none; }
 .tbtn:hover { border-color: var(--accent); color: var(--accent); }
 .cardwrap .tbtn { position: absolute; top: 30px; right: 8px; }
 .cardwrap .tbtn.ebay { right: 36px; }
@@ -32,7 +32,7 @@
   flex: none; height: 36px; padding: 0 14px; border-radius: 99px; border: 1.5px solid var(--line); background: var(--surface);
   font-weight: 600; font-size: 13.5px; display: inline-flex; align-items: center; gap: 6px;
 }
-.sports button small { font-family: var(--f-mono); font-size: 11.5px; color: var(--muted); }
+.sports button small { font-family: var(--f-mono); font-size: 12.5px; color: var(--muted); }
 .sports button:hover { border-color: var(--accent); }
 .sports button[aria-selected="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 .sports button[aria-selected="true"] small { color: inherit; opacity: .7; }
@@ -85,7 +85,7 @@
 .lwrap .star { width: 34px; height: 34px; font-size: 19px; line-height: 1; }
 
 /* Parallels chosen directly on a card. */
-.pbtn { height: 24px; padding: 0 9px; border-radius: 99px; border: 1.5px solid var(--line); background: var(--surface); color: var(--muted); font: 700 11px var(--f-mono); flex: none; }
+.pbtn { height: 24px; padding: 0 9px; border-radius: 99px; border: 1.5px solid var(--line); background: var(--surface); color: var(--muted); font: 700 12px var(--f-mono); flex: none; }
 .pbtn:hover { border-color: var(--accent); color: var(--accent); }
 .pbtn.on { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--surface)); }
 .cardwrap .pbtn { position: absolute; bottom: 8px; right: 8px; }
@@ -206,6 +206,8 @@ details.trade-box > summary { cursor: pointer; }
   .lwrap .star { width: 44px; height: 44px; }
   .lwrap { gap: 4px; }
   .xtra { display: none; }
+  .lrow { min-height: 48px; }
+  .sec { min-height: 44px; }
 }
 
 /* Start page: the player search is the centre of the page. */
