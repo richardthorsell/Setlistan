@@ -180,7 +180,8 @@ export async function GET(req: Request) {
   if (admin) {
     await admin.rpc("tradera_cache_put", { p_key: key, p_total: total, p_items: { items: shown, stats, seen: all } });
     // History: every sold auction once (by Tradera's own id) and the search itself, without any user information.
-    await admin.rpc("tradera_store_auctions", { p_items: items });
+    const { data: stored, error: storeErr } = await admin.rpc("tradera_store_auctions", { p_items: items });
+    if (storeErr || (items.length > 0 && !stored)) console.error("tradera: could not store auctions", storeErr?.message ?? `0 of ${items.length} stored`);
   }
   await logSearch(admin, key, ctx, stats, all, total, false);
   return Response.json({ items: shown, stats, seen: all, total, cached: false, searchUrl });
