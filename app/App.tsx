@@ -9,6 +9,7 @@ import EbayPanel from "./EbayPanel";
 import WishPanel from "./WishPanel";
 import PlayerPanel from "./PlayerPanel";
 import PlayerSet from "./PlayerSet";
+import Tip from "./Tip";
 import QuestionPrompt from "./QuestionPrompt";
 import QuestionsPanel from "./QuestionsPanel";
 import MergePanel from "./MergePanel";
@@ -166,6 +167,48 @@ export default function App() {
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const lastChanged = useRef<number[]>([]);
   const uid = user?.id ?? null;
+  // Panels have addresses (#spelare, #onskelista, #salj, #konto): a link opens one and Back closes it.
+  const panelKey = showPlayers ? "spelare" : showWish ? "onskelista" : showSell ? "salj" : showAccount ? "konto" : null;
+  const pushedPanel = useRef(false);
+  const panelFirst = useRef(true);
+  useEffect(() => {
+    const sync = () => {
+      const h = location.hash.slice(1);
+      setShowPlayers(h === "spelare");
+      setShowWish(h === "onskelista");
+      setShowSell(h === "salj");
+      setShowAccount(h === "konto");
+    };
+    sync();
+    window.addEventListener("popstate", sync);
+    window.addEventListener("hashchange", sync);
+    return () => {
+      window.removeEventListener("popstate", sync);
+      window.removeEventListener("hashchange", sync);
+    };
+  }, []);
+  useEffect(() => {
+    if (panelFirst.current) {
+      panelFirst.current = false;
+      return;
+    }
+    const h = location.hash.slice(1);
+    if (panelKey) {
+      if (h !== panelKey) {
+        history.pushState(null, "", "#" + panelKey);
+        pushedPanel.current = true;
+      }
+    } else if (["spelare", "onskelista", "salj", "konto"].includes(h)) {
+      if (pushedPanel.current) {
+        pushedPanel.current = false;
+        history.back();
+      } else {
+        history.replaceState(null, "", location.pathname + location.search);
+      }
+    } else {
+      pushedPanel.current = false;
+    }
+  }, [panelKey]);
   // Replies from the administrator that the user has not read yet.
   useEffect(() => {
     if (!uid || showMsgs) return;
@@ -1138,6 +1181,7 @@ export default function App() {
               <button className="btn small" type="button" onClick={() => setParSel(null)}>{t("Tillbaka till baskort")}</button>
             </div>
           )}
+          <Tip id="set">{t("Tryck på ett kort för att markera att du har det. Under Fler hittar du fler filter, och i Exportera och dela kan du kopiera, ladda ner eller dela det som saknas.")}</Tip>
           <div className="actions">
             <details className="menu" onClick={(e) => { if ((e.target as HTMLElement).closest(".menu-pop button")) e.currentTarget.removeAttribute("open"); }}>
               <summary className="btn">{t("Exportera och dela")}</summary>
