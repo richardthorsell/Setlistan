@@ -7,8 +7,8 @@ import { useT } from "@/lib/i18n";
 
 type Row = { id: number; set: string; code: string; no: number; name: string; team: string; qty: number; price?: number | null; buy?: number | null };
 type Pick = { cond: string; price: string };
-type Platform = "facebook" | "tradera" | "ebay" | "text";
-type Block = { key: string; title?: string; meta?: string; body: string };
+type Platform = "facebook" | "thread" | "tradera" | "ebay" | "text";
+type Block = { key: string; title?: string; meta?: string; body: string; lot?: { key: string; value: string } };
 
 const CONDS = [
   { id: "M", sv: "Mint", en: "Mint" },
@@ -23,6 +23,7 @@ const priceOf = (s: string) => {
   return Number.isFinite(n) && n >= 0 ? Math.round(n) : null;
 };
 const tag = (r: Row) => `${r.code ? r.code + " " : ""}${r.no}`;
+const DEFAULT_INTRO = "Samlarkort till salu\nKöparen står för frakten om inget annat överenskommes.\nBetalning via Swish.\nSkriv en kommentar eller ett meddelande om du är intresserad.";
 
 // Pick cards (by default your duplicates), set condition and price, and get a ready-made sales post
 // for Facebook, Tradera or eBay to paste next to your own photos. Nothing here is saved.
@@ -38,6 +39,32 @@ export default function SellPanel({ supabase, onClose }: { supabase: SupabaseCli
   const [platform, setPlatform] = useState<Platform>("facebook");
   const [extra, setExtra] = useState("Frakt 25 kr. Samfrakt vid flera kort.");
   const [copied, setCopied] = useState<string | null>(null);
+  // Facebook thread: cards under the lot limit are bundled per set, and the intro text is saved as your template.
+  const [lotMax, setLotMax] = useState("10");
+  const [lotPrice, setLotPrice] = useState<Record<string, string>>({});
+  const [intro, setIntro] = useState(DEFAULT_INTRO);
+  const [introSaved, setIntroSaved] = useState(false);
+
+  useEffect(() => {
+    let live = true;
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (!data.user) return;
+      const r = await supabase.from("user_state").select("sale_template").eq("user_id", data.user.id).maybeSingle();
+      const tpl = (r.data as { sale_template: string | null } | null)?.sale_template;
+      if (live && tpl) setIntro(tpl);
+    });
+    return () => {
+      live = false;
+    };
+  }, [supabase]);
+  const saveIntro = async () => {
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) return;
+    const { error } = await supabase.from("user_state").upsert({ user_id: data.user.id, sale_template: intro.trim().slice(0, 1000) });
+    if (error) return setErr(t("Kunde inte spara."));
+    setIntroSaved(true);
+    setTimeout(() => setIntroSaved(false), 1800);
+  };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -150,6 +177,30 @@ export default function SellPanel({ supabase, onClose }: { supabase: SupabaseCli
       const p = priceOf(sel[r.id].price);
       return `• ${tag(r)} ${r.name}${r.team ? ", " + r.team : ""} – ${cond(sel[r.id].cond).sv}${p !== null ? ` – ${p} kr` : ""}`;
     };
+    if (platform === "thread") {
+      const max = priceOf(lotMax) ?? 0;
+      const cheap = (r: Row) => {
+        const p = priceOf(sel[r.id].price);
+        return max > 0 && p !== null && p <= max;
+      };
+      const single = (r: Row) => {
+        const p = priceOf(sel[r.id].price);
+        return { key: String(r.id), body: `${r.name} ${tag(r)}, ${r.set}${r.qty > 1 ? ` (har ${r.qty} st)` : ""}${p !== null ? ` – ${p} kr` : ""}` } as Block;
+      };
+      const lots = new Map<string, Row[]>();
+      for (const r of items.filter(cheap)) (lots.get(r.set) || lots.set(r.set, []).get(r.set)!).push(r);
+      const out: Block[] = [{ key: "intro", body: intro }];
+      for (const r of items.filter((r) => !cheap(r) || (lots.get(r.set) || []).length < 2)) out.push(single(r));
+      for (const [s, list] of lots) {
+        if (list.length < 2) continue;
+        const total = list.reduce((n, r) => n + (priceOf(sel[r.id].price) ?? 0), 0);
+        const per = Math.round(total / list.length);
+        const suggested = Math.max(per, Math.round((total * 0.75) / 5) * 5);
+        const lp = priceOf(lotPrice[s] ?? "") ?? suggested;
+        out.push({ key: "lot:" + s, lot: { key: s, value: String(suggested) }, body: `${s} – ${list.length} kort: ${list.map(tag).join(", ")}\n${per} kr/st eller ${lp} kr för alla` });
+      }
+      return out;
+    }
     if (platform === "facebook" || platform === "text") {
       const sets = [...new Set(items.map((r) => r.set))];
       const body = sets.map((s) => `${s}\n${items.filter((r) => r.set === s).map(line).join("\n")}`).join("\n\n");
@@ -175,7 +226,7 @@ export default function SellPanel({ supabase, onClose }: { supabase: SupabaseCli
         body: `${r.name}${r.team ? ", " + r.team : ""}\n${r.set} - card ${tag(r)}.\nCondition: ${c.en}.\nCombined shipping available. Photos show the actual card.`,
       };
     });
-  }, [items, sel, platform, extra]);
+  }, [items, sel, platform, extra, lotMax, lotPrice, intro]);
 
   const copy = async (key: string, text: string) => {
     try {
@@ -257,12 +308,19 @@ export default function SellPanel({ supabase, onClose }: { supabase: SupabaseCli
             <div className="label">{n} {t("kort valda")}</div>
             <div className="row">
               <div className="seg" role="group" aria-label={t("Plattform")}>
-                {([["facebook", "Facebook"], ["tradera", "Tradera"], ["ebay", "eBay"], ["text", t("Text")]] as [Platform, string][]).map(([k, l]) => (
+                {([["facebook", "Facebook"], ["thread", t("Facebook-tråd")], ["tradera", "Tradera"], ["ebay", "eBay"], ["text", t("Text")]] as [Platform, string][]).map(([k, l]) => (
                   <button key={k} type="button" aria-pressed={platform === k} onClick={() => setPlatform(k)}>{l}</button>
                 ))}
               </div>
             </div>
-            {platform !== "ebay" && (
+            {platform === "thread" && (
+              <div className="row">
+                <span className="note">{t("Lot för kort under")}</span>
+                <input className="t-input" style={{ width: 80 }} inputMode="numeric" value={lotMax} onChange={(e) => setLotMax(e.target.value)} aria-label={t("Lot för kort under")} />
+                <span className="note">kr</span>
+              </div>
+            )}
+            {platform !== "ebay" && platform !== "thread" && (
               <input className="t-input" style={{ width: "100%" }} value={extra} onChange={(e) => setExtra(e.target.value)} maxLength={200} aria-label={t("Frakt och hämtning")} placeholder={t("Frakt och hämtning")} />
             )}
             {blocks.map((b) => (
@@ -274,9 +332,16 @@ export default function SellPanel({ supabase, onClose }: { supabase: SupabaseCli
                   </div>
                 )}
                 {b.meta && <div className="note">{b.meta}</div>}
-                <textarea readOnly value={b.body} onFocus={(e) => e.target.select()} rows={Math.min(14, b.body.split("\n").length + 1)} aria-label={t("Säljtext")} />
+                {b.lot && (
+                  <div className="row">
+                    <span className="note">{t("Lotpris, kr")}</span>
+                    <input className="t-input" style={{ width: 90 }} inputMode="numeric" value={lotPrice[b.lot.key] ?? b.lot.value} onChange={(e) => setLotPrice((p) => ({ ...p, [b.lot!.key]: e.target.value }))} aria-label={t("Lotpris, kr")} />
+                  </div>
+                )}
+                <textarea readOnly={b.key !== "intro"} value={b.key === "intro" ? intro : b.body} onChange={b.key === "intro" ? (e) => setIntro(e.target.value) : undefined} onFocus={(e) => b.key !== "intro" && e.target.select()} rows={Math.min(14, (b.key === "intro" ? intro : b.body).split("\n").length + 1)} maxLength={b.key === "intro" ? 1000 : undefined} aria-label={b.key === "intro" ? t("Inledning") : t("Säljtext")} />
                 <div className="actions">
-                  <button className="btn primary small" type="button" onClick={() => copy(b.key, b.body)}>{copied === b.key ? t("Kopierad") : t("Kopiera text")}</button>
+                  <button className="btn primary small" type="button" onClick={() => copy(b.key, b.key === "intro" ? intro : b.body)}>{copied === b.key ? t("Kopierad") : t("Kopiera text")}</button>
+                  {b.key === "intro" && <button className="btn small" type="button" onClick={saveIntro}>{introSaved ? t("Mallen är sparad") : t("Spara som mall")}</button>}
                 </div>
               </div>
             ))}
