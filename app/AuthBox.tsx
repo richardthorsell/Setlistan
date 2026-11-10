@@ -8,9 +8,9 @@ import { useT } from "@/lib/i18n";
 type Mode = "login" | "signup" | "link";
 
 // Sign-in panel: password (sign in / create account) or a one-time link by e-mail.
-export default function AuthBox({ supabase, onClose }: { supabase: SupabaseClient; onClose: () => void }) {
+export default function AuthBox({ supabase, onClose, initialMode = "login" }: { supabase: SupabaseClient; onClose: () => void; initialMode?: Mode }) {
   const t = useT();
-  const [mode, setMode] = useState<Mode>("login");
+  const [mode, setMode] = useState<Mode>(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
