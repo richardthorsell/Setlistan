@@ -6,7 +6,7 @@ import "./panels.css";
 import "./landing.css";
 import { type Lang, localeOf, useLang, useT } from "@/lib/i18n";
 
-export type Update = { id: string; title: string; body: string; created_at: string };
+export type Update = { id: string; title: string; body: string; created_at: string; important?: boolean };
 
 const when = (iso: string, lang: Lang) => new Date(iso).toLocaleDateString(localeOf(lang), { year: "numeric", month: "short", day: "numeric" });
 

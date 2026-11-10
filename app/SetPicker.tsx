@@ -68,7 +68,7 @@ export default function SetPicker({ sets, counts, openId, favs, sport, setSport,
       <div className="label">{t("Biblioteket")}</div>
 
       <div className="picker" ref={box}>
-        <button className="picker-btn" type="button" aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+        <button className="picker-btn" type="button" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
           <span>{current ? nameOf(current) : `${t("Välj album")} (${sets.length})`}</span>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
         </button>
@@ -84,11 +84,11 @@ export default function SetPicker({ sets, counts, openId, favs, sport, setSport,
               </select>
             </div>
             <div className="note mono">{list.length} av {sets.length} set</div>
-            <div className="picker-list" role="listbox" aria-label={t("Album")}>
+            <div className="picker-list" role="list" aria-label={t("Album")}>
               {list.map((s) => {
                 const n = counts[s.id] || 0;
                 return (
-                  <div key={s.id} className={`picker-row ${s.id === openId ? "active" : ""}`} role="option" aria-selected={s.id === openId}>
+                  <div key={s.id} className={`picker-row ${s.id === openId ? "active" : ""}`} role="listitem" aria-current={s.id === openId ? "true" : undefined}>
                     <button className="picker-pick" type="button" onClick={() => { onOpen(s.id); setOpen(false); setQ(""); }}>
                       <span className="picker-name">{nameOf(s)}</span>
                       <span className="sub mono">{!sport && `${t(sportLabel(s.sport))} · `}{n} / {s.card_count}</span>

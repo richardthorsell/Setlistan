@@ -73,6 +73,8 @@ export default function CardPar({
   const [buy, setBuy] = useState(trade?.buy_price != null ? String(trade.buy_price) : "");
   const [sell, setSell] = useState(trade?.sell_price != null ? String(trade.sell_price) : "");
   const forSale = Math.min(trade?.for_sale ?? 0, baseQty);
+  const [tradeOpen, setTradeOpen] = useState(!!trade && (trade.for_sale > 0 || trade.buy_price !== null || trade.sell_price !== null || trade.incoming));
+  const [wishOpen, setWishOpen] = useState(!!wish);
   const savePrices = () => {
     const b = toNum(buy);
     const s = toNum(sell);
@@ -142,8 +144,9 @@ export default function CardPar({
             })}
           </div>
         )}
+        {options.length > 0 && <div className="note">{t("Markera de paralleller du har av kortet. Serienumret är valfritt.")}</div>}
 
-        <details className="wish-box trade-box" open={!!trade && (trade.for_sale > 0 || trade.buy_price !== null || trade.sell_price !== null || trade.incoming)}>
+        <details className="wish-box trade-box" open={tradeOpen} onToggle={(e) => setTradeOpen((e.currentTarget as HTMLDetailsElement).open)}>
           <summary className="label">{t("Till salu och värde")}</summary>
           {baseQty > 0 && (
             <div className="par-row">
@@ -176,7 +179,8 @@ export default function CardPar({
           )}
         </details>
 
-        <div className="wish-box">
+        <details className="wish-box" open={wishOpen} onToggle={(e) => setWishOpen((e.currentTarget as HTMLDetailsElement).open)}>
+          <summary className="label">{t("Önskelista")}</summary>
           <label className="check">
             <input type="checkbox" checked={!!wish} onChange={(e) => onWish(e.target.checked ? { priority: 2, max_price: null, note: null } : null)} />
             <span><b>{t("Önskelista")}</b> {t("Jag jagar det här kortet")}</span>
@@ -200,14 +204,13 @@ export default function CardPar({
               />
             </div>
           )}
-        </div>
+        </details>
         {(onTradera || onEbay) && (
           <div className="row">
             {onTradera && <button className="btn small" type="button" onClick={onTradera}>{t("Sålda på Tradera")}</button>}
             {onEbay && <button className="btn small" type="button" onClick={onEbay}>{t("Auktioner på eBay")}</button>}
           </div>
         )}
-        <div className="note">{t("Markera de paralleller du har av kortet. Serienumret är valfritt.")}</div>
       </section>
     </div>
   );
