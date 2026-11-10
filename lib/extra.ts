@@ -1,6 +1,19 @@
 // Newer texts, keyed by the Swedish source text, per language. Checked before the main dictionaries.
 export const EXTRA: Record<string, Record<string, string>> = {
-  en: { "baskort": "base cards", "paralleller": "parallels" },
+  en: {
+    "baskort": "base cards", "paralleller": "parallels",
+    "Fler": "More", "Färre": "Fewer", "Ångra": "Undo", "Sluta följa": "Unfollow",
+    "Du markerar:": "You are marking:", "Tillbaka till baskort": "Back to base cards", "Exportera och dela": "Export and share",
+    "Sök efter en spelare i rutan högst upp, eller välj ett set under Biblioteket, till exempel Topps Premier League Flagship 26/27. Saknas setet kan du föreslå det så lägger vi in det.": "Search for a player in the box at the top, or pick a set under Library, for example Topps Premier League Flagship 26/27. If the set is missing you can suggest it and we will add it.",
+    "Öppna ett kort och välj Sålda på Tradera eller Auktioner på eBay för att se vad liknande kort går för. Under Nytt ser du alltid vad som har ändrats i Setlistan.": "Open a card and choose Sold on Tradera or eBay auctions to see what similar cards go for. Under News you can always see what has changed in Setlistan.",
+    "Set, delset eller nummer": "Set, subset or number", "Sök bland korten": "Search the cards", "Alla set": "All sets",
+    "Set,Nummer,Delset,Spelare,Lag,Har,Antal": "Set,Number,Subset,Player,Team,Have,Count",
+    "En snabb fråga": "A quick question", "Fråga från Setlistan": "A question from Setlistan", "Tack för svaret!": "Thanks for your answer!", "Ditt svar": "Your answer", "Inte nu": "Not now", "Kunde inte spara svaret just nu.": "Could not save your answer right now.",
+    "Meddelanden": "Messages", "Du": "You", "Svara Richard": "Reply to Richard", "Tack! Ditt svar är skickat.": "Thanks! Your reply has been sent.", "Kunde inte skicka svaret.": "Could not send the reply.",
+    "Du har inte skickat någon feedback än. Använd Meny, sedan Feedback.": "You have not sent any feedback yet. Use Menu, then Feedback.",
+    "Inga svar än. När Richard svarar på din feedback syns det här, och du får ett mejl.": "No replies yet. When Richard replies to your feedback it shows here, and you get an e-mail.",
+    "Utan svar än": "Not answered yet",
+  },
   da: { "baskort": "basekort", "paralleller": "paralleller" },
   no: { "baskort": "basekort", "paralleller": "parallelle" },
   fi: { "baskort": "peruskorttia", "paralleller": "parallel-korttia" },
