@@ -14,11 +14,13 @@ export default function StartSearch({
   sets,
   onOpenPlayer,
   onOpenSet,
+  onBrowse,
 }: {
   supabase: SupabaseClient;
   sets: SetStat[];
   onOpenPlayer: (p: { player_key: string; display_name: string }) => void;
   onOpenSet: (id: string) => void;
+  onBrowse: () => void;
 }) {
   const t = useT();
   const [q, setQ] = useState("");
@@ -54,15 +56,18 @@ export default function StartSearch({
 
   return (
     <div className="start-search">
-      <input type="search" className="hero-input" placeholder={t("Sök spelare eller set")} aria-label={t("Sök spelare eller set")} value={q} onChange={(e) => setQ(e.target.value)} />
-      {used.length > 1 && (
-        <div className="seg" role="group" aria-label={t("Sport")}>
-          <button type="button" aria-pressed={sport === ""} onClick={() => setSport("")}>{t("Alla sporter")}</button>
-          {used.map((s) => (
-            <button key={s.id} type="button" aria-pressed={sport === s.id} onClick={() => setSport(s.id)}>{t(s.label)}</button>
-          ))}
-        </div>
-      )}
+      <div className="start-row">
+        <input type="search" className="shelf-search" placeholder={t("Sök spelare eller set")} aria-label={t("Sök spelare eller set")} value={q} onChange={(e) => setQ(e.target.value)} />
+        {used.length > 1 && (
+          <select className="sport-select" aria-label={t("Sport")} value={sport} onChange={(e) => setSport(e.target.value)}>
+            <option value="">{t("Alla sporter")}</option>
+            {used.map((s) => (
+              <option key={s.id} value={s.id}>{t(s.label)}</option>
+            ))}
+          </select>
+        )}
+        <button className="btn" type="button" onMouseDown={(e) => e.stopPropagation()} onClick={onBrowse}>{t("Sök i Biblioteket")}</button>
+      </div>
       {term.length > 0 && term.length < 3 && <div className="note">{t("Skriv minst tre tecken.")}</div>}
       {busy && <div className="note">{t("Söker …")}</div>}
       {term.length >= 3 && (
