@@ -33,11 +33,9 @@ export async function POST(req: Request) {
       mailed = await sendMail(
         mail,
         "Svar på din feedback till Setlistan",
-        `<p>Hej!</p><p>Du har fått ett svar på din feedback:</p>` +
-          `<blockquote style="margin:0 0 12px;padding:8px 14px;border-left:3px solid #5b21b6;white-space:pre-wrap">${esc(text)}</blockquote>` +
-          `<p>Du kan svara direkt i tjänsten: öppna <a href="${url}">${url}</a> och välj Meny, sedan Meddelanden. Du kan också svara på det här mejlet.</p>` +
+        `<p>Hej!</p><p>Du har fått ett svar på din feedback till Setlistan.</p>` +
+          `<p>Logga in för att läsa svaret och svara: <a href="${url}">${url}</a><br>Välj sedan Meny och Meddelanden.</p>` +
           `<p>Hälsningar,<br>Richard</p>`,
-        notify || undefined,
       );
     }
     return Response.json({ ok: true, mailed });
