@@ -169,6 +169,7 @@ export default function AdminPanel({
   const [nTitle, setNTitle] = useState("");
   const [nBody, setNBody] = useState("");
   const [nImportant, setNImportant] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   const postNews = async (e: React.FormEvent) => {
     e.preventDefault();
     const { error } = await supabase.from("app_updates").insert({ title: nTitle.trim(), body: nBody.trim(), important: nImportant });
@@ -583,23 +584,26 @@ export default function AdminPanel({
       </>)}
 
       {tab === "inbox" && (<>
-      <div className="label">Feedback ({fb.filter((f) => !f.handled_at).length} ohanterad)</div>
+      <div className="label">Feedback ({fb.filter((f) => !f.handled_at).length} nya)</div>
       {fb.length ? (
         <div className="admin-table">
-          {fb.map((f) => (
+          {fb.filter((f) => showArchived || !f.handled_at).map((f) => (
             <div key={f.id}>
             <div className="admin-row">
               <span className="mono note">{when(f.created_at)}</span>
               <span className="pill">{{ idea: "Idé", bug: "Fel", other: "Annat" }[f.kind] || f.kind}</span>
               <span className="grow" style={{ whiteSpace: "pre-wrap" }}>{f.text}{f.email ? ` — ${f.email}` : ""}</span>
-              <button className="btn small ghost" type="button" onClick={() => handled(f)}>{f.handled_at ? "Öppna igen" : "Klar"}</button>
+              <button className="btn small ghost" type="button" onClick={() => handled(f)}>{f.handled_at ? "Ta fram igen" : "Arkivera"}</button>
             </div>
-            <FeedbackThread supabase={supabase} id={f.id} email={f.email} onChanged={load} say={say} />
+            <FeedbackThread supabase={supabase} id={f.id} email={f.email} mine={(f.email || "").toLowerCase() === myEmail} onChanged={load} say={say} />
             </div>
           ))}
         </div>
       ) : (
         <div className="note">Ingen feedback än.</div>
+      )}
+      {fb.some((f) => f.handled_at) && (
+        <button className="btn small ghost" type="button" onClick={() => setShowArchived((v) => !v)}>{showArchived ? "Dölj arkiverade" : `Visa arkiverade (${fb.filter((f) => f.handled_at).length})`}</button>
       )}
 
       </>)}
