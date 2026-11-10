@@ -204,6 +204,7 @@ details.trade-box > summary { cursor: pointer; }
   .pbtn { height: 40px; min-width: 48px; }
   .lwrap .star { width: 44px; height: 44px; }
   .lwrap { gap: 4px; }
+  .xtra { display: none; }
 }
 
 /* Start page: the player search is the centre of the page. */
