@@ -196,6 +196,12 @@
 .start-row .sport-select { height: 44px; }
 .start-row .btn { height: 44px; }
 .start-scroll { max-height: 360px; overflow-y: auto; }
+.ov-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; width: 100%; max-width: 920px; text-align: left; }
+.ov-tile { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--surface); text-align: left; min-height: 44px; }
+.ov-tile:hover { border-color: var(--accent); }
+.ov-num { font-family: var(--f-display); font-size: 32px; font-weight: 800; line-height: 1.1; color: var(--ink); }
+.ov-sub { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.ov-start { display: flex; flex-direction: column; gap: 4px; width: 100%; max-width: 920px; padding: 14px 16px; border: 1.5px dashed var(--line); border-radius: 12px; text-align: left; }
 .start-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
 .start-col { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 @media (max-width: 700px) { .start-cols { grid-template-columns: minmax(0, 1fr); } }
