@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import "./panels.css";
 import { useT } from "@/lib/i18n";
-import { SPORTS, type SetStat, sportLabel } from "@/lib/checklist";
+import { SPORTS, type SetStat, matches, sportLabel } from "@/lib/checklist";
 
 type Hit = { player_key: string; display_name: string; cards: number; sets: number; variants?: number };
 
@@ -51,7 +51,7 @@ export default function StartSearch({
   }, [term, sport, supabase]);
 
   const ql = term.toLowerCase();
-  const setMatches = ql.length >= 3 ? sets.filter((s) => (!sport || s.sport === sport) && s.name.toLowerCase().includes(ql)).slice(0, 8) : [];
+  const setMatches = ql.length >= 3 ? sets.filter((s) => (!sport || s.sport === sport) && matches(s, term)).sort((a, b) => (a.short_name || a.name).localeCompare(b.short_name || b.name, "sv")) : [];
   const done = () => setQ("");
 
   return (
@@ -74,7 +74,7 @@ export default function StartSearch({
         <div className="start-results">
           {hits && hits.length > 0 && (
             <>
-              <div className="label">{t("Spelare")}</div>
+              <div className="label">{t("Spelare")} ({hits.length >= 30 ? "30+" : hits.length})</div>
               <div className="pl-list">
                 {hits.map((h) => (
                   <button key={h.player_key} type="button" className="pl-row" onClick={() => { onOpenPlayer({ player_key: h.player_key, display_name: h.display_name }); done(); }}>
@@ -87,8 +87,8 @@ export default function StartSearch({
           )}
           {setMatches.length > 0 && (
             <>
-              <div className="label">{t("Set")}</div>
-              <div className="pl-list">
+              <div className="label">{t("Set")} ({setMatches.length})</div>
+              <div className="pl-list start-scroll">
                 {setMatches.map((s) => (
                   <button key={s.id} type="button" className="pl-row" onClick={() => { onOpenSet(s.id); done(); }}>
                     <b>{s.name}</b>
