@@ -44,6 +44,8 @@ export default function CardPar({
   onArrived,
   onToggle,
   onSerial,
+  onTradera,
+  onEbay,
   onClose,
 }: {
   cardId: number;
@@ -62,6 +64,8 @@ export default function CardPar({
   onArrived: () => void;
   onToggle: (parallelId: number, on: boolean) => void;
   onSerial: (parallelId: number, value: string) => void;
+  onTradera?: () => void;
+  onEbay?: () => void;
   onClose: () => void;
 }) {
   const t = useT();
@@ -139,8 +143,8 @@ export default function CardPar({
           </div>
         )}
 
-        <div className="wish-box trade-box">
-          <div className="label">{t("Till salu och värde")}</div>
+        <details className="wish-box trade-box" open={!!trade && (trade.for_sale > 0 || trade.buy_price !== null || trade.sell_price !== null || trade.incoming)}>
+          <summary className="label">{t("Till salu och värde")}</summary>
           {baseQty > 0 && (
             <div className="par-row">
               <span className="grow">{t("Till salu")}<span className="note"> · {forSale > 0 ? `${forSale} ${t("av")} ${baseQty}` : t("Inte till salu")}</span></span>
@@ -170,7 +174,7 @@ export default function CardPar({
               {baseQty === 0 && <button className="btn small primary" type="button" onClick={onArrived}>{t("Kortet har kommit")}</button>}
             </div>
           )}
-        </div>
+        </details>
 
         <div className="wish-box">
           <label className="check">
@@ -197,6 +201,12 @@ export default function CardPar({
             </div>
           )}
         </div>
+        {(onTradera || onEbay) && (
+          <div className="row">
+            {onTradera && <button className="btn small" type="button" onClick={onTradera}>{t("Sålda på Tradera")}</button>}
+            {onEbay && <button className="btn small" type="button" onClick={onEbay}>{t("Auktioner på eBay")}</button>}
+          </div>
+        )}
         <div className="note">{t("Markera de paralleller du har av kortet. Serienumret är valfritt.")}</div>
       </section>
     </div>

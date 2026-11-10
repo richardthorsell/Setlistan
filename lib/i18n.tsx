@@ -83,7 +83,7 @@ export const useLang = () => useContext(Ctx);
 
 export function useT() {
   const { lang, dict } = useContext(Ctx);
-  return (sv: string) => (lang === "sv" ? sv : EXTRA[lang]?.[sv] ?? dict[sv] ?? EN[sv] ?? sv);
+  return (sv: string) => (lang === "sv" ? sv : EXTRA[lang]?.[sv] ?? dict[sv] ?? EXTRA.en?.[sv] ?? EN[sv] ?? sv);
 }
 
 // Set notes come from the importers (Swedish); this translates the known sentences.

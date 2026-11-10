@@ -40,6 +40,7 @@ export default function PlayerSet({
   const [trades, setTrades] = useState<Map<number, TradeLite>>(new Map());
   const [filter, setFilter] = useState<Filter>("all");
   const [find, setFind] = useState("");
+  const [moreF, setMoreF] = useState(false);
   const [setKey, setSetKey] = useState("");
   const [parCard, setParCard] = useState<PCard | null>(null);
   const [tradera, setTradera] = useState<TraderaScope | null>(null);
@@ -310,17 +311,26 @@ export default function PlayerSet({
         </div>
       </div>
       <div className="bar big-bar"><i style={{ width: `${pct}%` }} /></div>
-      <div className="actions">
-        <button className="btn" type="button" onClick={copyMissing}>{t("Kopiera saknade")}</button>
-        <button className="btn" type="button" onClick={() => downloadCsv(true)}>{t("Ladda ner saknade (CSV)")}</button>
-        <button className="btn" type="button" onClick={() => downloadCsv(false)}>{t("Ladda ner hela setlistan")}</button>
-        <button className="btn" type="button" onClick={() => shareList("missing")}>{t("Dela saknade som länk")}</button>
-        {dupCount > 0 && <button className="btn" type="button" onClick={() => shareList("dups")}>{t("Dela dubbletter som länk")}</button>}
-        <button className="btn ghost" type="button" onClick={unshareLists}>{t("Stäng av delning")}</button>
-        <button className="btn" type="button" onClick={() => setTradera(scopeOf())}>{t("Sålda på Tradera")}</button>
-        <button className="btn" type="button" onClick={() => setEbay(scopeOf())}>{t("Auktioner på eBay")}</button>
+      <div className="minibar" aria-hidden="true">
+        <b className="mono">{have}/{total}</b>
+        <span className="bar"><i style={{ width: `${pct}%` }} /></span>
+        <span className="mono">{pct} %</span>
       </div>
-      {copyText && (
+      <div className="actions">
+        <details className="menu" onClick={(e) => { if ((e.target as HTMLElement).closest(".menu-pop button")) e.currentTarget.removeAttribute("open"); }}>
+          <summary className="btn">{t("Exportera och dela")}</summary>
+          <div className="menu-pop left">
+            <button type="button" onClick={copyMissing}>{t("Kopiera saknade")}</button>
+            <button type="button" onClick={() => downloadCsv(true)}>{t("Ladda ner saknade (CSV)")}</button>
+            <button type="button" onClick={() => downloadCsv(false)}>{t("Ladda ner hela setlistan")}</button>
+            <button type="button" onClick={() => shareList("missing")}>{t("Dela saknade som länk")}</button>
+            {dupCount > 0 && <button type="button" onClick={() => shareList("dups")}>{t("Dela dubbletter som länk")}</button>}
+            <button type="button" onClick={unshareLists}>{t("Stäng av delning")}</button>
+            <button type="button" onClick={() => setTradera(scopeOf())}>{t("Sålda på Tradera")}</button>
+            <button type="button" onClick={() => setEbay(scopeOf())}>{t("Auktioner på eBay")}</button>
+          </div>
+        </details>
+      </div>      {copyText && (
         <div className="panel">
           <div className="note">{t("Kopiera texten nedan:")}</div>
           <textarea readOnly value={copyText} onFocus={(e) => e.target.select()} autoFocus />
@@ -345,9 +355,10 @@ export default function PlayerSet({
 
       <div className="controls">
         <div className="seg" role="group" aria-label={t("Visa")}>
-          {(["all", "missing", "have", "dups", "sale", "incoming", "wish", "fav"] as Filter[]).map((k) => (
+          {(["all", "missing", "have", ...(moreF || !["all", "missing", "have"].includes(filter) ? ["dups", "sale", "incoming", "wish", "fav"] : [])] as Filter[]).map((k) => (
             <button key={k} type="button" aria-pressed={filter === k} onClick={() => setFilter(k)}>{filterLabels[k]}</button>
           ))}
+          <button type="button" aria-pressed={moreF} onClick={() => setMoreF((v) => !v)}>{moreF ? t("Färre") : t("Fler")}</button>
         </div>
         <input type="search" placeholder={t("Set, delset eller nummer")} value={find} onChange={(e) => setFind(e.target.value)} aria-label={t("Sök bland korten")} />
       </div>
@@ -379,10 +390,10 @@ export default function PlayerSet({
                   </button>
                   <button className={`pbtn${parCounts.get(c.card_id) || wishIds.has(c.card_id) ? " on" : ""}`} type="button" title={t("Antal, paralleller och önskelista")} aria-label={`${t("Mer om")} ${c.name}`} onClick={() => setParCard(c)}>{t("Par.")}{parCounts.get(c.card_id) ? ` ${parCounts.get(c.card_id)}` : ""}{wishIds.has(c.card_id) ? " ♡" : ""}</button>
                   <button className={`star${favCards.has(c.card_id) ? " on" : ""}`} type="button" aria-pressed={favCards.has(c.card_id)} title={t("Favorit: extra värdefull")} aria-label={`${c.name}: ${t("Favorit: extra värdefull")}`} onClick={() => toggleFavCard(c)}>{favCards.has(c.card_id) ? "★" : "☆"}</button>
-                  <button className={`star wish${wishIds.has(c.card_id) ? " on" : ""}`} type="button" aria-pressed={wishIds.has(c.card_id)} title={t("Önskelista: jag jagar det här kortet")} aria-label={`${c.name}: ${t("Önskelista: jag jagar det här kortet")}`} onClick={() => toggleWish(c)}>{wishIds.has(c.card_id) ? "♥" : "♡"}</button>
-                  <button className={`star dup${(c.qty ?? 0) > 1 ? " on" : ""}`} type="button" aria-pressed={(c.qty ?? 0) > 1} title={t("Dubblett: jag har flera av det här kortet")} aria-label={`${c.name}: ${t("Dubblett")}`} onClick={() => toggleDup(c)}>⧉</button>
-                  <button className="tbtn" type="button" title={t("Visa sålda på Tradera")} aria-label={`${c.name}: ${t("Visa sålda på Tradera")}`} onClick={() => setTradera(scopeOf(c))}>T</button>
-                  <button className="tbtn" type="button" title={t("Auktioner på eBay")} aria-label={`${c.name}: ${t("Auktioner på eBay")}`} onClick={() => setEbay(scopeOf(c))}>E</button>
+                  <button className={`star wish xtra${wishIds.has(c.card_id) ? " on" : ""}`} type="button" aria-pressed={wishIds.has(c.card_id)} title={t("Önskelista: jag jagar det här kortet")} aria-label={`${c.name}: ${t("Önskelista: jag jagar det här kortet")}`} onClick={() => toggleWish(c)}>{wishIds.has(c.card_id) ? "♥" : "♡"}</button>
+                  <button className={`star dup xtra${(c.qty ?? 0) > 1 ? " on" : ""}`} type="button" aria-pressed={(c.qty ?? 0) > 1} title={t("Dubblett: jag har flera av det här kortet")} aria-label={`${c.name}: ${t("Dubblett")}`} onClick={() => ((c.qty ?? 0) > 2 ? setParCard(c) : toggleDup(c))}>⧉</button>
+                  <button className="tbtn xtra" type="button" title={t("Visa sålda på Tradera")} aria-label={`${c.name}: ${t("Visa sålda på Tradera")}`} onClick={() => setTradera(scopeOf(c))}>T</button>
+                  <button className="tbtn xtra" type="button" title={t("Auktioner på eBay")} aria-label={`${c.name}: ${t("Auktioner på eBay")}`} onClick={() => setEbay(scopeOf(c))}>E</button>
                 </div>
               ))}
             </div>
@@ -400,6 +411,8 @@ export default function PlayerSet({
           onBaseQty={(n) => setCards((p) => (p || []).map((x) => (x.card_id === parCard.card_id ? { ...x, qty: n > 0 ? n : null } : x)))}
           onParCount={(n) => setParCounts((m) => new Map(m).set(parCard.card_id, n))}
           onWish={(on) => flip(setWishIds, parCard.card_id, on)}
+          onTradera={() => setTradera(scopeOf(parCard))}
+          onEbay={() => setEbay(scopeOf(parCard))}
           onClose={() => {
             const id = parCard.card_id;
             setParCard(null);

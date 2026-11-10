@@ -95,6 +95,8 @@ export default function App() {
   const [team, setTeam] = useState("");
   const [quick, setQuick] = useState("");
   const [toast, setToast] = useState<string | null>(null);
+  const [undoFn, setUndoFn] = useState<(() => void) | null>(null);
+  const [moreF, setMoreF] = useState(false);
   const [role, setRole] = useState<"admin" | "superuser" | null>(null);
   const [showAuth, setShowAuth] = useState(false);
   const [showWait, setShowWait] = useState(false);
@@ -162,6 +164,7 @@ export default function App() {
   const [copyText, setCopyText] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const lastChanged = useRef<number[]>([]);
   const uid = user?.id ?? null;
   // Replies from the administrator that the user has not read yet.
   useEffect(() => {
@@ -178,10 +181,14 @@ export default function App() {
     };
   }, [uid, showMsgs, supabase]);
 
-  const say = useCallback((m: string) => {
+  const say = useCallback((m: string, undo?: () => void) => {
     setToast(m);
+    setUndoFn(undo ? () => undo : null);
     clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(null), 2800);
+    toastTimer.current = setTimeout(() => {
+      setToast(null);
+      setUndoFn(null);
+    }, undo ? 9000 : 4500);
   }, []);
 
   const loadSets = useCallback(async () => {
@@ -370,7 +377,7 @@ export default function App() {
   useEffect(() => {
     if (openId || !sets.length) return;
     const fromHash = decodeURIComponent(location.hash.slice(1));
-    setOpenId(sets.some((s) => s.id === fromHash) ? fromHash : sets[0].id);
+    setOpenId(sets.some((s) => s.id === fromHash) ? fromHash : null);
   }, [sets, openId]);
 
   useEffect(() => {
@@ -440,6 +447,11 @@ export default function App() {
     history.replaceState(null, "", "#");
     setTimeout(() => document.getElementById("set")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
   };
+  const unfollow = async (key: string) => {
+    setFollowed((p) => p.filter((x) => x.player_key !== key));
+    const { error } = await supabase.from("favorite_players").delete().eq("player_key", key);
+    if (error) say(t("Kunde inte spara."));
+  };
   const openSet = (id: string) => {
     setPlayerSet(null);
     setOpenId(id);
@@ -489,7 +501,7 @@ export default function App() {
     setOwnedPar(next);
     if (!user) {
       writeLocalPar(openId, next);
-      return changed.length;
+      lastChanged.current = changed; return changed.length;
     }
     try {
       for (let i = 0; i < changed.length; i += 500) {
@@ -502,7 +514,7 @@ export default function App() {
     } catch {
       say(t("Kunde inte spara. Ladda om sidan och försök igen."));
     }
-    return changed.length;
+    lastChanged.current = changed; return changed.length;
   };
 
   const saveSerial = async (cardId: number, value: string) => {
@@ -529,7 +541,7 @@ export default function App() {
     setCounts((c) => ({ ...c, [openId]: [...next].length }));
     if (!user) {
       writeLocal(openId, next);
-      return changed.length;
+      lastChanged.current = changed; return changed.length;
     }
     try {
       for (let i = 0; i < changed.length; i += 500) {
@@ -542,13 +554,14 @@ export default function App() {
     } catch {
       say(t("Kunde inte spara. Ladda om sidan och försök igen."));
     }
-    return changed.length;
+    lastChanged.current = changed; return changed.length;
   };
 
   const runQuick = async (on: boolean) => {
     const { ids, bad } = quickIds(scoped, quick);
     const n = (await applyOwned(ids, on)) ?? 0;
-    say(`${n} ${t("kort")} ${on ? t("markerade") : t("avmarkerade")}${bad.length ? ` · ${t("förstod inte")}: ${bad.join(", ")}` : ""}`);
+    const done = lastChanged.current;
+    say(`${n} ${t("kort")} ${on ? t("markerade") : t("avmarkerade")}${bad.length ? ` · ${t("förstod inte")}: ${bad.join(", ")}` : ""}`, n > 0 ? () => { applyOwned(done, !on); } : undefined);
   };
 
   const missingText = () => {
@@ -914,7 +927,7 @@ export default function App() {
   return (
     <div className="wrap">
       <div className="topbar">
-        <span className="label">{t("Samlarkort · checklistor")}</span>
+        <span className="label wordmark">Setlistan</span>
         <div className="account">
           <LangSwitch />
           {user ? (
@@ -978,7 +991,7 @@ export default function App() {
         />
       )}
       {showNews && user && <WhatsNew updates={updates} since={newsSince} onClose={() => setShowNews(false)} />}
-      {user && !showWelcome && <QuestionPrompt supabase={supabase} />}
+      {user && !showWelcome && !showNews && <QuestionPrompt supabase={supabase} />}
       {showQuestions && role === "superuser" && user && <QuestionsPanel supabase={supabase} onClose={() => setShowQuestions(false)} />}
       {showMerge && role === "superuser" && user && <MergePanel supabase={supabase} sets={sets} onChanged={loadSets} say={say} onClose={() => setShowMerge(false)} />}
       {showAuth && !user && <AuthBox supabase={supabase} onClose={() => setShowAuth(false)} />}
@@ -1003,10 +1016,12 @@ export default function App() {
           onWish={(w) => setWish(parCard.card.id, w)}
           onToggle={(pid, on) => toggleCardPar(parCard.card.id, pid, on)}
           onSerial={(pid, v) => saveCardSerial(parCard.card.id, pid, v)}
+          onTradera={() => setTradera(traderaScope(parCard.card, parCard.sec))}
+          onEbay={() => setEbay(traderaScope(parCard.card, parCard.sec))}
           onClose={() => setParCard(null)}
         />
       )}
-      {showPlayers && user && <PlayerPanel supabase={supabase} initialQ={playerQ} onClose={() => setShowPlayers(false)} onOpenPlayer={(p) => { setShowPlayers(false); openPlayer(p); }} />}
+      {showPlayers && user && <PlayerPanel supabase={supabase} initialQ={playerQ} sets={sets} onOpenSet={(id) => { setShowPlayers(false); openSet(id); }} onClose={() => setShowPlayers(false)} onOpenPlayer={(p) => { setShowPlayers(false); openPlayer(p); }} />}
       {showSell && user && <SellPanel supabase={supabase} onClose={() => setShowSell(false)} />}
       {showWish && user && <WishPanel supabase={supabase} onClose={() => setShowWish(false)} onChanged={(n) => setWishCount(n)} />}
       {ebay && <EbayPanel key={ebay.narrow + "|" + ebay.broad} scope={ebay} signedIn={!!user} onClose={() => setEbay(null)} />}
@@ -1046,7 +1061,7 @@ export default function App() {
                         </>
                       )}
                     </button>
-                    <span className="star on" aria-hidden="true">★</span>
+                    <button className="star on" type="button" title={t("Sluta följa")} aria-label={`${t("Sluta följa")} ${f.display_name}`} onClick={() => unfollow(f.player_key)}>★</button>
                   </div>
                 );
               })}
@@ -1094,7 +1109,7 @@ export default function App() {
       {playerSet && user && <PlayerSet key={playerSet.player_key} supabase={supabase} player={playerSet} onClose={() => setPlayerSet(null)} onOpenSet={(id) => openSet(id)} say={say} />}
 
       {current && (
-        <section className="set" id="set">
+        <section className={`set${selPar ? " onpar" : ""}`} id="set">
           <div className="set-head">
             <div>
               <div className="label">
@@ -1112,16 +1127,31 @@ export default function App() {
             </div>
           </div>
           <div className="bar big-bar"><i style={{ width: `${pct}%` }} /></div>
+          <div className="minibar" aria-hidden="true">
+            <b className="mono">{have}/{total}</b>
+            <span className="bar"><i style={{ width: `${pct}%` }} /></span>
+            <span className="mono">{pct} %</span>
+          </div>
+          {selPar && (
+            <div className="parmode" role="status">
+              <span><b>{t("Du markerar:")}</b> {parallelLabel(selPar)}</span>
+              <button className="btn small" type="button" onClick={() => setParSel(null)}>{t("Tillbaka till baskort")}</button>
+            </div>
+          )}
           <div className="actions">
-            <button className="btn" type="button" onClick={copyMissing}>{t("Kopiera saknade")}</button>
-            <button className="btn" type="button" onClick={() => downloadCsv(true)}>{t("Ladda ner saknade (CSV)")}</button>
-            <button className="btn" type="button" onClick={() => downloadCsv(false)}>{t("Ladda ner hela setlistan")}</button>
-            <button className="btn" type="button" onClick={() => shareList("missing")}>{t("Dela saknade som länk")}</button>
-            {dupCount > 0 && <button className="btn" type="button" onClick={() => shareList("dups")}>{t("Dela dubbletter som länk")}</button>}
-            {user && <button className="btn ghost" type="button" onClick={unshareLists}>{t("Stäng av delning")}</button>}
-            <button className="btn" type="button" onClick={() => setTradera(traderaScope())}>{t("Sålda på Tradera")}</button>
-            <button className="btn" type="button" onClick={() => setEbay(traderaScope())}>{t("Auktioner på eBay")}</button>
-            {mine && <button className="btn ghost danger" type="button" onClick={() => setConfirmDel(true)}>{t("Ta bort set")}</button>}
+            <details className="menu" onClick={(e) => { if ((e.target as HTMLElement).closest(".menu-pop button")) e.currentTarget.removeAttribute("open"); }}>
+              <summary className="btn">{t("Exportera och dela")}</summary>
+              <div className="menu-pop left">
+                <button type="button" onClick={copyMissing}>{t("Kopiera saknade")}</button>
+                <button type="button" onClick={() => downloadCsv(true)}>{t("Ladda ner saknade (CSV)")}</button>
+                <button type="button" onClick={() => downloadCsv(false)}>{t("Ladda ner hela setlistan")}</button>
+                <button type="button" onClick={() => shareList("missing")}>{t("Dela saknade som länk")}</button>
+                {dupCount > 0 && <button type="button" onClick={() => shareList("dups")}>{t("Dela dubbletter som länk")}</button>}
+                {user && <button type="button" onClick={unshareLists}>{t("Stäng av delning")}</button>}
+                <button type="button" onClick={() => setTradera(traderaScope())}>{t("Sålda på Tradera")}</button>
+                <button type="button" onClick={() => setEbay(traderaScope())}>{t("Auktioner på eBay")}</button>
+              </div>
+            </details>            {mine && <button className="btn ghost danger" type="button" onClick={() => setConfirmDel(true)}>{t("Ta bort set")}</button>}
           </div>
           {!user && <div className="note">{t("Du är inte inloggad. Avprickningarna sparas i den här webbläsaren och flyttas till ditt konto när du loggar in.")}</div>}
           {confirmDel && (
@@ -1156,9 +1186,10 @@ export default function App() {
 
           <div className="controls">
             <div className="seg" role="group" aria-label={t("Visa")}>
-              {(["all", "missing", "have", "dups", "sale", "incoming", "wish", "fav"] as Filter[]).map((k) => (
+              {(["all", "missing", "have", ...(moreF || !["all", "missing", "have"].includes(filter) ? ["dups", "sale", "incoming", "wish", "fav"] : [])] as Filter[]).map((k) => (
                 <button key={k} type="button" aria-pressed={filter === k} onClick={() => setFilter(k)}>{{ all: t("Alla"), missing: t("Saknas"), have: t("Har"), fav: `★ ${t("Favoriter")}${favCards.size ? ` ${favCards.size}` : ""}`, dups: `${t("Dubbletter")}${dupCount ? ` ${dupCount}` : ""}`, sale: `${t("Till salu")}${saleCount ? ` ${saleCount}` : ""}`, incoming: `${t("På väg")}${incomingCount ? ` ${incomingCount}` : ""}`, wish: `♡ ${t("Önskas")}${wishes.size ? ` ${wishes.size}` : ""}` }[k]}</button>
               ))}
+              <button type="button" aria-pressed={moreF} onClick={() => setMoreF((v) => !v)}>{moreF ? t("Färre") : t("Fler")}</button>
             </div>
             <input type="search" placeholder={t("Spelare, lag eller nummer")} value={find} onChange={(e) => setFind(e.target.value)} aria-label={t("Sök i setet")} />
             <select value={team} onChange={(e) => setTeam(e.target.value)} aria-label={t("Lag")}>
@@ -1214,11 +1245,11 @@ export default function App() {
                     <span className="tags">{tagEls(c)}{dupChip(c)}{serialOf(c) &&<span className="tag fs">{serialOf(c)}</span>}{parChips(c)}</span>
                     <span className="tick"><Tick /></span>
                   </button>
-                  <button className="tbtn" type="button" title={t("Visa sålda på Tradera")} aria-label={`Sålda ${c.name} på Tradera`} onClick={() => setTradera(traderaScope(c, sec))}>T</button>
-                  <button className="tbtn ebay" type="button" title={t("Auktioner på eBay")} aria-label={`${c.name}: ${t("Auktioner på eBay")}`} onClick={() => setEbay(traderaScope(c, sec))}>E</button>
+                  <button className="tbtn xtra" type="button" title={t("Visa sålda på Tradera")} aria-label={`Sålda ${c.name} på Tradera`} onClick={() => setTradera(traderaScope(c, sec))}>T</button>
+                  <button className="tbtn ebay xtra" type="button" title={t("Auktioner på eBay")} aria-label={`${c.name}: ${t("Auktioner på eBay")}`} onClick={() => setEbay(traderaScope(c, sec))}>E</button>
                   <button className={`star${favCards.has(c.id) ? " on" : ""}`} type="button" aria-pressed={favCards.has(c.id)} title={t("Favorit: extra värdefull")} aria-label={`${favCards.has(c.id) ? t("Ta bort") : t("Markera")} ${c.name} som favorit`} onClick={() => toggleFavCard(c.id)}>{favCards.has(c.id) ? "★" : "☆"}</button>
-                  <button className={`star wish${wishes.has(c.id) ? " on" : ""}`} type="button" aria-pressed={wishes.has(c.id)} title={t("Önskelista: jag jagar det här kortet")} aria-label={`${wishes.has(c.id) ? t("Ta bort") : t("Lägg")} ${c.name} ${t("på önskelistan")}`} onClick={() => setWish(c.id, wishes.has(c.id) ? null : { priority: 2, max_price: null, note: null })}>{wishes.has(c.id) ? "♥" : "♡"}</button>
-                  <button className={`star dup${baseQtyOf(c.id) > 1 ? " on" : ""}`} type="button" aria-pressed={baseQtyOf(c.id) > 1} title={t("Dubblett: jag har flera av det här kortet")} aria-label={`${c.name}: ${t("Dubblett")}`} onClick={() => setBaseQty(c.id, baseQtyOf(c.id) > 1 ? 1 : 2)}>⧉</button>
+                  <button className={`star wish xtra${wishes.has(c.id) ? " on" : ""}`} type="button" aria-pressed={wishes.has(c.id)} title={t("Önskelista: jag jagar det här kortet")} aria-label={`${wishes.has(c.id) ? t("Ta bort") : t("Lägg")} ${c.name} ${t("på önskelistan")}`} onClick={() => setWish(c.id, wishes.has(c.id) ? null : { priority: 2, max_price: null, note: null })}>{wishes.has(c.id) ? "♥" : "♡"}</button>
+                  <button className={`star dup xtra${baseQtyOf(c.id) > 1 ? " on" : ""}`} type="button" aria-pressed={baseQtyOf(c.id) > 1} title={t("Dubblett: jag har flera av det här kortet")} aria-label={`${c.name}: ${t("Dubblett")}`} onClick={() => (baseQtyOf(c.id) > 2 ? setParCard({ card: c, sec }) : setBaseQty(c.id, baseQtyOf(c.id) > 1 ? 1 : 2))}>⧉</button>
                   <button className={`pbtn${ownedParsOf(c).length || wishes.has(c.id) ? " on" : ""}`} type="button" title={t("Antal, paralleller och önskelista")} aria-label={`${t("Mer om")} ${c.name}`} onClick={() => setParCard({ card: c, sec })}>{cardPars(c).length ? t("Par.") : t("Mer")}{ownedParsOf(c).length ? ` ${ownedParsOf(c).length}` : ""}{wishes.has(c.id) ? " ♡" : ""}</button>
                 </div>
               ))}
@@ -1246,10 +1277,10 @@ export default function App() {
                   )}
                   <button className={`pbtn${ownedParsOf(c).length || wishes.has(c.id) ? " on" : ""}`} type="button" title={t("Antal, paralleller och önskelista")} aria-label={`${t("Mer om")} ${c.name}`} onClick={() => setParCard({ card: c, sec })}>{cardPars(c).length ? t("Par.") : t("Mer")}{ownedParsOf(c).length ? ` ${ownedParsOf(c).length}` : ""}{wishes.has(c.id) ? " ♡" : ""}</button>
                   <button className={`star${favCards.has(c.id) ? " on" : ""}`} type="button" aria-pressed={favCards.has(c.id)} title={t("Favorit: extra värdefull")} aria-label={`${favCards.has(c.id) ? t("Ta bort") : t("Markera")} ${c.name} som favorit`} onClick={() => toggleFavCard(c.id)}>{favCards.has(c.id) ? "★" : "☆"}</button>
-                  <button className={`star wish${wishes.has(c.id) ? " on" : ""}`} type="button" aria-pressed={wishes.has(c.id)} title={t("Önskelista: jag jagar det här kortet")} aria-label={`${wishes.has(c.id) ? t("Ta bort") : t("Lägg")} ${c.name} ${t("på önskelistan")}`} onClick={() => setWish(c.id, wishes.has(c.id) ? null : { priority: 2, max_price: null, note: null })}>{wishes.has(c.id) ? "♥" : "♡"}</button>
-                  <button className={`star dup${baseQtyOf(c.id) > 1 ? " on" : ""}`} type="button" aria-pressed={baseQtyOf(c.id) > 1} title={t("Dubblett: jag har flera av det här kortet")} aria-label={`${c.name}: ${t("Dubblett")}`} onClick={() => setBaseQty(c.id, baseQtyOf(c.id) > 1 ? 1 : 2)}>⧉</button>
-                  <button className="tbtn" type="button" title={t("Visa sålda på Tradera")} aria-label={`Sålda ${c.name} på Tradera`} onClick={() => setTradera(traderaScope(c, sec))}>T</button>
-                  <button className="tbtn ebay" type="button" title={t("Auktioner på eBay")} aria-label={`${c.name}: ${t("Auktioner på eBay")}`} onClick={() => setEbay(traderaScope(c, sec))}>E</button>
+                  <button className={`star wish xtra${wishes.has(c.id) ? " on" : ""}`} type="button" aria-pressed={wishes.has(c.id)} title={t("Önskelista: jag jagar det här kortet")} aria-label={`${wishes.has(c.id) ? t("Ta bort") : t("Lägg")} ${c.name} ${t("på önskelistan")}`} onClick={() => setWish(c.id, wishes.has(c.id) ? null : { priority: 2, max_price: null, note: null })}>{wishes.has(c.id) ? "♥" : "♡"}</button>
+                  <button className={`star dup xtra${baseQtyOf(c.id) > 1 ? " on" : ""}`} type="button" aria-pressed={baseQtyOf(c.id) > 1} title={t("Dubblett: jag har flera av det här kortet")} aria-label={`${c.name}: ${t("Dubblett")}`} onClick={() => (baseQtyOf(c.id) > 2 ? setParCard({ card: c, sec }) : setBaseQty(c.id, baseQtyOf(c.id) > 1 ? 1 : 2))}>⧉</button>
+                  <button className="tbtn xtra" type="button" title={t("Visa sålda på Tradera")} aria-label={`Sålda ${c.name} på Tradera`} onClick={() => setTradera(traderaScope(c, sec))}>T</button>
+                  <button className="tbtn ebay xtra" type="button" title={t("Auktioner på eBay")} aria-label={`${c.name}: ${t("Auktioner på eBay")}`} onClick={() => setEbay(traderaScope(c, sec))}>E</button>
                 </div>
               ))}
             </div>
@@ -1259,7 +1290,14 @@ export default function App() {
 
       <footer>{t("Checklistorna kommer från öppna källor. Hämtade listor kan innehålla fel, så kontrollera mot kortets baksida eller tillverkarens lista när det är viktigt.")}</footer>
       <SiteFooter />
-      {toast && <div className="toast">{toast}</div>}
+      {toast && (
+        <div className="toast">
+          {toast}
+          {undoFn && (
+            <button className="btn small" type="button" onClick={() => { undoFn(); setToast(null); setUndoFn(null); }}>{t("Ångra")}</button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

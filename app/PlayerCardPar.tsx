@@ -17,6 +17,8 @@ export default function PlayerCardPar({
   onBaseQty,
   onParCount,
   onWish: onWishChange,
+  onTradera,
+  onEbay,
   onClose,
 }: {
   supabase: SupabaseClient;
@@ -24,6 +26,8 @@ export default function PlayerCardPar({
   onBaseQty: (n: number) => void;
   onParCount: (n: number) => void;
   onWish?: (on: boolean) => void;
+  onTradera?: () => void;
+  onEbay?: () => void;
   onClose: () => void;
 }) {
   const t = useT();
@@ -183,6 +187,8 @@ export default function PlayerCardPar({
         onWish={setWish}
         onToggle={toggle}
         onSerial={saveSerial}
+        onTradera={onTradera}
+        onEbay={onEbay}
         onClose={onClose}
       />
       {err && <div className="note warn" style={{ position: "fixed", bottom: 12, left: 12, right: 12, zIndex: 80 }}>{err}</div>}

@@ -15,10 +15,10 @@ export function Welcome({ onDone }: { onDone: () => void }) {
   const t = useT();
   const STEPS = [
     { t: t("Välkommen till Setlistan"), d: t("Här söker du fram checklistor för samlarkort, prickar av korten du har och ser direkt vilka som saknas. Vi visar dig runt på en minut."), v: <MockSet /> },
-    { t: t("Hitta ett set"), d: t("Öppna albumlistan under Biblioteket och sök, till exempel efter Topps Premier League Flagship 26/27. Saknas setet kan du föreslå det så lägger vi in det."), v: <MockSearch /> },
+    { t: t("Hitta ett set"), d: t("Sök efter en spelare i rutan högst upp, eller välj ett set under Biblioteket, till exempel Topps Premier League Flagship 26/27. Saknas setet kan du föreslå det så lägger vi in det."), v: <MockSearch /> },
     { t: t("Pricka av dina kort"), d: t("Tryck på ett kort för att markera att du har det. Välj parallell (/50, /25 och fler) och skriv in serienummer. Du kan också skriva nummer i snabbmarkeringsrutan för att pricka av många på en gång."), v: <MockTick /> },
     { t: t("Saknade kort"), d: t("Filtrera på Saknas och exportera listan, så vet du precis vad du letar efter."), v: <MockMissing /> },
-    { t: t("Vad är det värt?"), d: t("Tryck på T vid ett kort för att se vad liknande kort har sålts för på Tradera. Under Nytt ser du alltid vad som har ändrats i Setlistan."), v: <MockTradera /> },
+    { t: t("Vad är det värt?"), d: t("Öppna ett kort och välj Sålda på Tradera eller Auktioner på eBay för att se vad liknande kort går för. Under Nytt ser du alltid vad som har ändrats i Setlistan."), v: <MockTradera /> },
   ];
   const TONES = ["var(--accent)", "var(--have)", "#E0559A", "var(--rc)", "#2F7FE0"];
   const [i, setI] = useState(0);

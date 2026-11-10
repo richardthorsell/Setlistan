@@ -188,11 +188,23 @@
 .pl-line .pl-card { flex: 1; min-width: 0; }
 .pl-line .star { width: 32px; height: 32px; font-size: 19px; line-height: 1; }
 @media (max-width: 560px) { .pl-line { gap: 3px; } .pl-line .star { width: 28px; height: 28px; } .pl-line .pl-card { padding: 7px 6px; gap: 6px; } }
-/* Phone: the icons of a card row go on their own line under the card, so the name keeps its width. */
+/* Export menu opens to the left edge, the counter stays visible on a phone, and the parallel mode is easy to see. */
+.menu-pop.left { left: 0; right: auto; }
+details.trade-box > summary { cursor: pointer; }
+.topbar .wordmark { font-weight: 800; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink); }
+.minibar { display: none; }
+.parmode { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 10px 14px; border-radius: 10px; border: 1.5px solid var(--warn); background: color-mix(in srgb, var(--warn) 12%, var(--surface)); }
+.set.onpar .lrow[aria-pressed="true"], .set.onpar .card[aria-pressed="true"] { box-shadow: inset 4px 0 0 var(--warn); }
+.toast .btn { margin-left: 12px; }
 @media (max-width: 560px) {
-  .lwrap { flex-wrap: wrap; padding: 0 8px 8px 0; row-gap: 2px; }
-  .lwrap .lrow { flex: 1 1 100%; }
-  .lwrap .pbtn { margin-left: 12px; }
+  .minibar { display: flex; align-items: center; gap: 10px; position: sticky; top: 0; z-index: 15; padding: 8px 2px; background: var(--bg); border-bottom: 1px solid var(--line); }
+  .minibar .bar { flex: 1; }
+  .btn.small { min-height: 44px; }
+  .seg button { min-height: 44px; }
+  .pbtn { height: 40px; min-width: 48px; }
+  .lwrap .star { width: 44px; height: 44px; }
+  .lwrap { gap: 4px; }
+  .xtra { display: none; }
 }
 
 /* Start page: the player search is the centre of the page. */
