@@ -114,7 +114,7 @@ export default function SetPicker({ sets, counts, openId, favs, sport, setSport,
       </div>
 
       {before}
-      <div className="fav-head label">{t("Set du favoritmarkerat")}</div>
+      <div className="fav-head label" id="fav-sets">{t("Set du favoritmarkerat")}</div>
       {favSets.length ? (
         <div className="shelf">
           {favSets.map((s) => {
