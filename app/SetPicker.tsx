@@ -65,11 +65,11 @@ export default function SetPicker({ sets, counts, openId, favs, sport, setSport,
 
   return (
     <div className="picker-wrap">
-      <div className="label">{t("Biblioteket")}</div>
+      <div className="label">{t("Bläddra")}</div>
 
       <div className="picker" ref={box}>
         <button className="picker-btn" type="button" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
-          <span>{current ? nameOf(current) : `${t("Välj album")} (${sets.length})`}</span>
+          <span>{`${t("Bläddra bland alla set")} (${sets.length})`}</span>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
         </button>
         {open && (
