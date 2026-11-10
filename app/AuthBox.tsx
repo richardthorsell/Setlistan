@@ -43,7 +43,7 @@ export default function AuthBox({ supabase, onClose }: { supabase: SupabaseClien
       }
     } catch (err) {
       const e = err as { status?: number; code?: string; message?: string };
-      const t =
+      const text =
         (mode !== "login" && (e.status === 500 || e.code === "unexpected_failure" || /database error|not_invited/i.test(e.message || "")))
           ? t("Den här adressen är inte inbjuden än. Anmäl dig på väntelistan så bjuder vi in dig.")
           : e.code === "invalid_credentials"
@@ -57,7 +57,7 @@ export default function AuthBox({ supabase, onClose }: { supabase: SupabaseClien
                 : e.status === 429
                   ? t("För många försök. Vänta en stund och försök igen.")
                   : t("Det gick inte. Kontrollera uppgifterna och försök igen.");
-      setMsg({ t, warn: true });
+      setMsg({ t: text, warn: true });
     } finally {
       setBusy(false);
     }
