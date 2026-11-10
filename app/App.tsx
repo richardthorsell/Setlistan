@@ -325,17 +325,17 @@ export default function App() {
       }
       const [s, n, f] = await Promise.all([
         supabase.from("user_state").select("onboarded_at, updates_seen_at").maybeSingle(),
-        supabase.from("app_updates").select("id, title, body, created_at").order("created_at", { ascending: false }).limit(20),
+        supabase.from("app_updates").select("id, title, body, created_at, important").order("created_at", { ascending: false }).limit(20),
         supabase.from("favorites").select("set_id"),
       ]);
       setFavs(new Set(((f.data as { set_id: string }[]) || []).map((r) => r.set_id)));
       setUpdates((n.data as Update[]) || []);
       setSeenAt(s.data?.updates_seen_at ?? null);
       if (!s.error && !s.data?.onboarded_at) setShowWelcome(true);
-      // Signed-in users who have already seen the welcome get "what's new" at once when something has been added since last time.
+      // Only news marked important opens by itself; other news shows as a number on the menu.
       if (!s.error && s.data?.onboarded_at) {
         const seen = s.data?.updates_seen_at ?? null;
-        const fresh = ((n.data as Update[]) || []).some((x) => seen === null || x.created_at > seen);
+        const fresh = ((n.data as Update[]) || []).some((x) => x.important && (seen === null || x.created_at > seen));
         if (fresh) {
           setNewsSince(seen);
           setShowNews(true);
