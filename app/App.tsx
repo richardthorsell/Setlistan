@@ -10,6 +10,7 @@ import WishPanel from "./WishPanel";
 import PlayerPanel from "./PlayerPanel";
 import PlayerSet from "./PlayerSet";
 import Tip from "./Tip";
+import StartSearch from "./StartSearch";
 import QuestionPrompt from "./QuestionPrompt";
 import QuestionsPanel from "./QuestionsPanel";
 import MergePanel from "./MergePanel";
@@ -1075,17 +1076,7 @@ export default function App() {
           <h1>Setlistan</h1>
           <p>{t("Sök fram en checklista, pricka av korten du har och se direkt vilka som fattas.")}</p>
         </div>
-        <form
-          className="hero-search"
-          onSubmit={(e) => {
-            e.preventDefault();
-            setPlayerQ(heroQ.trim());
-            setShowPlayers(true);
-          }}
-        >
-          <input type="search" className="hero-input" placeholder={t("Sök spelare, till exempel Mats Sundin")} aria-label={t("Sök spelare")} value={heroQ} onChange={(e) => setHeroQ(e.target.value)} />
-          <button className="btn primary big" type="submit">{t("Sök spelare")}</button>
-        </form>
+        <StartSearch supabase={supabase} sets={sets} onOpenPlayer={openPlayer} onOpenSet={openSet} />
         <p className="hero-sub">{t("Hitta alla en spelares kort i alla set, eller välj ett set här under.")}</p>
         {followed.length > 0 && (
           <div className="hero-follow">
