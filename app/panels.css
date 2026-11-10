@@ -190,6 +190,22 @@
 @media (max-width: 560px) { .pl-line { gap: 3px; } .pl-line .star { width: 28px; height: 28px; } .pl-line .pl-card { padding: 7px 6px; gap: 6px; } }
 /* Export menu opens to the left edge, the counter stays visible on a phone, and the parallel mode is easy to see. */
 .menu-pop.left { left: 0; right: auto; }
+.start-search { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 920px; text-align: left; }
+.start-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.start-row .shelf-search { flex: 1 1 220px; min-width: 0; width: auto; }
+.start-row .sport-select { height: 44px; }
+.start-row .btn { height: 44px; }
+.start-scroll { max-height: 360px; overflow-y: auto; }
+.ov-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; width: 100%; max-width: 920px; text-align: left; }
+.ov-tile { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--surface); text-align: left; min-height: 44px; }
+.ov-tile:hover { border-color: var(--accent); }
+.ov-num { font-family: var(--f-display); font-size: 32px; font-weight: 800; line-height: 1.1; color: var(--ink); }
+.ov-sub { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.ov-start { display: flex; flex-direction: column; gap: 4px; width: 100%; max-width: 920px; padding: 14px 16px; border: 1.5px dashed var(--line); border-radius: 12px; text-align: left; }
+.start-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.start-col { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+@media (max-width: 700px) { .start-cols { grid-template-columns: minmax(0, 1fr); } }
+.start-results { display: flex; flex-direction: column; gap: 6px; }
 .tip { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; border-radius: 10px; border: 1.5px solid var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); font-size: 14px; }
 details.trade-box > summary { cursor: pointer; }
 .topbar .wordmark { font-weight: 800; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink); }

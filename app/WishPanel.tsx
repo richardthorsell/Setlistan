@@ -20,6 +20,7 @@ export default function WishPanel({ supabase, onClose, onChanged }: { supabase: 
   const t = useT();
   const [rows, setRows] = useState<Row[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [incoming, setIncoming] = useState<{ card_id: number; note: string | null; cards: Row["cards"]; sets: Row["sets"] }[]>([]);
 
   const load = async () => {
     const { data, error } = await supabase
@@ -37,6 +38,16 @@ export default function WishPanel({ supabase, onClose, onChanged }: { supabase: 
   // Load once when the panel opens (t and onChanged change on every render, so they must not be dependencies).
   useEffect(() => {
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    supabase
+      .from("card_trade")
+      .select("card_id, note, cards(no, name, team, sections(code, name)), sets(name)")
+      .eq("incoming", true)
+      .limit(200)
+      .then(({ data }) => setIncoming((data as unknown as typeof incoming) || []));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -112,6 +123,21 @@ export default function WishPanel({ supabase, onClose, onChanged }: { supabase: 
             </div>
           ))}
         </div>
+        {incoming.length > 0 && (
+          <>
+            <div className="label" style={{ marginTop: 10 }}>{t("På väg")} ({incoming.length})</div>
+            <div className="wish-list">
+              {incoming.map((r) => (
+                <div key={r.card_id} className="wish-item">
+                  <div className="grow">
+                    <b>{r.cards ? `${r.cards.sections?.code ? r.cards.sections.code + " " : ""}${r.cards.no} · ${r.cards.name}` : ""}</b>
+                    <div className="note">{[r.sets?.name, r.cards?.team, r.note].filter(Boolean).join(" · ")}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </section>
     </div>
   );
