@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { type SetStat, type Sport, SPORTS, matches, sportLabel } from "@/lib/checklist";
 import "./panels.css";
 import { useT } from "@/lib/i18n";
@@ -16,6 +16,9 @@ type Props = {
   onToggleFav: (id: string) => void;
   onSuggest: (query: string) => void;
   suggested: Set<string>;
+  libOpen: boolean;
+  onLibOpen: (v: boolean) => void;
+  before?: ReactNode;
 };
 
 const nameOf = (s: SetStat) => s.short_name || s.name;
@@ -28,9 +31,10 @@ const Star = ({ on }: { on: boolean }) => (
 );
 
 // The library: your favourites as cards, and a dropdown with search and sport filter for everything else.
-export default function SetPicker({ sets, counts, openId, favs, sport, setSport, onOpen, onToggleFav, onSuggest, suggested }: Props) {
+export default function SetPicker({ sets, counts, openId, favs, sport, setSport, onOpen, onToggleFav, onSuggest, suggested, libOpen, onLibOpen, before }: Props) {
   const t = useT();
-  const [open, setOpen] = useState(false);
+  const open = libOpen;
+  const setOpen = onLibOpen;
   const [q, setQ] = useState("");
   const box = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
@@ -65,13 +69,8 @@ export default function SetPicker({ sets, counts, openId, favs, sport, setSport,
 
   return (
     <div className="picker-wrap">
-      <div className="label">{t("Bläddra")}</div>
 
       <div className="picker" ref={box}>
-        <button className="picker-btn" type="button" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
-          <span>{`${t("Bläddra bland alla set")} (${sets.length})`}</span>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
-        </button>
         {open && (
           <div className="picker-panel">
             <div className="row">
@@ -114,7 +113,8 @@ export default function SetPicker({ sets, counts, openId, favs, sport, setSport,
         )}
       </div>
 
-      <div className="fav-head label">{t("Favoriter")}</div>
+      {before}
+      <div className="fav-head label">{t("Set du favoritmarkerat")}</div>
       {favSets.length ? (
         <div className="shelf">
           {favSets.map((s) => {
