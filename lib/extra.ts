@@ -18,6 +18,8 @@ export const EXTRA: Record<string, Record<string, string>> = {
     "Inget hittades.": "Nothing found.",
     "Bläddra": "Browse",
     "Bläddra bland alla set": "Browse all sets",
+    "Sök i Biblioteket": "Search the Library",
+    "Set du favoritmarkerat": "Sets you have starred",
     "Vad vill du göra?": "What would you like to do?",
     "Har du redan ett konto? Logga in": "Already have an account? Sign in",
     "Inget konto än? Skapa konto": "No account yet? Create one",
