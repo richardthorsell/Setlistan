@@ -99,6 +99,7 @@ export default function App() {
   const [toast, setToast] = useState<string | null>(null);
   const [undoFn, setUndoFn] = useState<(() => void) | null>(null);
   const [moreF, setMoreF] = useState(false);
+  const [libOpen, setLibOpen] = useState(false);
   const [role, setRole] = useState<"admin" | "superuser" | null>(null);
   const [showAuth, setShowAuth] = useState(false);
   const [showWait, setShowWait] = useState(false);
@@ -1076,32 +1077,8 @@ export default function App() {
           <h1>Setlistan</h1>
           <p>{t("Sök fram en checklista, pricka av korten du har och se direkt vilka som fattas.")}</p>
         </div>
-        <StartSearch supabase={supabase} sets={sets} onOpenPlayer={openPlayer} onOpenSet={openSet} />
+        <StartSearch supabase={supabase} sets={sets} onOpenPlayer={openPlayer} onOpenSet={openSet} onBrowse={() => setLibOpen((v) => !v)} />
         <p className="hero-sub">{t("Hitta alla en spelares kort i alla set, eller välj ett set här under.")}</p>
-        {followed.length > 0 && (
-          <div className="hero-follow">
-            <div className="label fav-head">{t("Spelare du följer")}</div>
-            <div className="shelf">
-              {followed.map((f) => {
-                const pct = f.total ? Math.round(((f.have || 0) / f.total) * 100) : 0;
-                return (
-                  <div key={f.player_key} className="shelf-item fav-card">
-                    <button className="fav-open" type="button" onClick={() => openPlayer({ player_key: f.player_key, display_name: f.display_name })}>
-                      <strong>{f.display_name}</strong>
-                      {f.total !== undefined && (
-                        <>
-                          <span className="bar"><i style={{ width: `${pct}%` }} /></span>
-                          <span className="sub mono">{f.have || 0} / {f.total}{f.total >= 1000 ? "+" : ""} · {pct} %</span>
-                        </>
-                      )}
-                    </button>
-                    <button className="star on" type="button" title={t("Sluta följa")} aria-label={`${t("Sluta följa")} ${f.display_name}`} onClick={() => unfollow(f.player_key)}>★</button>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
       </header>
 
       {paste && (
@@ -1134,7 +1111,30 @@ export default function App() {
 
       <section>
         {sets.length ? (
-          <SetPicker sets={sets} counts={counts} openId={openId} favs={favs} sport={sport} setSport={setSport} onOpen={openSet} onToggleFav={toggleFav} onSuggest={suggest} suggested={suggested} />
+          <SetPicker sets={sets} counts={counts} openId={openId} favs={favs} sport={sport} setSport={setSport} onOpen={openSet} onToggleFav={toggleFav} onSuggest={suggest} suggested={suggested} libOpen={libOpen} onLibOpen={setLibOpen} before={followed.length > 0 && (
+          <div className="hero-follow">
+            <div className="label fav-head">{t("Spelare du följer")}</div>
+            <div className="shelf">
+              {followed.map((f) => {
+                const pct = f.total ? Math.round(((f.have || 0) / f.total) * 100) : 0;
+                return (
+                  <div key={f.player_key} className="shelf-item fav-card">
+                    <button className="fav-open" type="button" onClick={() => openPlayer({ player_key: f.player_key, display_name: f.display_name })}>
+                      <strong>{f.display_name}</strong>
+                      {f.total !== undefined && (
+                        <>
+                          <span className="bar"><i style={{ width: `${pct}%` }} /></span>
+                          <span className="sub mono">{f.have || 0} / {f.total}{f.total >= 1000 ? "+" : ""} · {pct} %</span>
+                        </>
+                      )}
+                    </button>
+                    <button className="star on" type="button" title={t("Sluta följa")} aria-label={`${t("Sluta följa")} ${f.display_name}`} onClick={() => unfollow(f.player_key)}>★</button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )} />
         ) : (
           <div className="empty">{t("Läser biblioteket …")}</div>
         )}
