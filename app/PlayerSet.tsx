@@ -183,6 +183,26 @@ export default function PlayerSet({
       fail();
     }
   };
+  const toggleWish = async (c: PCard) => {
+    const was = wishIds.has(c.card_id);
+    flip(setWishIds, c.card_id, !was);
+    const r = was
+      ? await supabase.from("wishlist").delete().eq("card_id", c.card_id)
+      : await supabase.from("wishlist").upsert({ card_id: c.card_id, set_id: c.set_id, priority: 2, max_price: null, note: null }, { onConflict: "user_id,card_id" });
+    if (r.error) {
+      flip(setWishIds, c.card_id, was);
+      fail();
+    }
+  };
+  const toggleDup = async (c: PCard) => {
+    const n = (c.qty ?? 0) > 1 ? 1 : 2;
+    setCards((p) => (p || []).map((x) => (x.card_id === c.card_id ? { ...x, qty: n } : x)));
+    const r = await supabase.from("owned").upsert({ card_id: c.card_id, set_id: c.set_id, qty: n }, { onConflict: "user_id,card_id" });
+    if (r.error) {
+      setCards((p) => (p || []).map((x) => (x.card_id === c.card_id ? { ...x, qty: c.qty } : x)));
+      fail();
+    }
+  };
   const toggleFollow = async () => {
     const was = follows;
     setFollows(!was);
@@ -370,6 +390,10 @@ export default function PlayerSet({
                   </button>
                   <button className={`pbtn${parCounts.get(c.card_id) || wishIds.has(c.card_id) ? " on" : ""}`} type="button" title={t("Antal, paralleller och önskelista")} aria-label={`${t("Mer om")} ${c.name}`} onClick={() => setParCard(c)}>{t("Par.")}{parCounts.get(c.card_id) ? ` ${parCounts.get(c.card_id)}` : ""}{wishIds.has(c.card_id) ? " ♡" : ""}</button>
                   <button className={`star${favCards.has(c.card_id) ? " on" : ""}`} type="button" aria-pressed={favCards.has(c.card_id)} title={t("Favorit: extra värdefull")} aria-label={`${c.name}: ${t("Favorit: extra värdefull")}`} onClick={() => toggleFavCard(c)}>{favCards.has(c.card_id) ? "★" : "☆"}</button>
+                  <button className={`star wish xtra${wishIds.has(c.card_id) ? " on" : ""}`} type="button" aria-pressed={wishIds.has(c.card_id)} title={t("Önskelista: jag jagar det här kortet")} aria-label={`${c.name}: ${t("Önskelista: jag jagar det här kortet")}`} onClick={() => toggleWish(c)}>{wishIds.has(c.card_id) ? "♥" : "♡"}</button>
+                  <button className={`star dup xtra${(c.qty ?? 0) > 1 ? " on" : ""}`} type="button" aria-pressed={(c.qty ?? 0) > 1} title={t("Dubblett: jag har flera av det här kortet")} aria-label={`${c.name}: ${t("Dubblett")}`} onClick={() => ((c.qty ?? 0) > 2 ? setParCard(c) : toggleDup(c))}>⧉</button>
+                  <button className="tbtn xtra" type="button" title={t("Visa sålda på Tradera")} aria-label={`${c.name}: ${t("Visa sålda på Tradera")}`} onClick={() => setTradera(scopeOf(c))}>T</button>
+                  <button className="tbtn xtra" type="button" title={t("Auktioner på eBay")} aria-label={`${c.name}: ${t("Auktioner på eBay")}`} onClick={() => setEbay(scopeOf(c))}>E</button>
                 </div>
               ))}
             </div>
