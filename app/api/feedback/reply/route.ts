@@ -26,6 +26,8 @@ export async function POST(req: Request) {
   if (asAdmin) {
     const { data: role } = await supabase.rpc("admin_role");
     if (!role) return Response.json({ error: "Bara administratörer kan svara." }, { status: 403 });
+    const { data: own } = await supabase.from("feedback").select("user_id").eq("id", id).maybeSingle();
+    if (own && (own as { user_id: string }).user_id === user.id) return Response.json({ error: "Du kan inte svara på din egen feedback." }, { status: 400 });
     const { data: mail, error } = await supabase.rpc("admin_feedback_reply", { p_feedback: id, p_text: text });
     if (error) return Response.json({ error: "Kunde inte spara svaret." }, { status: 500 });
     let mailed = false;
