@@ -9,7 +9,7 @@ type Fb = { id: string; kind: string; text: string; created_at: string };
 type Msg = { id: number; feedback_id: string; sender: "admin" | "user"; text: string; created_at: string };
 
 // The user's side of the feedback: what they wrote, the answers from Richard, and a box to answer back.
-export default function Messages({ supabase, onClose, onRead, say }: { supabase: SupabaseClient; onClose: () => void; onRead: () => void; say: (m: string) => void }) {
+export default function Messages({ supabase, userId, onClose, onRead, say }: { supabase: SupabaseClient; userId: string; onClose: () => void; onRead: () => void; say: (m: string) => void }) {
   const t = useT();
   const { lang } = useLang();
   const [fbs, setFbs] = useState<Fb[] | null>(null);
@@ -19,7 +19,7 @@ export default function Messages({ supabase, onClose, onRead, say }: { supabase:
   const when = (iso: string) => new Date(iso).toLocaleString(localeOf(lang), { dateStyle: "short", timeStyle: "short" });
 
   const load = useCallback(async () => {
-    const [f, m] = await Promise.all([supabase.from("feedback").select("id, kind, text, created_at").order("created_at", { ascending: false }).limit(50), supabase.from("feedback_messages").select("id, feedback_id, sender, text, created_at").order("created_at")]);
+    const [f, m] = await Promise.all([supabase.from("feedback").select("id, kind, text, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(50), supabase.from("feedback_messages").select("id, feedback_id, sender, text, created_at").order("created_at")]);
     setFbs((f.data as Fb[]) || []);
     setMsgs((m.data as Msg[]) || []);
   }, [supabase]);
