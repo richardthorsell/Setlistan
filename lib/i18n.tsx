@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import { EN } from "./en";
 import { EXTRA } from "./extra";
 import { NOTES_EN, translateNote } from "./notes";
+import { svWords } from "./svwords";
 
 // Swedish is the source language; every Swedish text is wrapped in t("…") and looked up in the chosen language's dictionary.
 // English is bundled; the other languages are loaded the first time they are chosen. A missing text falls back to English, then Swedish.
@@ -83,7 +84,7 @@ export const useLang = () => useContext(Ctx);
 
 export function useT() {
   const { lang, dict } = useContext(Ctx);
-  return (sv: string) => (lang === "sv" ? sv : EXTRA[lang]?.[sv] ?? dict[sv] ?? EXTRA.en?.[sv] ?? EN[sv] ?? sv);
+  return (sv: string) => (lang === "sv" ? svWords(sv) : EXTRA[lang]?.[sv] ?? dict[sv] ?? EXTRA.en?.[sv] ?? EN[sv] ?? sv);
 }
 
 // Set notes come from the importers (Swedish); this translates the known sentences.
