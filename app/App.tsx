@@ -1081,12 +1081,14 @@ export default function App() {
       {tradera && <TraderaPanel key={tradera.narrow + "|" + tradera.broad} scope={tradera} signedIn={!!user} onClose={() => setTradera(null)} />}
 
       <header className="top hero">
+        <div className="hero-band">
         <div className="brand">
           <h1 className="logo-h1"><Image src={logoWide} alt="Setlistan.se Collector" priority sizes="(max-width: 640px) 90vw, 600px" /></h1>
           <p>{t("Sök fram en checklista, pricka av korten du har och se direkt vilka som fattas.")}</p>
         </div>
         <StartSearch supabase={supabase} sets={sets} onOpenPlayer={openPlayer} onOpenSet={openSet} onBrowse={() => setLibOpen((v) => !v)} />
         <p className="hero-sub">{t("Hitta alla en spelares kort i alla set, eller välj ett set här under.")}</p>
+        </div>
         <Overview supabase={supabase} sets={sets} counts={counts} favs={favs} followed={followed} refreshKey={`${showSell}${showWish}${showMySets}${playerSet ? 1 : 0}${openId ?? ""}`} onMySets={() => setShowMySets(true)} onSell={() => setShowSell(true)} onWish={() => setShowWish(true)} />
       </header>
 
