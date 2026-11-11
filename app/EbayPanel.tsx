@@ -21,6 +21,8 @@ export default function EbayPanel({ scope, signedIn, onClose }: { scope: Tradera
   const [res, setRes] = useState<Result | null>(null);
   const [err, setErr] = useState<{ m: string; url?: string } | null>(null);
   const started = useRef(false);
+  // The query the shown result belongs to; the link only reuses that result's address while the box still holds the same words.
+  const [resQ, setResQ] = useState(scope.narrow.trim());
   const fallback = "https://www.ebay.com/sch/i.html?_nkw=" + encodeURIComponent(q.trim()) + "&LH_Auction=1&_sop=1";
 
   const when = (iso: string) => {
@@ -33,6 +35,7 @@ export default function EbayPanel({ scope, signedIn, onClose }: { scope: Tradera
     if (query.trim().length < 3) return;
     setBusy(true);
     setErr(null);
+    setResQ(query.trim());
     try {
       const r = await fetch("/api/ebay?q=" + encodeURIComponent(query.trim()));
       const j = await r.json().catch(() => ({}));
@@ -98,7 +101,7 @@ export default function EbayPanel({ scope, signedIn, onClose }: { scope: Tradera
         >
           <input className="grow t-input" value={q} onChange={(e) => { setQ(e.target.value); setMode("own"); }} aria-label={t("Sökord på eBay")} maxLength={100} />
           <button className="btn primary small" type="submit" disabled={busy || !signedIn}>{busy ? t("Söker …") : t("Sök")}</button>
-          <a className="btn small" href={err?.url || res?.searchUrl || fallback} target="_blank" rel="noopener noreferrer">{t("Öppna på eBay")}</a>
+          <a className="btn small" href={(resQ === q.trim() && (err?.url || res?.searchUrl)) || fallback} target="_blank" rel="noopener noreferrer">{t("Öppna på eBay")}</a>
         </form>
         {!signedIn && <div className="note">{t("Logga in för att se auktioner här. Du kan alltid öppna sökningen direkt på eBay.")}</div>}
         {busy && <div className="note">{t("Hämtar auktioner …")}</div>}

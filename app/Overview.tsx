@@ -8,8 +8,6 @@ import type { SetStat } from "@/lib/checklist";
 
 type Ov = { sets_started: number; cards_owned: number; dup_cards: number; for_sale_cards: number; for_sale_value: number | string; wish_count: number; wish_high: number; incoming_count: number };
 
-const jump = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
-
 // The start page overview: a few numbers about your collection, each leading on to the view where you act on it.
 export default function Overview({
   supabase,
@@ -21,6 +19,7 @@ export default function Overview({
   onMySets,
   onSell,
   onWish,
+  onPlayers,
 }: {
   supabase: SupabaseClient;
   sets: SetStat[];
@@ -31,6 +30,7 @@ export default function Overview({
   onMySets: () => void;
   onSell: () => void;
   onWish: () => void;
+  onPlayers: () => void;
 }) {
   const t = useT();
   const [ov, setOv] = useState<Ov | null>(null);
@@ -80,7 +80,7 @@ export default function Overview({
         <span className="ov-num">{setStats.n}</span>
         <span className="ov-sub">{setStats.n > 0 ? `${setStats.pct} % ${t("av korten")}` : t("Inga påbörjade än")}</span>
       </button>
-      <button type="button" className="ov-tile" onClick={() => jump("followed")}>
+      <button type="button" className="ov-tile" onClick={onPlayers}>
         <span className="label">{t("Mina spelare")}</span>
         <span className="ov-num">{followed.length}</span>
         <span className="ov-sub">{followed.length > 0 ? `${playerPct} % ${t("av korten")}` : t("Följ en spelare från en sökning")}</span>
