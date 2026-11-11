@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import AuthBox from "./AuthBox";
 import Image from "next/image";
@@ -20,6 +20,16 @@ export default function Landing({ supabase, message }: { supabase: SupabaseClien
   const { lang } = useLang();
   const [panel, setPanel] = useState<"wait" | "login" | "invite" | null>(null);
   const [stats, setStats] = useState<{ sets: number; cards: number } | null>(null);
+  // Opening a panel brings it into view, so on a phone the sign-in box is not left below the fold.
+  const [tick, setTick] = useState(0);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const show = (p: "wait" | "login" | "invite") => {
+    setPanel(p);
+    setTick((n) => n + 1);
+  };
+  useEffect(() => {
+    if (tick) panelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [tick]);
 
   // How much the library holds, counted by the database.
   useEffect(() => {
@@ -58,21 +68,25 @@ export default function Landing({ supabase, message }: { supabase: SupabaseClien
   return (
     <div className="wrap landing">
       <div className="topbar">
-        <Image className="topmark" src={logoMark} alt="Setlistan" width={40} height={40} />
+        <div className="brandline">
+          <Image className="topmark" src={logoMark} alt="" width={40} height={40} />
+          <span className="wordmark">Setlistan.se</span>
+          <span className="pill">{t("Beta")}</span>
+        </div>
         <div className="account">
-          <LangSwitch /><span className="pill">{t("Beta")}</span>
-          <button className="btn small" type="button" onClick={() => setPanel("login")}>{t("Logga in")}</button>
+          <LangSwitch />
+          <button className="btn small primary" type="button" onClick={() => show("login")}>{t("Logga in")}</button>
         </div>
       </div>
 
       <div className="hero-grid">
         <header className="hero">
-          <h1 className="logo-h1"><Image src={logoWide} alt="Setlistan.se Collector" priority sizes="(max-width: 640px) 90vw, 600px" /></h1>
-          <h2 className="hero-title" lang="en">The easiest way to complete your collection</h2>
+          <div className="logo-h1"><Image src={logoWide} alt="Setlistan.se Collector" priority sizes="280px" /></div>
+          <h1 className="hero-title" lang="en">The easiest way to complete your collection</h1>
           <p className="lead">{t("Sök fram ett set eller en spelare, pricka av korten du har och se direkt vad som saknas. Sälj dubbletterna med en färdig säljtråd.")}</p>
           <div className="row">
-            <button className="btn primary big" type="button" onClick={() => setPanel("wait")}>{t("Gå med i väntelistan")}</button>
-            <button className="btn big" type="button" onClick={() => setPanel("invite")}>{t("Jag har en inbjudan")}</button>
+            <button className="btn primary big" type="button" onClick={() => show("wait")}>{t("Gå med i väntelistan")}</button>
+            <button className="btn big" type="button" onClick={() => show("invite")}>{t("Jag har en inbjudan")}</button>
           </div>
           <div className="note">{t("Setlistan är i beta och öppnas för inbjudna i omgångar.")}</div>
         </header>
@@ -80,8 +94,12 @@ export default function Landing({ supabase, message }: { supabase: SupabaseClien
       </div>
 
       {message && <div className="note warn">{message}</div>}
-      {panel === "wait" && <WaitlistBox onClose={() => setPanel(null)} />}
-      {(panel === "login" || panel === "invite") && <AuthBox supabase={supabase} initialMode={panel === "invite" ? "signup" : "login"} onClose={() => setPanel(null)} />}
+      {panel && (
+        <div ref={panelRef} className="panel-anchor">
+          {panel === "wait" && <WaitlistBox onClose={() => setPanel(null)} />}
+          {(panel === "login" || panel === "invite") && <AuthBox supabase={supabase} initialMode={panel === "invite" ? "signup" : "login"} onClose={() => setPanel(null)} />}
+        </div>
+      )}
 
       <section className="stats" aria-label={t("Biblioteket i siffror")}>
         {facts.map(([n, l]) => (
@@ -113,7 +131,7 @@ export default function Landing({ supabase, message }: { supabase: SupabaseClien
         <h3>{t("Vill du vara med?")}</h3>
         <div className="note">{t("Anmäl dig till väntelistan så bjuder vi in dig när det finns plats.")}</div>
         <div className="row">
-          <button className="btn primary" type="button" onClick={() => { setPanel("wait"); window.scrollTo({ top: 0, behavior: "smooth" }); }}>{t("Gå med i väntelistan")}</button>
+          <button className="btn primary" type="button" onClick={() => show("wait")}>{t("Gå med i väntelistan")}</button>
         </div>
       </section>
 

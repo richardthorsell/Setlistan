@@ -29,7 +29,12 @@ function MockCard({ n, l, have, par }: { n: string; l: string; have: boolean; pa
     <div className={`mk-card ${have ? "have" : ""}`}>
       <span className="mk-num mono">#{n}</span>
       <span className="mk-pos">{t(l)}</span>
-      {par && <span className="mk-par mono">{par}</span>}
+      {(par || !have) && (
+        <span className="mk-bot">
+          {par && <span className="mk-par mono">{par}</span>}
+          {!have && <span className="mk-miss">{t("Saknas")}</span>}
+        </span>
+      )}
       {have && (
         <span className="mk-tick">
           <Tick />
