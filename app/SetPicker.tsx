@@ -22,6 +22,9 @@ type Props = {
 };
 
 const nameOf = (s: SetStat) => s.short_name || s.name;
+
+type Sort = "fav" | "az" | "new" | "old" | "cards" | "done";
+const SORT_KEY = "setlistan:libsort";
 const pctOf = (s: SetStat, n: number) => (s.card_count ? Math.round((n / s.card_count) * 100) : 0);
 
 const Star = ({ on }: { on: boolean }) => (
@@ -36,8 +39,24 @@ export default function SetPicker({ sets, counts, openId, favs, sport, setSport,
   const open = libOpen;
   const setOpen = onLibOpen;
   const [q, setQ] = useState("");
+  // How the library is ordered; the choice is remembered on this device.
+  const [sort, setSortState] = useState<Sort>("fav");
+  const [year, setYear] = useState("");
   const box = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem(SORT_KEY);
+      if (v === "fav" || v === "az" || v === "new" || v === "old" || v === "cards" || v === "done") setSortState(v);
+    } catch {}
+  }, []);
+  const setSort = (v: Sort) => {
+    setSortState(v);
+    try {
+      localStorage.setItem(SORT_KEY, v);
+    } catch {}
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -56,13 +75,23 @@ export default function SetPicker({ sets, counts, openId, favs, sport, setSport,
     };
   }, [open]);
 
-  const list = useMemo(
-    () =>
-      (sport ? sets.filter((s) => s.sport === sport) : sets)
-        .filter((s) => !q.trim() || matches(s, q))
-        .sort((a, b) => (favs.has(b.id) ? 1 : 0) - (favs.has(a.id) ? 1 : 0) || nameOf(a).localeCompare(nameOf(b), "sv")),
-    [sets, sport, q, favs],
-  );
+  const years = useMemo(() => [...new Set(sets.filter((s) => !sport || s.sport === sport).map((s) => s.year).filter((y): y is number => typeof y === "number"))].sort((a, b) => b - a), [sets, sport]);
+  const list = useMemo(() => {
+    const byName = (a: SetStat, b: SetStat) => nameOf(a).localeCompare(nameOf(b), "sv");
+    const done = (s: SetStat) => pctOf(s, counts[s.id] || 0);
+    const order: Record<Sort, (a: SetStat, b: SetStat) => number> = {
+      fav: (a, b) => (favs.has(b.id) ? 1 : 0) - (favs.has(a.id) ? 1 : 0) || byName(a, b),
+      az: byName,
+      new: (a, b) => (b.year ?? -1) - (a.year ?? -1) || byName(a, b),
+      old: (a, b) => (a.year ?? 9999) - (b.year ?? 9999) || byName(a, b),
+      cards: (a, b) => b.card_count - a.card_count || byName(a, b),
+      done: (a, b) => done(b) - done(a) || byName(a, b),
+    };
+    return (sport ? sets.filter((s) => s.sport === sport) : sets)
+      .filter((s) => !year || String(s.year ?? "") === year)
+      .filter((s) => !q.trim() || matches(s, q))
+      .sort(order[sort]);
+  }, [sets, sport, q, favs, sort, year, counts]);
   const favSets = useMemo(() => sets.filter((s) => favs.has(s.id)).sort((a, b) => nameOf(a).localeCompare(nameOf(b), "sv")), [sets, favs]);
   const current = sets.find((s) => s.id === openId);
   const used = SPORTS.filter((s) => sets.some((x) => x.sport === s.id));
@@ -81,6 +110,24 @@ export default function SetPicker({ sets, counts, openId, favs, sport, setSport,
                   <option key={s.id} value={s.id}>{t(s.label)}</option>
                 ))}
               </select>
+            </div>
+            <div className="row">
+              <select className="sport-select" aria-label={t("Sortera")} value={sort} onChange={(e) => setSort(e.target.value as Sort)}>
+                <option value="fav">{t("Favoriter först")}</option>
+                <option value="az">{t("Namn A–Ö")}</option>
+                {years.length > 0 && <option value="new">{t("Nyast först")}</option>}
+                {years.length > 0 && <option value="old">{t("Äldst först")}</option>}
+                <option value="cards">{t("Flest kort")}</option>
+                <option value="done">{t("Mest komplett")}</option>
+              </select>
+              {years.length > 0 && (
+                <select className="sport-select" aria-label={t("År")} value={year} onChange={(e) => setYear(e.target.value)}>
+                  <option value="">{t("Alla år")}</option>
+                  {years.map((y) => (
+                    <option key={y} value={String(y)}>{y}</option>
+                  ))}
+                </select>
+              )}
             </div>
             <div className="note mono">{list.length} av {sets.length} set</div>
             <div className="picker-list" role="list" aria-label={t("Album")}>

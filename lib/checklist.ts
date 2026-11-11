@@ -12,6 +12,8 @@ export type SetStat = {
   card_count: number;
   section_count: number;
   sport: Sport;
+  // Parsed from the name by the database.
+  year?: number | null;
 };
 
 export const SPORTS = [
