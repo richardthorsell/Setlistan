@@ -18,6 +18,7 @@ import Overview from "./Overview";
 import MySetsPanel from "./MySetsPanel";
 import QuestionPrompt from "./QuestionPrompt";
 import QuestionsPanel from "./QuestionsPanel";
+import NamesPanel from "./NamesPanel";
 import MergePanel from "./MergePanel";
 import Messages from "./Messages";
 import SellPanel from "./SellPanel";
@@ -143,6 +144,7 @@ export default function App() {
   const [playerQ, setPlayerQ] = useState("");
   const [playerSet, setPlayerSet] = useState<{ player_key: string; display_name: string } | null>(null);
   const [showQuestions, setShowQuestions] = useState(false);
+  const [showNames, setShowNames] = useState(false);
   const [showMerge, setShowMerge] = useState(false);
   const [showMsgs, setShowMsgs] = useState(false);
   const [unreadMsgs, setUnreadMsgs] = useState(0);
@@ -1015,6 +1017,7 @@ export default function App() {
                     <>
                       <button type="button" onClick={() => setShowQuestions((v) => !v)}>{t("Frågor")}</button>
                       <button type="button" onClick={() => setShowMerge((v) => !v)}>{t("Slå ihop")}</button>
+                      <button type="button" onClick={() => setShowNames((v) => !v)}>{t("Rätta namn")}</button>
                     </>
                   )}
                   <button type="button" onClick={() => supabase.auth.signOut()}>{t("Logga ut")}</button>
@@ -1045,6 +1048,7 @@ export default function App() {
       {showNews && user && <WhatsNew updates={updates} since={newsSince} onClose={() => setShowNews(false)} />}
       {user && !showWelcome && !showNews && <QuestionPrompt supabase={supabase} />}
       {showQuestions && role === "superuser" && user && <QuestionsPanel supabase={supabase} onClose={() => setShowQuestions(false)} />}
+      {showNames && role === "superuser" && user && <NamesPanel supabase={supabase} onClose={() => setShowNames(false)} />}
       {showMerge && role === "superuser" && user && <MergePanel supabase={supabase} sets={sets} onChanged={loadSets} say={say} onClose={() => setShowMerge(false)} />}
       {showAuth && !user && <AuthBox supabase={supabase} onClose={() => setShowAuth(false)} />}
       {showAdmin && role && user && (
