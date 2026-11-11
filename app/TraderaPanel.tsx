@@ -27,12 +27,15 @@ export default function TraderaPanel({ scope, signedIn, onClose }: { scope: Trad
   const [res, setRes] = useState<Result | null>(null);
   const [err, setErr] = useState<{ m: string; url?: string } | null>(null);
   const started = useRef(false);
+  // The query the shown result belongs to; the link only reuses that result's address while the box still holds the same words.
+  const [resQ, setResQ] = useState(scope.narrow.trim());
   const fallback = "https://www.tradera.com/search?q=" + encodeURIComponent(q.trim());
 
   const run = useCallback(async (query: string) => {
     if (query.trim().length < 3) return;
     setBusy(true);
     setErr(null);
+    setResQ(query.trim());
     try {
       // The context (set and card) is saved with the search in the history; nothing about who searched.
       const ctx = [scope.set, scope.card].filter(Boolean).join(" · ");
@@ -113,7 +116,7 @@ export default function TraderaPanel({ scope, signedIn, onClose }: { scope: Trad
             maxLength={100}
           />
           <button className="btn primary small" type="submit" disabled={busy || !signedIn}>{busy ? t("Söker …") : t("Sök")}</button>
-          <a className="btn small" href={err?.url || res?.searchUrl || fallback} target="_blank" rel="noopener noreferrer">{t("Visa till salu på Tradera")}</a>
+          <a className="btn small" href={(resQ === q.trim() && (err?.url || res?.searchUrl)) || fallback} target="_blank" rel="noopener noreferrer">{t("Visa till salu på Tradera")}</a>
         </form>
         {!signedIn && <div className="note">{t("Logga in för att se sålda kort här. Du kan alltid öppna sökningen direkt på Tradera.")}</div>}
         {busy && <div className="note">{t("Hämtar sålda annonser …")}</div>}
