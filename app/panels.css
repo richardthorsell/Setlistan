@@ -190,10 +190,10 @@
 @media (max-width: 560px) { .pl-line { gap: 3px; } .pl-line .star { width: 28px; height: 28px; } .pl-line .pl-card { padding: 7px 6px; gap: 6px; } }
 /* Export menu opens to the left edge, the counter stays visible on a phone, and the parallel mode is easy to see. */
 .menu-pop.left { left: 0; right: auto; }
-.logo-h1 { font-size: 0; line-height: 0; }
-.logo-h1 img { display: block; width: min(600px, 100%); height: auto; margin-inline: auto; border-radius: 14px; }
-.hero-grid .logo-h1 img { margin-inline: 0; }
-.topmark { width: 40px; height: 40px; border-radius: 9px; }
+.logo-h1 { font-size: 0; line-height: 0; width: min(620px, 100%); margin-inline: auto; padding: 10px 20px; background: #061230; border-radius: 16px; }
+.logo-h1 img { display: block; width: 100%; height: auto; }
+.hero-grid .logo-h1 { margin-inline: 0; }
+.topmark { width: 40px; height: 40px; padding: 3px; background: #061230; border-radius: 10px; }
 .start-search { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 920px; text-align: left; }
 .start-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .start-row .shelf-search { flex: 1 1 220px; min-width: 0; width: auto; }
