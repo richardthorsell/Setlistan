@@ -5,6 +5,20 @@ import { LangProvider } from "@/lib/i18n";
 export const metadata: Metadata = {
   title: "Setlistan",
   description: "Sök fram set för samlarkort, pricka av dem du har och se vilka som saknas.",
+  icons: {
+    icon: [
+      { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
+  openGraph: {
+    title: "Setlistan",
+    description: "Sök fram set för samlarkort, pricka av dem du har och se vilka som saknas.",
+    siteName: "Setlistan",
+    locale: "sv_SE",
+    images: [{ url: "/icon-512.png", width: 512, height: 512 }],
+  },
 };
 
 export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover" };
