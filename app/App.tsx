@@ -21,6 +21,7 @@ import QuestionsPanel from "./QuestionsPanel";
 import NamesPanel from "./NamesPanel";
 import FeaturesPanel from "./FeaturesPanel";
 import CollectorAssistant from "./CollectorAssistant";
+import TradePanel from "./TradePanel";
 import { type FeatureMode, featureOn } from "@/lib/features";
 import MergePanel from "./MergePanel";
 import Messages from "./Messages";
@@ -162,6 +163,10 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
   const assistantOn = featureOn(flags.collector_assistant, role);
+  const advisorOn = featureOn(flags.collector_advisor, role);
+  const aiOn = featureOn(flags.assistant_ai, role);
+  const tradeOn = featureOn(flags.trade_matching, role);
+  const [showTrade, setShowTrade] = useState(false);
   const [showMerge, setShowMerge] = useState(false);
   const [showMsgs, setShowMsgs] = useState(false);
   const [unreadMsgs, setUnreadMsgs] = useState(0);
@@ -1027,6 +1032,7 @@ export default function App() {
                   >{t("Nytt")}{unseen > 0 && <span className="badge">{unseen}</span>}</button>
                   <button type="button" onClick={() => setShowWelcome(true)}>{t("Guide")}</button>
                   <button type="button" onClick={() => setShowFeedback((v) => !v)}>{t("Feedback")}</button>
+                  {tradeOn && <button type="button" onClick={() => setShowTrade((v) => !v)}>{t("Bytespartners")}</button>}
                   <button type="button" onClick={() => setShowMsgs((v) => !v)}>{t("Meddelanden")}{unreadMsgs > 0 && <span className="badge">{unreadMsgs}</span>}</button>
                   {role && (
                     <button type="button" onClick={() => setShowAdmin((v) => !v)}>{role === "superuser" ? t("Superuser") : t("Admin")}</button>
@@ -1069,7 +1075,8 @@ export default function App() {
       {showQuestions && role === "superuser" && user && <QuestionsPanel supabase={supabase} onClose={() => setShowQuestions(false)} />}
       {showNames && role === "superuser" && user && <NamesPanel supabase={supabase} onClose={() => setShowNames(false)} />}
       {showFeatures && role === "superuser" && user && <FeaturesPanel supabase={supabase} onClose={() => setShowFeatures(false)} onChanged={loadFlags} />}
-      {showAssistant && assistantOn && user && <CollectorAssistant supabase={supabase} onClose={() => setShowAssistant(false)} onOpenSet={(id) => { setShowAssistant(false); openSet(id); }} />}
+      {showAssistant && assistantOn && user && <CollectorAssistant supabase={supabase} advisor={advisorOn} ai={aiOn} onClose={() => setShowAssistant(false)} onOpenSet={(id) => { setShowAssistant(false); openSet(id); }} />}
+      {showTrade && tradeOn && user && <TradePanel supabase={supabase} onClose={() => setShowTrade(false)} onOpenSet={(id) => { setShowTrade(false); openSet(id); }} />}
       {showMerge && role === "superuser" && user && <MergePanel supabase={supabase} sets={sets} onChanged={loadSets} say={say} onClose={() => setShowMerge(false)} />}
       {showAuth && !user && <AuthBox supabase={supabase} onClose={() => setShowAuth(false)} />}
       {showAdmin && role && user && (
