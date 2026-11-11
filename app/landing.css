@@ -123,3 +123,42 @@
 .mk-colh { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
 .mk-result b { overflow-wrap: anywhere; }
 .mk-post { padding: 9px 11px; border-radius: 10px; border: 1.5px dashed var(--line); background: var(--surface); font-size: 13px; line-height: 1.45; }
+
+/* Calm front page: plain background, one accent colour, readable text on every surface. */
+.panel-anchor { scroll-margin-top: 12px; display: flex; flex-direction: column; gap: 12px; }
+.landing .topbar { align-items: center; }
+.landing .brandline { display: flex; align-items: center; gap: 10px; }
+.landing .topmark { display: block; width: 36px; height: 36px; }
+.landing .topbar .wordmark { font-family: var(--f-display); font-size: 22px; font-weight: 800; letter-spacing: .01em; text-transform: none; }
+.landing .brandline .pill { align-self: center; }
+.landing .account { gap: 10px; }
+.landing .langsel { border: 0; background: transparent; }
+.landing .langsel select { font-weight: 500; font-size: 12.5px; color: var(--muted); }
+.landing .account .btn.small { padding: 0 18px; }
+@media (max-width: 560px) { .landing .account { width: auto; margin-left: auto; } }
+
+.hero-grid { align-items: stretch; }
+.hero-grid::before { display: none; }
+.landing .hero { justify-content: center; }
+.hero-grid .logo-h1 { width: min(280px, 70%); margin-inline: auto; }
+.landing .hero h1.hero-title { font-family: var(--f-display); font-size: clamp(28px, 4vw, 38px); font-weight: 800; line-height: 1.08; letter-spacing: 0; text-transform: none; background: none; -webkit-background-clip: border-box; background-clip: border-box; color: #fff; margin: 0; max-width: 20ch; }
+.landing .hero .row { justify-content: center; }
+.landing .hero .btn.big { min-width: 190px; justify-content: center; }
+.landing .hero .btn:not(.primary) { background: transparent; border: 1px solid #fff; color: #fff; }
+.landing .hero .btn:not(.primary):hover { background: rgba(255, 255, 255, .1); border-color: #fff; }
+
+.feature, .feature:nth-child(n) { --tone: var(--accent); }
+.feature { gap: 16px; border: 1px solid var(--line); border-top: 3px solid var(--accent); background: var(--surface); }
+.feature h3 { font-family: var(--f-body); font-size: 20px; font-weight: 700; line-height: 1.25; letter-spacing: 0; text-transform: none; color: var(--accent); }
+.feature .mk { margin-top: 0; flex: 1 1 auto; }
+.mk { background: var(--sunk); border: 1px solid var(--line); }
+.mk-tag { font-size: 11px; color: var(--muted); }
+.mk-bar i { background: var(--accent); }
+.mk-card { max-height: 110px; opacity: 1; border: 1px dashed var(--muted); background: transparent; }
+.mk-card.have { border: 1px solid var(--have); background: color-mix(in srgb, var(--have) 10%, var(--surface)); }
+.mk-card .mk-pos { margin-bottom: 0; color: var(--muted); }
+.mk-card.have .mk-pos { color: var(--ink); }
+.mk-card .mk-par { position: static; }
+.mk-bot { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; }
+.mk-miss { font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.mk-par { color: var(--accent); }
