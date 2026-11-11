@@ -12,9 +12,8 @@ export type SetStat = {
   card_count: number;
   section_count: number;
   sport: Sport;
-  // Parsed from the name, and the number of cards counting every parallel (both filled in by the database).
+  // Parsed from the name by the database.
   year?: number | null;
-  variant_count?: number;
 };
 
 export const SPORTS = [
