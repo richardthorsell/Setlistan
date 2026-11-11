@@ -1083,7 +1083,7 @@ export default function App() {
       <header className="top hero">
         <div className="hero-band">
         <div className="brand">
-          <h1 className="logo-h1"><Image src={logoWide} alt="Setlistan.se Collector" priority sizes="(max-width: 640px) 90vw, 600px" /></h1>
+          <h1 className="logo-h1"><Image src={logoWide} alt="Setlistan.se Collector" priority sizes="280px" /></h1>
           <p>{t("Sök fram en checklista, pricka av korten du har och se direkt vilka som fattas.")}</p>
         </div>
         <StartSearch supabase={supabase} sets={sets} onOpenPlayer={openPlayer} onOpenSet={openSet} onBrowse={() => setLibOpen((v) => !v)} />
@@ -1164,7 +1164,13 @@ export default function App() {
               <button className="btn small" type="button" aria-pressed={favs.has(current.id)} onClick={() => toggleFav(current.id)}>
                 {favs.has(current.id) ? t("★ Favorit") : t("☆ Lägg i favoriter")}
               </button>
-              <div className="sub">{scoped.length} {t("delset")} · {total} {t("kort")}{selPar ? ` · ${parallelLabel(selPar)}` : ""}{note(current.notes || "") ? ` · ${note(current.notes || "")}` : ""}</div>
+              <div className="sub">{scoped.length} {t("delset")} · {total} {t("kort")}{selPar ? ` · ${parallelLabel(selPar)}` : ""}</div>
+              {note(current.notes || "") && (
+                <details className="set-note">
+                  <summary>{t("Mer om setet")}</summary>
+                  <p>{note(current.notes || "")}</p>
+                </details>
+              )}
             </div>
             <div className="tally">
               <div className="num mono">{have}<small> / {total}</small></div>
@@ -1231,12 +1237,19 @@ export default function App() {
           </div>
 
           <div className="controls">
+            <div className="ctl-row">
             <div className="seg" role="group" aria-label={t("Visa")}>
               {(["all", "missing", "have", ...(moreF || !["all", "missing", "have"].includes(filter) ? ["dups", "sale", "incoming", "wish", "fav"] : [])] as Filter[]).map((k) => (
                 <button key={k} type="button" aria-pressed={filter === k} onClick={() => setFilter(k)}>{{ all: t("Alla"), missing: t("Saknas"), have: t("Har"), fav: `★ ${t("Favoriter")}${favCards.size ? ` ${favCards.size}` : ""}`, dups: `${t("Dubbletter")}${dupCount ? ` ${dupCount}` : ""}`, sale: `${t("Till salu")}${saleCount ? ` ${saleCount}` : ""}`, incoming: `${t("På väg")}${incomingCount ? ` ${incomingCount}` : ""}`, wish: `♡ ${t("Önskas")}${wishes.size ? ` ${wishes.size}` : ""}` }[k]}</button>
               ))}
               <button type="button" aria-pressed={moreF} onClick={() => setMoreF((v) => !v)}>{moreF ? t("Färre") : t("Fler")}</button>
             </div>
+            <div className="seg" role="group" aria-label={t("Vy")}>
+              <button type="button" aria-pressed={view === "list"} onClick={() => setView("list")}>{t("Lista")}</button>
+              <button type="button" aria-pressed={view === "grid"} onClick={() => setView("grid")}>{t("Pärm")}</button>
+            </div>
+            </div>
+            <div className="ctl-row">
             <input type="search" placeholder={t("Spelare, lag eller nummer")} value={find} onChange={(e) => setFind(e.target.value)} aria-label={t("Sök i setet")} />
             <select value={team} onChange={(e) => setTeam(e.target.value)} aria-label={t("Lag")}>
               <option value="">{t("Alla lag")}</option>
@@ -1262,9 +1275,6 @@ export default function App() {
                   ))}
               </select>
             )}
-            <div className="seg" role="group" aria-label={t("Vy")}>
-              <button type="button" aria-pressed={view === "list"} onClick={() => setView("list")}>{t("Lista")}</button>
-              <button type="button" aria-pressed={view === "grid"} onClick={() => setView("grid")}>{t("Pärm")}</button>
             </div>
           </div>
 
@@ -1283,7 +1293,7 @@ export default function App() {
             <div className="grid">
               {items.map(({ sec, c, pos }) => (
                 <div key={c.id} className={`cardwrap${favCards.has(c.id) ? " fav" : ""}`}>
-                  <button className="card" type="button" aria-pressed={has(c)} onClick={() => applyOwned([c.id], !has(c))}>
+                  <button className="card" type="button" aria-pressed={has(c)} data-miss={t("Saknas")} onClick={() => applyOwned([c.id], !has(c))}>
                     <span className="no">{label(sec, c)}</span>
                     <span className="pos" title={t("Pärmsida · fack")}>{pos}</span>
                     <span className="name">{c.name}</span>
