@@ -137,7 +137,7 @@ export default function SetPicker({ sets, counts, openId, favs, sport, setSport,
                   <div key={s.id} className={`picker-row ${s.id === openId ? "active" : ""}`} role="listitem" aria-current={s.id === openId ? "true" : undefined}>
                     <button className="picker-pick" type="button" onClick={() => { onOpen(s.id); setOpen(false); setQ(""); }}>
                       <span className="picker-name">{nameOf(s)}</span>
-                      <span className="sub mono">{!sport && `${t(sportLabel(s.sport))} · `}{n} / {s.card_count}{(s.variant_count ?? 0) > s.card_count ? ` · ${(s.variant_count ?? 0).toLocaleString("sv-SE")} ${t("med paralleller")}` : ""}</span>
+                      <span className="sub mono">{!sport && `${t(sportLabel(s.sport))} · `}{n} / {s.card_count}</span>
                     </button>
                     <button className={`star ${favs.has(s.id) ? "on" : ""}`} type="button" aria-pressed={favs.has(s.id)} aria-label={favs.has(s.id) ? `${t("Ta bort")} ${nameOf(s)} ${t("från favoriter")}` : `${t("Lägg")} ${nameOf(s)} ${t("i favoriter")}`} onClick={() => onToggleFav(s.id)}>
                       <Star on={favs.has(s.id)} />
