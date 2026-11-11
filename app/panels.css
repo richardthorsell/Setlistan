@@ -239,7 +239,8 @@ details.trade-box > summary { cursor: pointer; }
 
 /* Round 8: the signed-in service follows the calm front page: one accent colour, sentence-case headings, readable text. */
 .hero-band .logo-h1 { width: min(280px, 70%); }
-.hero-band .btn:not(.primary), .hero-band select { color: var(--ink); }
+.hero-band .btn:not(.primary), .hero-band select, .hero-band input { color: var(--ink); }
+.hero-band input::placeholder { color: var(--muted); opacity: 1; }
 .shelf-item strong { font-family: var(--f-body); font-size: 17px; font-weight: 700; line-height: 1.25; text-transform: none; }
 .set-head h2 { font-weight: 800; line-height: 1.08; text-transform: none; }
 .panel h3 { font-family: var(--f-body); font-size: 20px; font-weight: 700; line-height: 1.25; letter-spacing: 0; text-transform: none; }
