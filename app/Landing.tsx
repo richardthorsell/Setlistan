@@ -68,7 +68,7 @@ export default function Landing({ supabase, message }: { supabase: SupabaseClien
       <div className="hero-grid">
         <header className="hero">
           <h1 className="logo-h1"><Image src={logoWide} alt="Setlistan.se Collector" priority sizes="(max-width: 640px) 90vw, 600px" /></h1>
-          <h2 className="hero-title">{t("Alla dina samlarkort på ett ställe")}</h2>
+          <h2 className="hero-title" lang="en">The easiest way to complete your collection</h2>
           <p className="lead">{t("Sök fram ett set eller en spelare, pricka av korten du har och se direkt vad som saknas. Sälj dubbletterna med en färdig säljtråd.")}</p>
           <div className="row">
             <button className="btn primary big" type="button" onClick={() => setPanel("wait")}>{t("Gå med i väntelistan")}</button>

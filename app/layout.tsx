@@ -3,7 +3,7 @@ import "./globals.css";
 import { LangProvider } from "@/lib/i18n";
 
 export const metadata: Metadata = {
-  title: "Setlistan",
+  title: "Setlistan – The easiest way to complete your collection",
   description: "Sök fram set för samlarkort, pricka av dem du har och se vilka som saknas.",
   icons: {
     icon: [
@@ -13,7 +13,7 @@ export const metadata: Metadata = {
     apple: "/apple-touch-icon.png",
   },
   openGraph: {
-    title: "Setlistan",
+    title: "Setlistan – The easiest way to complete your collection",
     description: "Sök fram set för samlarkort, pricka av dem du har och se vilka som saknas.",
     siteName: "Setlistan",
     locale: "sv_SE",
