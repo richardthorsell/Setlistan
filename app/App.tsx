@@ -757,8 +757,6 @@ export default function App() {
   for (const p of parallels) (parBySec.get(p.section_id) || parBySec.set(p.section_id, []).get(p.section_id)!).push(p);
   const cardPars = (c: Card) => [...(parBySec.get(null) || []), ...(parBySec.get(c.section_id) || [])];
   const ownedParsOf = (c: Card) => cardPars(c).filter((p) => ownedPar.has(`${c.id}:${p.id}`));
-  // Every card counted once per parallel that applies to it, plus the base card.
-  const variantTotal = scoped.reduce((n, s) => n + s.cards.length * (1 + (parBySec.get(null)?.length || 0) + (parBySec.get(s.id)?.length || 0)), 0);
   const parChips = (c: Card) =>
     ownedParsOf(c).map((p) => {
       const sn = ownedPar.get(`${c.id}:${p.id}`);
@@ -1166,7 +1164,7 @@ export default function App() {
               <button className="btn small" type="button" aria-pressed={favs.has(current.id)} onClick={() => toggleFav(current.id)}>
                 {favs.has(current.id) ? t("★ Favorit") : t("☆ Lägg i favoriter")}
               </button>
-              <div className="sub">{scoped.length} {t("delset")} · {total} {t("kort")}{variantTotal > total ? ` (${variantTotal.toLocaleString("sv-SE")} ${t("med paralleller")})` : ""}{selPar ? ` · ${parallelLabel(selPar)}` : ""}{note(current.notes || "") ? ` · ${note(current.notes || "")}` : ""}</div>
+              <div className="sub">{scoped.length} {t("delset")} · {total} {t("kort")}{selPar ? ` · ${parallelLabel(selPar)}` : ""}{note(current.notes || "") ? ` · ${note(current.notes || "")}` : ""}</div>
             </div>
             <div className="tally">
               <div className="num mono">{have}<small> / {total}</small></div>
