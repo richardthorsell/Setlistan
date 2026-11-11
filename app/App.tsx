@@ -11,6 +11,9 @@ import PlayerPanel from "./PlayerPanel";
 import PlayerSet from "./PlayerSet";
 import Tip from "./Tip";
 import StartSearch from "./StartSearch";
+import Image from "next/image";
+import logoWide from "@/Futuristisk Setlistan.se Collector-banner-1.png";
+import logoMark from "@/Glödande blå S-loop med svepande bågar-2.png";
 import Overview from "./Overview";
 import MySetsPanel from "./MySetsPanel";
 import QuestionPrompt from "./QuestionPrompt";
@@ -977,7 +980,7 @@ export default function App() {
   return (
     <div className="wrap">
       <div className="topbar">
-        <span className="label wordmark">Setlistan</span>
+        <Image className="topmark" src={logoMark} alt="Setlistan" width={40} height={40} />
         <div className="account">
           <LangSwitch />
           {user ? (
@@ -1079,7 +1082,7 @@ export default function App() {
 
       <header className="top hero">
         <div className="brand">
-          <h1>Setlistan</h1>
+          <h1 className="logo-h1"><Image src={logoWide} alt="Setlistan.se Collector" priority sizes="(max-width: 640px) 90vw, 600px" /></h1>
           <p>{t("Sök fram en checklista, pricka av korten du har och se direkt vilka som fattas.")}</p>
         </div>
         <StartSearch supabase={supabase} sets={sets} onOpenPlayer={openPlayer} onOpenSet={openSet} onBrowse={() => setLibOpen((v) => !v)} />
