@@ -19,6 +19,10 @@ import MySetsPanel from "./MySetsPanel";
 import QuestionPrompt from "./QuestionPrompt";
 import QuestionsPanel from "./QuestionsPanel";
 import NamesPanel from "./NamesPanel";
+import FeaturesPanel from "./FeaturesPanel";
+import CollectorAssistant from "./CollectorAssistant";
+import TradePanel from "./TradePanel";
+import { type FeatureMode, featureOn } from "@/lib/features";
 import MergePanel from "./MergePanel";
 import Messages from "./Messages";
 import SellPanel from "./SellPanel";
@@ -145,6 +149,24 @@ export default function App() {
   const [playerSet, setPlayerSet] = useState<{ player_key: string; display_name: string } | null>(null);
   const [showQuestions, setShowQuestions] = useState(false);
   const [showNames, setShowNames] = useState(false);
+  const [showFeatures, setShowFeatures] = useState(false);
+  const [showAssistant, setShowAssistant] = useState(false);
+  // Feature switches (feature_flags): a feature is off, on for the superuser only, or on for everyone.
+  const [flags, setFlags] = useState<Record<string, FeatureMode>>({});
+  const loadFlags = async () => {
+    const { data } = await supabase.from("feature_flags").select("key, mode");
+    setFlags(Object.fromEntries(((data as { key: string; mode: FeatureMode }[]) || []).map((f) => [f.key, f.mode])));
+  };
+  useEffect(() => {
+    if (user) loadFlags();
+    else setFlags({});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+  const assistantOn = featureOn(flags.collector_assistant, role);
+  const advisorOn = featureOn(flags.collector_advisor, role);
+  const aiOn = featureOn(flags.assistant_ai, role);
+  const tradeOn = featureOn(flags.trade_matching, role);
+  const [showTrade, setShowTrade] = useState(false);
   const [showMerge, setShowMerge] = useState(false);
   const [showMsgs, setShowMsgs] = useState(false);
   const [unreadMsgs, setUnreadMsgs] = useState(0);
@@ -990,6 +1012,7 @@ export default function App() {
               <nav className="mainnav" aria-label={t("Meny")}>
                 <button className="navbtn" type="button" aria-pressed={showWish} onClick={() => setShowWish((v) => !v)}>{t("Önskelista")}{wishCount ? ` ${wishCount}` : ""}</button>
                 <button className="navbtn" type="button" aria-pressed={showSell} onClick={() => setShowSell((v) => !v)}>{t("Sälj")}</button>
+                {assistantOn && <button className="navbtn" type="button" aria-pressed={showAssistant} onClick={() => setShowAssistant((v) => !v)}>{t("Assistent")}</button>}
               </nav>
               <details className="menu" onClick={(e) => { if ((e.target as HTMLElement).closest(".menu-pop button")) e.currentTarget.removeAttribute("open"); }}>
                 <summary className="btn small">
@@ -1009,6 +1032,7 @@ export default function App() {
                   >{t("Nytt")}{unseen > 0 && <span className="badge">{unseen}</span>}</button>
                   <button type="button" onClick={() => setShowWelcome(true)}>{t("Guide")}</button>
                   <button type="button" onClick={() => setShowFeedback((v) => !v)}>{t("Feedback")}</button>
+                  {tradeOn && <button type="button" onClick={() => setShowTrade((v) => !v)}>{t("Bytespartners")}</button>}
                   <button type="button" onClick={() => setShowMsgs((v) => !v)}>{t("Meddelanden")}{unreadMsgs > 0 && <span className="badge">{unreadMsgs}</span>}</button>
                   {role && (
                     <button type="button" onClick={() => setShowAdmin((v) => !v)}>{role === "superuser" ? t("Superuser") : t("Admin")}</button>
@@ -1018,6 +1042,7 @@ export default function App() {
                       <button type="button" onClick={() => setShowQuestions((v) => !v)}>{t("Frågor")}</button>
                       <button type="button" onClick={() => setShowMerge((v) => !v)}>{t("Slå ihop")}</button>
                       <button type="button" onClick={() => setShowNames((v) => !v)}>{t("Rätta namn")}</button>
+                      <button type="button" onClick={() => setShowFeatures((v) => !v)}>{t("Funktioner")}</button>
                     </>
                   )}
                   <button type="button" onClick={() => supabase.auth.signOut()}>{t("Logga ut")}</button>
@@ -1049,6 +1074,9 @@ export default function App() {
       {user && !showWelcome && !showNews && <QuestionPrompt supabase={supabase} />}
       {showQuestions && role === "superuser" && user && <QuestionsPanel supabase={supabase} onClose={() => setShowQuestions(false)} />}
       {showNames && role === "superuser" && user && <NamesPanel supabase={supabase} onClose={() => setShowNames(false)} />}
+      {showFeatures && role === "superuser" && user && <FeaturesPanel supabase={supabase} onClose={() => setShowFeatures(false)} onChanged={loadFlags} />}
+      {showAssistant && assistantOn && user && <CollectorAssistant supabase={supabase} advisor={advisorOn} ai={aiOn} onClose={() => setShowAssistant(false)} onOpenSet={(id) => { setShowAssistant(false); openSet(id); }} />}
+      {showTrade && tradeOn && user && <TradePanel supabase={supabase} onClose={() => setShowTrade(false)} onOpenSet={(id) => { setShowTrade(false); openSet(id); }} />}
       {showMerge && role === "superuser" && user && <MergePanel supabase={supabase} sets={sets} onChanged={loadSets} say={say} onClose={() => setShowMerge(false)} />}
       {showAuth && !user && <AuthBox supabase={supabase} onClose={() => setShowAuth(false)} />}
       {showAdmin && role && user && (
