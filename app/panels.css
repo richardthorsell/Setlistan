@@ -190,6 +190,16 @@
 @media (max-width: 560px) { .pl-line { gap: 3px; } .pl-line .star { width: 28px; height: 28px; } .pl-line .pl-card { padding: 7px 6px; gap: 6px; } }
 /* Export menu opens to the left edge, the counter stays visible on a phone, and the parallel mode is easy to see. */
 .menu-pop.left { left: 0; right: auto; }
+.logo-h1 { font-size: 0; line-height: 0; width: min(580px, 100%); margin-inline: auto; }
+.hero-band { width: 100%; max-width: 980px; display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 22px 20px 18px; background: #061230; border-radius: 22px; color: #dbe5ff; text-align: center; }
+.hero-band .brand { flex-direction: column; align-items: center; gap: 6px; }
+.hero-band .brand p, .hero-band .hero-sub, .hero-band .start-search > .note { color: #aebfe9; }
+.hero-band .start-results { padding: 12px; background: var(--surface); border-radius: 12px; color: var(--ink); text-align: left; }
+.landing .hero { background: #061230; border-radius: 22px; padding: 24px; color: #dbe5ff; }
+.landing .hero .lead, .landing .hero .note { color: #aebfe9; }
+.logo-h1 img { display: block; width: 100%; height: auto; }
+.hero-grid .logo-h1 { margin-inline: 0; }
+.topmark { width: 40px; height: 40px; padding: 3px; background: #061230; border-radius: 10px; }
 .start-search { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 920px; text-align: left; }
 .start-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .start-row .shelf-search { flex: 1 1 220px; min-width: 0; width: auto; }
@@ -214,6 +224,7 @@ details.trade-box > summary { cursor: pointer; }
 .set.onpar .lrow[aria-pressed="true"], .set.onpar .card[aria-pressed="true"] { box-shadow: inset 4px 0 0 var(--warn); }
 .toast .btn { margin-left: 12px; }
 @media (max-width: 560px) {
+  .topmark { display: none; }
   .minibar { display: flex; align-items: center; gap: 10px; position: sticky; top: 0; z-index: 15; padding: 8px 2px; background: var(--bg); border-bottom: 1px solid var(--line); }
   .minibar .bar { flex: 1; }
   .btn.small { min-height: 44px; }
