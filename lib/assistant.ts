@@ -1,5 +1,4 @@
-hello
-world// Collector Assistant: turns a typed question (Swedish or English) into one of a fixed set of intents, without any AI.
+// Collector Assistant: turns a typed question (Swedish or English) into one of a fixed set of intents, without any AI.
 // A question that matches nothing returns null; a later version may hand those to a small model that can only pick from
 // these same intents. Nothing here builds SQL: each intent maps to a prepared database function.
 
