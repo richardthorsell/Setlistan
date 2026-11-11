@@ -1,7 +1,7 @@
 // Run with: npm test (Node 22.6+ strips the types, no extra dependencies).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { detectIntent, flat, SUGGESTIONS } from "./assistant.ts";
+import { ADVISOR_INTENTS, ADVISOR_SUGGESTIONS, detectIntent, flat, fromAi, SUGGESTIONS } from "./assistant.ts";
 
 const names = (qs: string[]) => qs.map((q) => detectIntent(q)?.name ?? null);
 
@@ -85,4 +85,49 @@ test("long and odd input does not break the router", () => {
 
 test("every suggestion is a valid intent", () => {
   for (const s of SUGGESTIONS) assert.ok(s.label.length > 3 && s.intent.name);
+});
+
+test("advisor: sell questions become sell_suggestions only when the advisor is on", () => {
+  assert.equal(detectIntent("Vilka kort borde jag sälja?")?.name, "sell_candidates");
+  assert.equal(detectIntent("Vilka kort borde jag sälja?", { advisor: true })?.name, "sell_suggestions");
+  assert.equal(detectIntent("what should I sell", { advisor: true })?.name, "sell_suggestions");
+});
+
+test("advisor: completion plan from a long Swedish question", () => {
+  const i = detectIntent("Vilka av mina hockeykort borde jag sälja för att komplettera mina tre nästan färdiga fotbollsset?", { advisor: true });
+  assert.deepEqual(i, { name: "completion_plan", sellSport: "ishockey", targetSport: "fotboll", targets: 3 });
+});
+
+test("advisor: completion plan from an English question", () => {
+  const i = detectIntent("Which hockey cards should I sell to complete my two almost finished football sets?", { advisor: true });
+  assert.deepEqual(i, { name: "completion_plan", sellSport: "ishockey", targetSport: "fotboll", targets: 2 });
+});
+
+test("fromAi: accepts only known intents and checks every value", () => {
+  assert.deepEqual(fromAi({ intent: "nearly_complete", min_percent: 85, sport: "ishockey", limit: 5 }), { name: "nearly_complete", min: 85, sport: "ishockey", limit: 5 });
+  assert.deepEqual(fromAi({ intent: "nearly_complete", min_percent: 500, sport: "curling", limit: 9999 }), { name: "nearly_complete", min: 99, sport: undefined, limit: 50 });
+  assert.deepEqual(fromAi({ intent: "player_collection", player: "Lionel Messi" }), { name: "player_collection", player: "Lionel Messi" });
+  assert.equal(fromAi({ intent: "player_collection", player: "x" }), null);
+  assert.equal(fromAi({ intent: "none" }), null);
+  assert.equal(fromAi({ intent: "drop_table" }), null);
+  assert.equal(fromAi({}), null);
+  assert.equal(fromAi(null), null);
+  assert.equal(fromAi("nearly_complete"), null);
+});
+
+test("fromAi: advisor intents need the advisor to be on", () => {
+  for (const name of ADVISOR_INTENTS) {
+    assert.equal(fromAi({ intent: name }), null);
+    assert.equal(fromAi({ intent: name }, { advisor: true })?.name, name);
+  }
+});
+
+test("fromAi: a player name is reduced to letters, so injected text cannot get through", () => {
+  const i = fromAi({ intent: "missing_cards", player: "Messi'; drop table owned; --" }) as { player?: string };
+  assert.ok(!/[;<>]/.test(i.player || ""));
+  assert.ok((i.player || "").length <= 40);
+});
+
+test("every advisor suggestion is a valid advisor intent", () => {
+  for (const s of ADVISOR_SUGGESTIONS) assert.ok((ADVISOR_INTENTS as string[]).includes(s.intent.name));
 });
