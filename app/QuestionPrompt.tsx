@@ -5,7 +5,14 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import "./panels.css";
 import { useT } from "@/lib/i18n";
 
-export type Question = { id: number; text: string; kind: "choice" | "text"; options: string[] };
+export type Question = { id: number; text: string; kind: "choice" | "text"; options: string[]; audience?: "all" | "new" | "existing"; created_at?: string };
+
+// "new" = accounts created after the question was asked, "existing" = accounts that already existed. Without a date everyone gets it.
+const fits = (q: Question, since: number) => {
+  if (!q.audience || q.audience === "all" || !q.created_at || !since) return true;
+  const after = since > Date.parse(q.created_at);
+  return q.audience === "new" ? after : !after;
+};
 
 const SKIP_KEY = "q_skipped";
 const readSkipped = (): number[] => {
@@ -29,14 +36,16 @@ export default function QuestionPrompt({ supabase }: { supabase: SupabaseClient 
   useEffect(() => {
     let live = true;
     (async () => {
-      const [qs, mine] = await Promise.all([
-        supabase.from("questions").select("id, text, kind, options").eq("active", true).order("id"),
+      const [qs, mine, me] = await Promise.all([
+        supabase.from("questions").select("*").eq("active", true).order("id"),
         supabase.from("question_answers").select("question_id"),
+        supabase.auth.getUser(),
       ]);
+      const since = me.data.user?.created_at ? Date.parse(me.data.user.created_at) : 0;
       if (!live || qs.error || mine.error) return;
       const done = new Set(((mine.data as { question_id: number }[]) || []).map((r) => r.question_id));
       const skipped = new Set(readSkipped());
-      setQueue(((qs.data as Question[]) || []).filter((q) => !done.has(q.id) && !skipped.has(q.id)));
+      setQueue(((qs.data as Question[]) || []).filter((q) => !done.has(q.id) && !skipped.has(q.id) && fits(q, since)));
     })();
     return () => {
       live = false;
