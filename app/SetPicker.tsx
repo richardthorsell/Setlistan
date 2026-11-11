@@ -92,7 +92,7 @@ export default function SetPicker({ sets, counts, openId, favs, sport, setSport,
                       <span className="picker-name">{nameOf(s)}</span>
                       <span className="sub mono">{!sport && `${t(sportLabel(s.sport))} · `}{n} / {s.card_count}</span>
                     </button>
-                    <button className={`star ${favs.has(s.id) ? "on" : ""}`} type="button" aria-pressed={favs.has(s.id)} aria-label={favs.has(s.id) ? `Ta bort ${nameOf(s)} från favoriter` : `Lägg ${nameOf(s)} i favoriter`} onClick={() => onToggleFav(s.id)}>
+                    <button className={`star ${favs.has(s.id) ? "on" : ""}`} type="button" aria-pressed={favs.has(s.id)} aria-label={favs.has(s.id) ? `${t("Ta bort")} ${nameOf(s)} ${t("från favoriter")}` : `${t("Lägg")} ${nameOf(s)} ${t("i favoriter")}`} onClick={() => onToggleFav(s.id)}>
                       <Star on={favs.has(s.id)} />
                     </button>
                   </div>
@@ -127,7 +127,7 @@ export default function SetPicker({ sets, counts, openId, favs, sport, setSport,
                   <span className="bar"><i style={{ width: `${p}%` }} /></span>
                   <span className="sub mono">{n} / {s.card_count} · {p} %</span>
                 </button>
-                <button className="star on" type="button" aria-pressed="true" aria-label={`Ta bort ${nameOf(s)} från favoriter`} onClick={() => onToggleFav(s.id)}>
+                <button className="star on" type="button" aria-pressed="true" aria-label={`${t("Ta bort")} ${nameOf(s)} ${t("från favoriter")}`} onClick={() => onToggleFav(s.id)}>
                   <Star on />
                 </button>
               </div>
