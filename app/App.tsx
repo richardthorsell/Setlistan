@@ -17,18 +17,13 @@ import logoMark from "@/Logo-ikon.png";
 import Overview from "./Overview";
 import MySetsPanel from "./MySetsPanel";
 import QuestionPrompt from "./QuestionPrompt";
-import QuestionsPanel from "./QuestionsPanel";
-import NamesPanel from "./NamesPanel";
-import FeaturesPanel from "./FeaturesPanel";
 import CollectorAssistant from "./CollectorAssistant";
 import TradePanel from "./TradePanel";
 import { type FeatureMode, featureOn } from "@/lib/features";
-import MergePanel from "./MergePanel";
 import Messages from "./Messages";
 import SellPanel from "./SellPanel";
 import type { Wish, Trade } from "./CardPar";
 import AuthBox from "./AuthBox";
-import AdminPanel from "./AdminPanel";
 import { FeedbackBox, WaitlistBox } from "./BetaPanels";
 import Landing from "./Landing";
 import SetPicker from "./SetPicker";
@@ -123,7 +118,6 @@ export default function App() {
   const [updates, setUpdates] = useState<Update[]>([]);
   const [seenAt, setSeenAt] = useState<string | null>(null);
   const [newsSince, setNewsSince] = useState<string | null>(null);
-  const [showAdmin, setShowAdmin] = useState(false);
   const [fetchLog, setFetchLog] = useState<LogLine[] | null>(null);
   const [fetching, setFetching] = useState(false);
   const [fetchDone, setFetchDone] = useState<string | null>(null);
@@ -147,9 +141,6 @@ export default function App() {
   const [heroQ, setHeroQ] = useState("");
   const [playerQ, setPlayerQ] = useState("");
   const [playerSet, setPlayerSet] = useState<{ player_key: string; display_name: string } | null>(null);
-  const [showQuestions, setShowQuestions] = useState(false);
-  const [showNames, setShowNames] = useState(false);
-  const [showFeatures, setShowFeatures] = useState(false);
   // Feature switches (feature_flags): a feature is off, on for the superuser only, or on for everyone.
   const [flags, setFlags] = useState<Record<string, FeatureMode>>({});
   const loadFlags = async () => {
@@ -166,7 +157,6 @@ export default function App() {
   const aiOn = featureOn(flags.assistant_ai, role);
   const tradeOn = featureOn(flags.trade_matching, role);
   const [showTrade, setShowTrade] = useState(false);
-  const [showMerge, setShowMerge] = useState(false);
   const [showMsgs, setShowMsgs] = useState(false);
   const [unreadMsgs, setUnreadMsgs] = useState(0);
   const [followed, setFollowed] = useState<{ player_key: string; display_name: string; have?: number; total?: number }[]>([]);
@@ -438,7 +428,6 @@ export default function App() {
       if (event === "SIGNED_IN" || event === "SIGNED_OUT") {
         loadRole(u);
         loadState(u);
-        if (!u) setShowAdmin(false);
       }
       loadCounts(u);
     });
@@ -1033,15 +1022,7 @@ export default function App() {
                   {tradeOn && <button type="button" onClick={() => setShowTrade((v) => !v)}>{t("Bytespartners")}</button>}
                   <button type="button" onClick={() => setShowMsgs((v) => !v)}>{t("Meddelanden")}{unreadMsgs > 0 && <span className="badge">{unreadMsgs}</span>}</button>
                   {role && (
-                    <button type="button" onClick={() => setShowAdmin((v) => !v)}>{role === "superuser" ? t("Superuser") : t("Admin")}</button>
-                  )}
-                  {role === "superuser" && (
-                    <>
-                      <button type="button" onClick={() => setShowQuestions((v) => !v)}>{t("Frågor")}</button>
-                      <button type="button" onClick={() => setShowMerge((v) => !v)}>{t("Slå ihop")}</button>
-                      <button type="button" onClick={() => setShowNames((v) => !v)}>{t("Rätta namn")}</button>
-                      <button type="button" onClick={() => setShowFeatures((v) => !v)}>{t("Funktioner")}</button>
-                    </>
+                    <button type="button" onClick={() => { window.location.href = "/admin"; }}>{t("Admin")}</button>
                   )}
                   <button type="button" onClick={() => supabase.auth.signOut()}>{t("Logga ut")}</button>
                 </div>
@@ -1070,16 +1051,9 @@ export default function App() {
       )}
       {showNews && user && <WhatsNew updates={updates} since={newsSince} onClose={() => setShowNews(false)} />}
       {user && !showWelcome && !showNews && <QuestionPrompt supabase={supabase} />}
-      {showQuestions && role === "superuser" && user && <QuestionsPanel supabase={supabase} onClose={() => setShowQuestions(false)} />}
-      {showNames && role === "superuser" && user && <NamesPanel supabase={supabase} onClose={() => setShowNames(false)} />}
-      {showFeatures && role === "superuser" && user && <FeaturesPanel supabase={supabase} onClose={() => setShowFeatures(false)} onChanged={loadFlags} />}
       {assistantOn && user && <CollectorAssistant supabase={supabase} advisor={advisorOn} ai={aiOn} onOpenSet={(id) => openSet(id)} />}
       {showTrade && tradeOn && user && <TradePanel supabase={supabase} onClose={() => setShowTrade(false)} onOpenSet={(id) => { setShowTrade(false); openSet(id); }} />}
-      {showMerge && role === "superuser" && user && <MergePanel supabase={supabase} sets={sets} onChanged={loadSets} say={say} onClose={() => setShowMerge(false)} />}
       {showAuth && !user && <AuthBox supabase={supabase} onClose={() => setShowAuth(false)} />}
-      {showAdmin && role && user && (
-        <AdminPanel supabase={supabase} role={role} sets={sets} myEmail={(user.email || "").toLowerCase()} onChanged={loadSets} say={say} />
-      )}
       {parCard && (
         <CardPar
           cardId={parCard.card.id}
