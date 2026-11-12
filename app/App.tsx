@@ -150,7 +150,6 @@ export default function App() {
   const [showQuestions, setShowQuestions] = useState(false);
   const [showNames, setShowNames] = useState(false);
   const [showFeatures, setShowFeatures] = useState(false);
-  const [showAssistant, setShowAssistant] = useState(false);
   // Feature switches (feature_flags): a feature is off, on for the superuser only, or on for everyone.
   const [flags, setFlags] = useState<Record<string, FeatureMode>>({});
   const loadFlags = async () => {
@@ -1012,7 +1011,6 @@ export default function App() {
               <nav className="mainnav" aria-label={t("Meny")}>
                 <button className="navbtn" type="button" aria-pressed={showWish} onClick={() => setShowWish((v) => !v)}>{t("Önskelista")}{wishCount ? ` ${wishCount}` : ""}</button>
                 <button className="navbtn" type="button" aria-pressed={showSell} onClick={() => setShowSell((v) => !v)}>{t("Sälj")}</button>
-                {assistantOn && <button className="navbtn" type="button" aria-pressed={showAssistant} onClick={() => setShowAssistant((v) => !v)}>{t("Assistent")}</button>}
               </nav>
               <details className="menu" onClick={(e) => { if ((e.target as HTMLElement).closest(".menu-pop button")) e.currentTarget.removeAttribute("open"); }}>
                 <summary className="btn small">
@@ -1075,7 +1073,7 @@ export default function App() {
       {showQuestions && role === "superuser" && user && <QuestionsPanel supabase={supabase} onClose={() => setShowQuestions(false)} />}
       {showNames && role === "superuser" && user && <NamesPanel supabase={supabase} onClose={() => setShowNames(false)} />}
       {showFeatures && role === "superuser" && user && <FeaturesPanel supabase={supabase} onClose={() => setShowFeatures(false)} onChanged={loadFlags} />}
-      {showAssistant && assistantOn && user && <CollectorAssistant supabase={supabase} advisor={advisorOn} ai={aiOn} onClose={() => setShowAssistant(false)} onOpenSet={(id) => { setShowAssistant(false); openSet(id); }} />}
+      {assistantOn && user && <CollectorAssistant supabase={supabase} advisor={advisorOn} ai={aiOn} onOpenSet={(id) => openSet(id)} />}
       {showTrade && tradeOn && user && <TradePanel supabase={supabase} onClose={() => setShowTrade(false)} onOpenSet={(id) => { setShowTrade(false); openSet(id); }} />}
       {showMerge && role === "superuser" && user && <MergePanel supabase={supabase} sets={sets} onChanged={loadSets} say={say} onClose={() => setShowMerge(false)} />}
       {showAuth && !user && <AuthBox supabase={supabase} onClose={() => setShowAuth(false)} />}
