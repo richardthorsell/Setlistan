@@ -13,8 +13,7 @@ export function GET() {
     background_color: "#061230",
     theme_color: "#061230",
     icons: [
-      { src: "/admin/pwa-icon?s=192", sizes: "192x192", type: "image/png" },
-      { src: "/admin/pwa-icon?s=512", sizes: "512x512", type: "image/png" },
+      { src: "/admin/pwa-icon", sizes: "192x192", type: "image/png" },
     ],
   };
   return new Response(JSON.stringify(manifest), { headers: { "Content-Type": "application/manifest+json", "Cache-Control": "public, max-age=3600" } });
