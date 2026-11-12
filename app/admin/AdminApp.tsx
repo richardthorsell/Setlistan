@@ -9,14 +9,16 @@ import MergePanel from "../MergePanel";
 import NamesPanel from "../NamesPanel";
 import CardAliasPanel from "../CardAliasPanel";
 import FeaturesPanel from "../FeaturesPanel";
+import UsagePanel from "../UsagePanel";
 import "../panels.css";
 import "./admin.css";
 
 type Role = "admin" | "superuser";
-type Section = "overview" | "questions" | "merge" | "names" | "cards" | "features";
+type Section = "overview" | "questions" | "merge" | "names" | "cards" | "features" | "usage";
 
 const SECTIONS: { id: Section; label: string; superOnly?: boolean }[] = [
   { id: "overview", label: "Översikt och drift" },
+  { id: "usage", label: "Användning", superOnly: true },
   { id: "questions", label: "Frågor", superOnly: true },
   { id: "merge", label: "Slå ihop", superOnly: true },
   { id: "names", label: "Rätta namn", superOnly: true },
@@ -95,6 +97,7 @@ export default function AdminApp({ role, email }: { role: Role; email: string })
       </aside>
       <main className="admin-main admin-embed">
         {section === "overview" && <AdminPanel supabase={supabase} role={role} sets={sets} myEmail={email.toLowerCase()} onChanged={loadSets} say={say} />}
+        {section === "usage" && role === "superuser" && <UsagePanel supabase={supabase} />}
         {section === "questions" && role === "superuser" && <QuestionsPanel supabase={supabase} onClose={back} />}
         {section === "merge" && role === "superuser" && <MergePanel supabase={supabase} sets={sets} onChanged={loadSets} say={say} onClose={back} />}
         {section === "names" && role === "superuser" && <NamesPanel supabase={supabase} onClose={back} />}
