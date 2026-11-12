@@ -3,7 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   LIMITS, ImportError, cleanCell, decodeBytes, detectDelimiter, fingerprint, looksLikeFormula, looksLikeHeader, mapColumns,
-  parseCardNo, parseDelimited, parseList, parsePasted, parseQty, rowsFromTable, seasonYear, tableFromSheet,
+  flagColumns, parseCardNo, parseDelimited, parseHave, parseList, parsePasted, parseQty, rowsFromTable, seasonYear, tableFromSheet,
 } from "./smartimport.ts";
 
 test("decodeBytes: UTF-8, BOM and Windows-1252", () => {
@@ -103,7 +103,7 @@ test("table: the example from the specification", () => {
   if (p.kind !== "table") return;
   const r = rowsFromTable(p.table, p.mapping);
   assert.equal(r.rows.length, 2);
-  assert.deepEqual(r.rows[0].r, { set: "Parkhurst", year: 1993, code: "", no: 12, name: "Håkan Loob", team: "", qty: 2, parallel: "", serial: "", status: "" });
+  assert.deepEqual(r.rows[0].r, { set: "Parkhurst", year: 1993, code: "", section: "", no: 12, name: "Håkan Loob", team: "", qty: 2, parallel: "", serial: "", status: "" });
   assert.equal(r.rows[1].r.qty, 1);
   assert.equal(r.rows[0].n, 2);
   assert.equal(r.rows[0].o["Player"], "Håkan Loob");
@@ -122,7 +122,7 @@ test("list: a heading followed by card lines, the example from the specification
 test("list: several headings, prefixes, team after a dash, a year heading", () => {
   const r = parseList("1994 Topps Chrome\nBM 5 Mikael Renberg - Philadelphia\nGL 7 Peter Forsberg x2\n## 1995 Semic Globe\n3 Tommy Salo");
   assert.equal(r.rows.length, 3);
-  assert.deepEqual(r.rows[0].r, { set: "Topps Chrome", year: 1994, code: "BM", no: 5, name: "Mikael Renberg", team: "Philadelphia", qty: 1, parallel: "", serial: "", status: "" });
+  assert.deepEqual(r.rows[0].r, { set: "Topps Chrome", year: 1994, code: "BM", section: "", no: 5, name: "Mikael Renberg", team: "Philadelphia", qty: 1, parallel: "", serial: "", status: "" });
   assert.equal(r.rows[1].r.qty, 2);
   assert.equal(r.rows[2].r.set, "Semic Globe");
   assert.equal(r.rows[2].r.year, 1995);
@@ -186,4 +186,54 @@ test("parallels and serial numbers are read when the columns exist", () => {
   const r = rowsFromTable([h, ["A", "5", "B", "Gold /50", "12/50", "1"]], mapColumns(h));
   assert.equal(r.rows[0].r.parallel, "Gold /50");
   assert.equal(r.rows[0].r.serial, "12/50");
+});
+
+test("parseHave: yes, no, numbers and unclear values", () => {
+  assert.equal(parseHave("true"), 1);
+  assert.equal(parseHave("Ja"), 1);
+  assert.equal(parseHave("x"), 1);
+  assert.equal(parseHave("false"), 0);
+  assert.equal(parseHave(""), 0);
+  assert.equal(parseHave("0"), 0);
+  assert.equal(parseHave("3"), 3);
+  assert.equal(parseHave("maybe"), null);
+  assert.equal(parseHave("6.955223880597015"), null);
+});
+
+test("mapColumns: Typ is the subset, Har is ownership", () => {
+  assert.deepEqual(mapColumns(["#", "Typ", "Namn", "Har"]), { no: 0, section: 1, name: 2, have: 3 });
+});
+
+test("a have column: only owned rows become rows, the others are counted", () => {
+  const h = ["#", "Typ", "Namn", "Har"];
+  const r = rowsFromTable([h, ["1", "Base", "A", "true"], ["2", "Base", "B", "false"], ["3", "Vintage", "C", "2"], ["4", "Base", "D", ""]], mapColumns(h), { defaultSet: "1994-95 Parkhurst" });
+  assert.deepEqual(r.rows.map((x) => [x.r.no, x.r.qty, x.r.section]), [[1, 1, "Base"], [3, 2, "Vintage"]]);
+  assert.equal(r.notOwned, 2);
+});
+
+test("parallel columns: one extra row for every yes, named after the column heading", () => {
+  const h = ["#", "Typ", "Namn", "Har", "Gold G", "Green H"];
+  const m = mapColumns(h);
+  const r = rowsFromTable([h, ["1", "Base", "A", "true", "true", "false"], ["2", "Base", "B", "true", "", "true"]], m, { flagCols: [4, 5] });
+  assert.equal(r.rows.length, 4);
+  assert.deepEqual(r.rows.map((x) => [x.r.no, x.r.parallel]), [[1, ""], [1, "Gold G"], [2, ""], [2, "Green H"]]);
+  assert.equal(new Set(r.rows.map((x) => x.n)).size, 4); // every row has its own number
+});
+
+test("parallel columns without a have column: only the parallels are owned", () => {
+  const h = ["#", "Namn", "Gold"];
+  const r = rowsFromTable([h, ["1", "A", "true"], ["2", "B", "false"]], mapColumns(h), { flagCols: [2] });
+  assert.deepEqual(r.rows.map((x) => [x.r.no, x.r.parallel]), [[1, "Gold"]]);
+  assert.equal(r.notOwned, 1);
+});
+
+test("two columns with the same heading are both kept", () => {
+  const r = rowsFromTable([["#", "Namn", "Namn"], ["1", "A", "B"]], mapColumns(["#", "Namn", "Namn"]));
+  assert.equal(r.rows[0].o["Namn"], "A");
+  assert.equal(r.rows[0].o["Namn (2)"], "B");
+});
+
+test("flagColumns: finds yes/no columns and not number columns", () => {
+  const t = [["#", "Gold", "Antal", "Namn"], ["1", "true", "2", "A"], ["2", "false", "5", "B"], ["3", "", "1", "C"]];
+  assert.deepEqual(flagColumns(t, true), [1]);
 });
