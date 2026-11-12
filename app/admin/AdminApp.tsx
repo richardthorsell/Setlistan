@@ -11,17 +11,19 @@ import CardAliasPanel from "../CardAliasPanel";
 import FeaturesPanel from "../FeaturesPanel";
 import UsagePanel from "../UsagePanel";
 import EventsPanel from "../EventsPanel";
+import MissingSetsPanel from "../MissingSetsPanel";
 import NewsDraftsPanel from "../NewsDraftsPanel";
 import "../panels.css";
 import "./admin.css";
 
 type Role = "admin" | "superuser";
-type Section = "overview" | "questions" | "merge" | "names" | "cards" | "features" | "usage" | "handelser" | "newsdrafts";
+type Section = "overview" | "questions" | "merge" | "names" | "cards" | "features" | "usage" | "handelser" | "newsdrafts" | "saknade";
 
 const SECTIONS: { id: Section; label: string; superOnly?: boolean }[] = [
   { id: "overview", label: "Översikt och drift" },
   { id: "handelser", label: "Händelser" },
   { id: "newsdrafts", label: "Nyhetsförslag", superOnly: true },
+  { id: "saknade", label: "Saknade set", superOnly: true },
   { id: "usage", label: "Användning", superOnly: true },
   { id: "questions", label: "Frågor", superOnly: true },
   { id: "merge", label: "Slå ihop", superOnly: true },
@@ -103,6 +105,7 @@ export default function AdminApp({ role, email }: { role: Role; email: string })
         {section === "overview" && <AdminPanel supabase={supabase} role={role} sets={sets} myEmail={email.toLowerCase()} onChanged={loadSets} say={say} />}
         {section === "handelser" && <EventsPanel supabase={supabase} role={role} />}
         {section === "newsdrafts" && role === "superuser" && <NewsDraftsPanel supabase={supabase} say={say} />}
+        {section === "saknade" && role === "superuser" && <MissingSetsPanel supabase={supabase} say={say} />}
         {section === "usage" && role === "superuser" && <UsagePanel supabase={supabase} />}
         {section === "questions" && role === "superuser" && <QuestionsPanel supabase={supabase} onClose={back} />}
         {section === "merge" && role === "superuser" && <MergePanel supabase={supabase} sets={sets} onChanged={loadSets} say={say} onClose={back} />}
