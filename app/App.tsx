@@ -1003,6 +1003,8 @@ export default function App() {
               <nav className="mainnav" aria-label={t("Meny")}>
                 <button className="navbtn" type="button" aria-pressed={showWish} onClick={() => setShowWish((v) => !v)}>{t("Önskelista")}{wishCount ? ` ${wishCount}` : ""}</button>
                 <button className="navbtn" type="button" aria-pressed={showSell} onClick={() => setShowSell((v) => !v)}>{t("Sälj")}</button>
+                {tradeOn && <button className="navbtn" type="button" aria-pressed={showTrade} onClick={() => setShowTrade((v) => !v)}>{t("Bytespartners")}</button>}
+                {importOn && <button className="navbtn" type="button" aria-pressed={showImport} onClick={() => setShowImport((v) => !v)}>{t("Importera")}</button>}
               </nav>
               <details className="menu" onClick={(e) => { if ((e.target as HTMLElement).closest(".menu-pop button")) e.currentTarget.removeAttribute("open"); }}>
                 <summary className="btn small">
@@ -1022,8 +1024,6 @@ export default function App() {
                   >{t("Nytt")}{unseen > 0 && <span className="badge">{unseen}</span>}</button>
                   <button type="button" onClick={() => setShowWelcome(true)}>{t("Guide")}</button>
                   <button type="button" onClick={() => setShowFeedback((v) => !v)}>{t("Feedback")}</button>
-                  {tradeOn && <button type="button" onClick={() => setShowTrade((v) => !v)}>{t("Bytespartners")}</button>}
-                  {importOn && <button type="button" onClick={() => setShowImport((v) => !v)}>{t("Importera samling")}</button>}
                   <button type="button" onClick={() => setShowMsgs((v) => !v)}>{t("Meddelanden")}{unreadMsgs > 0 && <span className="badge">{unreadMsgs}</span>}</button>
                   {role && (
                     <button type="button" onClick={() => { window.location.href = "/admin"; }}>{t("Admin")}</button>
@@ -1047,6 +1047,7 @@ export default function App() {
       {showAccount && user && <AccountPanel supabase={supabase} email={user.email || ""} isAdmin={role !== null} onClose={() => setShowAccount(false)} say={say} />}
       {showWelcome && user && (
         <Welcome
+          features={{ importOn, assistantOn, tradeOn }}
           onDone={() => {
             setShowWelcome(false);
             markSeen(true);

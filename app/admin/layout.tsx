@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   openGraph: { title: "Setlistan Admin", siteName: "Setlistan Admin" },
 };
 
-export const viewport: Viewport = { themeColor: "#061230" };
+export const viewport: Viewport = { themeColor: "#061230", viewportFit: "cover" };
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return children;

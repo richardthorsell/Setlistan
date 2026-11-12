@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MockSet, MockTick } from "./Visuals";
+import { MockMissing, MockSearch, MockSet, MockTick, MockTradera } from "./Visuals";
 import "./panels.css";
 import "./landing.css";
 import { type Lang, localeOf, useLang, useT } from "@/lib/i18n";
@@ -11,12 +11,20 @@ export type Update = { id: string; title: string; body: string; created_at: stri
 const when = (iso: string, lang: Lang) => new Date(iso).toLocaleDateString(localeOf(lang), { year: "numeric", month: "short", day: "numeric" });
 
 // First-run guide, shown once after the first sign-in.
-export function Welcome({ onDone }: { onDone: () => void }) {
+export function Welcome({ onDone, features }: { onDone: () => void; features?: { importOn?: boolean; assistantOn?: boolean; tradeOn?: boolean } }) {
   const t = useT();
   const STEPS = [
     { t: t("Välkommen till Setlistan"), d: t("Här söker du fram checklistor för samlarkort, prickar av korten du har och ser direkt vilka som saknas. Vi visar dig runt på en minut."), v: <MockSet /> },
+    { t: t("Hitta ett set"), d: t("Öppna albumlistan under Biblioteket och sök, till exempel efter Topps Premier League Flagship 26/27. Saknas setet kan du föreslå det så lägger vi in det."), v: <MockSearch /> },
     { t: t("Pricka av dina kort"), d: t("Tryck på ett kort för att markera att du har det. Välj parallell (/50, /25 och fler) och skriv in serienummer. Du kan också skriva nummer i snabbmarkeringsrutan för att pricka av många på en gång."), v: <MockTick /> },
+    { t: t("Saknade kort"), d: t("Filtrera på Saknas och exportera listan, så vet du precis vad du letar efter."), v: <MockMissing /> },
+    { t: t("Vad är det värt?"), d: t("Tryck på T vid ett kort för att se vad liknande kort har sålts för på Tradera."), v: <MockTradera /> },
   ];
+  // steps for the features that are switched on for this user
+  if (features?.importOn) STEPS.push({ t: t("Importera din samling"), d: t("Har du din samling i Excel, en CSV-fil eller en lista? Tryck på Importera högst upp. Du väljer vad varje kolumn betyder, granskar och godkänner, och kan ångra importen efteråt."), v: <MockTick /> });
+  if (features?.assistantOn) STEPS.push({ t: t("Samlarassistenten"), d: t("Chatten längst ned till höger svarar på frågor om din samling: vad saknar jag, vilka dubbletter har jag, vilka set är jag nära att fullborda."), v: <MockSet /> });
+  if (features?.tradeOn) STEPS.push({ t: t("Hitta bytespartners"), d: t("Under Bytespartners ser du anonymt vilka samlare som har kort du söker. Ni ser inte vem den andra är förrän båda har godkänt."), v: <MockSearch /> });
+  STEPS.push({ t: t("Nytt i Setlistan"), d: t("Under Meny och Nytt ser du alltid vad som har lagts till. När något nytt kommer får du en förklaring där."), v: <MockSet /> });
   const TONES = ["var(--accent)", "var(--have)", "#E0559A", "var(--rc)", "#2F7FE0"];
   const [i, setI] = useState(0);
   const last = i === STEPS.length - 1;
@@ -33,7 +41,7 @@ export function Welcome({ onDone }: { onDone: () => void }) {
 
   return (
     <div className="ob-backdrop">
-      <section className="ob" style={{ ["--tone" as string]: TONES[i] } as React.CSSProperties} role="dialog" aria-modal="true" aria-label={t("Introduktion")}>
+      <section className="ob" style={{ ["--tone" as string]: TONES[i % TONES.length] } as React.CSSProperties} role="dialog" aria-modal="true" aria-label={t("Introduktion")}>
         <div className="ob-art">
           <span className="ob-step mono" aria-hidden="true">{String(i + 1).padStart(2, "0")}</span>
           <div className="ob-visual" key={i}>{STEPS[i].v}</div>
