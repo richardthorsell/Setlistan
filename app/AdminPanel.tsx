@@ -341,7 +341,7 @@ export default function AdminPanel({
           ["library", "Bibliotek", 0],
           ["people", "Personer", 0],
           ["news", "Nyheter", 0],
-          ["usage", "Användning", 0],
+          ["usage", "Loggar", 0],
         ] as ["start" | "inbox" | "library" | "people" | "news" | "usage", string, number][]).map(([k, l, n]) => (
           <button key={k} type="button" role="tab" aria-selected={tab === k} aria-pressed={tab === k} onClick={() => setTab(k)}>
             {l}{n > 0 && <span className="badge">{n}</span>}
