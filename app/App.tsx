@@ -84,7 +84,8 @@ const Tick = () => (
   </svg>
 );
 
-export default function App() {
+// `signedOut` comes from the server: a visitor without a session gets the landing page already in the HTML, so search engines can read it.
+export default function App({ signedOut = false }: { signedOut?: boolean }) {
   const t = useT();
   const note = useNote();
   const supabase = useMemo(() => createClient(), []);
@@ -113,7 +114,7 @@ export default function App() {
   const [showFeedback, setShowFeedback] = useState(false);
   const [showAccount, setShowAccount] = useState(false);
   const [parCard, setParCard] = useState<{ card: Card; sec: Section } | null>(null);
-  const [ready, setReady] = useState(false);
+  const [ready, setReady] = useState(signedOut);
   const [showWelcome, setShowWelcome] = useState(false);
   const [showNews, setShowNews] = useState(false);
   const [updates, setUpdates] = useState<Update[]>([]);
