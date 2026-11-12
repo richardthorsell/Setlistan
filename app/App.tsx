@@ -19,6 +19,7 @@ import MySetsPanel from "./MySetsPanel";
 import QuestionPrompt from "./QuestionPrompt";
 import CollectorAssistant from "./CollectorAssistant";
 import TradePanel from "./TradePanel";
+import SmartImport from "./SmartImport";
 import { type FeatureMode, featureOn } from "@/lib/features";
 import Messages from "./Messages";
 import SellPanel from "./SellPanel";
@@ -156,6 +157,8 @@ export default function App() {
   const advisorOn = featureOn(flags.collector_advisor, role);
   const aiOn = featureOn(flags.assistant_ai, role);
   const tradeOn = featureOn(flags.trade_matching, role);
+  const importOn = featureOn(flags.smart_import, role);
+  const [showImport, setShowImport] = useState(false);
   const [showTrade, setShowTrade] = useState(false);
   const [showMsgs, setShowMsgs] = useState(false);
   const [unreadMsgs, setUnreadMsgs] = useState(0);
@@ -1020,6 +1023,7 @@ export default function App() {
                   <button type="button" onClick={() => setShowWelcome(true)}>{t("Guide")}</button>
                   <button type="button" onClick={() => setShowFeedback((v) => !v)}>{t("Feedback")}</button>
                   {tradeOn && <button type="button" onClick={() => setShowTrade((v) => !v)}>{t("Bytespartners")}</button>}
+                  {importOn && <button type="button" onClick={() => setShowImport((v) => !v)}>{t("Importera samling")}</button>}
                   <button type="button" onClick={() => setShowMsgs((v) => !v)}>{t("Meddelanden")}{unreadMsgs > 0 && <span className="badge">{unreadMsgs}</span>}</button>
                   {role && (
                     <button type="button" onClick={() => { window.location.href = "/admin"; }}>{t("Admin")}</button>
@@ -1052,6 +1056,7 @@ export default function App() {
       {showNews && user && <WhatsNew updates={updates} since={newsSince} onClose={() => setShowNews(false)} />}
       {user && !showWelcome && !showNews && <QuestionPrompt supabase={supabase} />}
       {assistantOn && user && <CollectorAssistant supabase={supabase} advisor={advisorOn} ai={aiOn} onOpenSet={(id) => openSet(id)} />}
+      {showImport && importOn && user && <SmartImport supabase={supabase} onClose={() => setShowImport(false)} onChanged={() => { loadCounts(user); loadSets(); }} />}
       {showTrade && tradeOn && user && <TradePanel supabase={supabase} onClose={() => setShowTrade(false)} onOpenSet={(id) => { setShowTrade(false); openSet(id); }} />}
       {showAuth && !user && <AuthBox supabase={supabase} onClose={() => setShowAuth(false)} />}
       {parCard && (
