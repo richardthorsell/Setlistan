@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import "./panels.css";
 import { useT } from "@/lib/i18n";
 import {
   LIMITS, ImportError, type Field, type Mapping, type Row, type Source, type Table,
-  decodeBytes, detectDelimiter, fingerprint, looksLikeHeader, mapColumns, parseDelimited, parsePasted, rowsFromTable, tableFromSheet,
+  decodeBytes, detectDelimiter, fingerprint, flagColumns, looksLikeHeader, mapColumns, parseDelimited, parsePasted, rowsFromTable, tableFromSheet,
 } from "@/lib/smartimport";
 
 type Step = "input" | "map" | "review" | "done" | "history" | "pending";
@@ -16,8 +16,8 @@ type Job = { id: string; source: string; file_name: string | null; status: strin
 type Pending = { set_text: string | null; matched_set_id: string | null; set_title: string | null; subset_code: string | null; card_no: number | null; player: string | null; qty: number | null; result: string; reason: string | null };
 
 const FIELDS: { id: Field; label: string }[] = [
-  { id: "set", label: "Set" }, { id: "year", label: "År eller säsong" }, { id: "code", label: "Delset eller prefix" }, { id: "no", label: "Kortnummer" },
-  { id: "name", label: "Spelare" }, { id: "team", label: "Lag" }, { id: "qty", label: "Antal" }, { id: "parallel", label: "Parallell" }, { id: "serial", label: "Serienummer" },
+  { id: "set", label: "Set" }, { id: "year", label: "År eller säsong" }, { id: "section", label: "Delserie (namn, t.ex. Typ)" }, { id: "code", label: "Delseriens kod" }, { id: "no", label: "Kortnummer" },
+  { id: "name", label: "Spelare" }, { id: "team", label: "Lag" }, { id: "qty", label: "Antal" }, { id: "have", label: "Har kortet (ja/nej)" }, { id: "parallel", label: "Parallell" }, { id: "serial", label: "Serienummer" },
 ];
 const MATCHED = ["exact_match", "high_confidence_match", "user_confirmed"];
 const RESULT_LABEL: Record<string, string> = {
@@ -27,11 +27,42 @@ const RESULT_LABEL: Record<string, string> = {
 const REASON_LABEL: Record<string, string> = {
   no_card_identity: "Saknar nummer och namn", no_set_text: "Saknar setnamn", set_not_found: "Setet hittades inte i katalogen", several_sets: "Flera set passar",
   card_not_in_set: "Numret finns inte i setet", name_not_unique_or_missing: "Namnet finns inte entydigt i setet", name_differs: "Numret finns men namnet skiljer sig",
-  unknown_parallel: "Parallellen finns inte i setet", bad_quantity: "Antalet är inte giltigt", matched_by_name: "Matchad på namn",
+  unknown_parallel: "Parallellen finns inte i setet", section_not_found: "Delserien hittades inte i setet", bad_quantity: "Antalet är inte giltigt", matched_by_name: "Matchad på namn",
 };
 const STATUS_LABEL: Record<string, string> = {
   review_required: "Väntar på granskning", committing: "Pågår", completed: "Klar", partially_completed: "Klar, med väntande rader", failed: "Misslyckades", cancelled: "Avbruten", undone: "Ångrad",
 };
+
+// Roles per column, from a mapping of fields to columns.
+function rolesFrom(mapping: Mapping, width: number): string[] {
+  const roles: string[] = Array.from({ length: Math.max(0, width) }, () => "");
+  for (const [f, i] of Object.entries(mapping)) if (i !== undefined && i < roles.length) roles[i] = f;
+  return roles;
+}
+
+type SecOpt = { section_id: number; set_id: string; set_name: string; code: string; section_name: string };
+// Search for a set, then choose the subset that a text from the file means.
+function SectionFix({ supabase, text, n, start, onPick, t }: { supabase: SupabaseClient; text: string; n: number; start: string; onPick: (id: number) => void; t: (s: string) => string }) {
+  const [q, setQ] = useState(start);
+  const [opts, setOpts] = useState<SecOpt[] | null>(null);
+  const search = async () => {
+    const { data } = await supabase.rpc("import_find_sections", { p_q: q });
+    setOpts((data as SecOpt[]) || []);
+  };
+  return (
+    <div className="row" style={{ flexWrap: "wrap", gap: 8 }}>
+      <span className="grow"><b>{text}</b> <span className="note">· {n} {t("rader")}</span></span>
+      <input className="t-input" style={{ width: 200 }} value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("Sök set")} aria-label={`${t("Sök set för")} ${text}`} />
+      <button className="btn small" type="button" disabled={q.trim().length < 2} onClick={search}>{t("Sök")}</button>
+      {opts && (
+        <select defaultValue="" onChange={(e) => e.target.value && onPick(Number(e.target.value))} aria-label={`${t("Välj delserie för")} ${text}`}>
+          <option value="">{opts.length ? t("Välj delserie …") : t("Inga träffar")}</option>
+          {opts.map((o) => (<option key={o.section_id} value={o.section_id}>{o.set_name} · {o.code || "–"} {o.section_name}</option>))}
+        </select>
+      )}
+    </div>
+  );
+}
 
 // Smart Import: read a collection from a file or pasted text (in the browser), check how it matches the catalogue, and only after your approval
 // add it to your collection. Rows that do not match are kept privately as pending. Everything can be undone while it is unchanged.
@@ -45,7 +76,9 @@ export default function SmartImport({ supabase, onClose, onChanged }: { supabase
   const [sheets, setSheets] = useState<string[]>([]);
   const [chosen, setChosen] = useState<string[]>([]);
   const [table, setTable] = useState<Table>([]);
-  const [mapping, setMapping] = useState<Mapping>({});
+  const [roles, setRoles] = useState<string[]>([]);
+  const [unresolved, setUnresolved] = useState<{ section_text: string; n: number }[]>([]);
+  const lock = useRef(false);
   const [hasHeader, setHasHeader] = useState(true);
   const [listRows, setListRows] = useState<Row[] | null>(null);
   const [source, setSource] = useState<Source>("paste");
@@ -76,6 +109,7 @@ export default function SmartImport({ supabase, onClose, onChanged }: { supabase
     if (e instanceof ImportError) return e.message === "too_many_rows" ? t("Filen har för många rader. Högst 20 000 rader åt gången.") : t("Filen är för stor. Högst 5 MB.");
     const m = (e as { message?: string })?.message || "";
     if (/already imported/.test(m)) return t("Den här importen är redan gjord (samma innehåll). Ångra den först om du vill göra om den.");
+    if (/import in progress/.test(m)) return t("Importen pågår redan. Vänta några sekunder.");
     if (/too many imports/.test(m)) return t("Du har gjort många importer idag. Försök igen i morgon.");
     if (/feature off/.test(m)) return t("Funktionen är inte påslagen.");
     return t("Något gick fel. Försök igen.");
@@ -106,7 +140,7 @@ export default function SmartImport({ supabase, onClose, onChanged }: { supabase
     const head = looksLikeHeader(tbl[0]);
     setTable(tbl);
     setHasHeader(head);
-    setMapping(head ? mapColumns(tbl[0]) : tbl[0].length >= 4 ? { set: 0, no: 1, name: 2, qty: 3 } : tbl[0].length === 3 ? { no: 0, name: 1, qty: 2 } : { no: 0, name: 1 });
+    setRoles(rolesFrom(head ? mapColumns(tbl[0]) : tbl[0].length >= 4 ? { set: 0, no: 1, name: 2, qty: 3 } : tbl[0].length === 3 ? { no: 0, name: 1, qty: 2 } : { no: 0, name: 1 }, Math.max(...tbl.slice(0, 50).map((r) => r.length))));
     setListRows(null);
     setSource(src);
     setStep("map");
@@ -147,14 +181,23 @@ export default function SmartImport({ supabase, onClose, onChanged }: { supabase
   };
 
   // ---------- step 2: map -> rows ----------
+  const mapping = useMemo(() => {
+    const m: Mapping = {};
+    roles.forEach((r, i) => {
+      if (r && r !== "flag" && m[r as Field] === undefined) m[r as Field] = i;
+    });
+    return m;
+  }, [roles]);
+  const flagCols = useMemo(() => roles.flatMap((r, i) => (r === "flag" ? [i] : [])), [roles]);
+  const looksYesNo = useMemo(() => (step === "map" ? flagColumns(table, hasHeader) : []), [step, table, hasHeader]);
   const parsed = useMemo(() => {
     if (step !== "map") return null;
     try {
-      return rowsFromTable(table, mapping, { defaultSet, hasHeader });
+      return rowsFromTable(table, mapping, { defaultSet, hasHeader, flagCols });
     } catch {
       return null;
     }
-  }, [step, table, mapping, defaultSet, hasHeader]);
+  }, [step, table, mapping, flagCols, defaultSet, hasHeader]);
 
   // ---------- step 3: save for review and match ----------
   const loadRows = useCallback(async (id: string, f: string, p: number) => {
@@ -168,6 +211,9 @@ export default function SmartImport({ supabase, onClose, onChanged }: { supabase
   }, [supabase]);
 
   const review = async (src: Row[], srcKind: Source, fileName: string | null) => {
+    // a double click must not start two imports at once
+    if (lock.current) return;
+    lock.current = true;
     setBusy(t("Sparar förhandsgranskningen …"));
     setMsg(null);
     try {
@@ -189,18 +235,35 @@ export default function SmartImport({ supabase, onClose, onChanged }: { supabase
       setPage(0);
       setOverrides({});
       await loadRows(id, "all", 0);
+      await loadUnresolved(id);
       setStep("review");
     } catch (e) {
       setMsg(errText(e));
     }
+    lock.current = false;
     setBusy(null);
   };
+
+  const loadUnresolved = useCallback(async (id: string) => {
+    const { data } = await supabase.rpc("import_unresolved_sections", { p_job: id });
+    setUnresolved(((data as { section_text: string; n: number }[]) || []).map((x) => ({ section_text: x.section_text, n: Number(x.n) })));
+  }, [supabase]);
 
   const refresh = async (f = filter, p = page) => {
     if (!jobId) return;
     const c = await supabase.rpc("import_counts", { p_job: jobId });
     setCounts((c.data as Record<string, number>) || {});
     await loadRows(jobId, f, p);
+    await loadUnresolved(jobId);
+  };
+
+  const setSectionFor = async (text: string, sectionId: number) => {
+    if (!jobId) return;
+    setBusy(t("Matchar om …"));
+    const { error } = await supabase.rpc("import_section_map", { p_job: jobId, p_text: text, p_section_id: sectionId });
+    setBusy(null);
+    if (error) return setMsg(errText(error));
+    refresh();
   };
 
   const setSetFor = async (setText: string, setId: string) => {
@@ -333,25 +396,34 @@ export default function SmartImport({ supabase, onClose, onChanged }: { supabase
           <>
             <div className="note">{t("Kontrollera vilka kolumner som är vilka. Jag har gissat utifrån rubrikerna.")}</div>
             <label className="row" style={{ gap: 8 }}>
-              <input type="checkbox" checked={hasHeader} onChange={(e) => { setHasHeader(e.target.checked); if (e.target.checked) setMapping(mapColumns(table[0] || [])); }} />
+              <input type="checkbox" checked={hasHeader} onChange={(e) => { setHasHeader(e.target.checked); if (e.target.checked) setRoles(rolesFrom(mapColumns(table[0] || []), Math.max(...table.slice(0, 50).map((r) => r.length)))); }} />
               <span>{t("Första raden är rubriker")}</span>
             </label>
-            <div className="row" style={{ flexWrap: "wrap" }}>
-              {FIELDS.map((f) => (
-                <label key={f.id} style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: 12 }}>
-                  {t(f.label)}
-                  <select value={mapping[f.id] ?? ""} onChange={(e) => setMapping((m) => { const n = { ...m }; if (e.target.value === "") delete n[f.id]; else n[f.id] = Number(e.target.value); return n; })} aria-label={t(f.label)}>
-                    <option value="">{t("(ingen)")}</option>
-                    {(table[0] || []).map((h, i) => (<option key={i} value={i}>{hasHeader ? h || `${t("Kolumn")} ${i + 1}` : `${t("Kolumn")} ${i + 1}`}</option>))}
-                  </select>
-                </label>
-              ))}
-            </div>
-            {mapping.set === undefined && (
+            <div className="note">{t("Välj en roll för varje kolumn som du vill använda. Kolumner du inte förstår eller inte behöver låter du stå som (ignorera). Ja/nej-kolumner kan vara parallellvarianter: då är kolumnrubriken parallellens namn.")}</div>
+            {looksYesNo.some((k) => !roles[k]) && (
+              <div className="row">
+                <button className="btn small" type="button" onClick={() => setRoles((rs) => rs.map((r, i) => (!r && looksYesNo.includes(i) ? "flag" : r)))}>{t("Använd alla ja/nej-kolumner som parallellvarianter")}</button>
+              </div>
+            )}
+            {mapping.set === undefined && (!roles.includes("set")) && (
               <input className="t-input" style={{ width: "100%" }} placeholder={t("Setets namn (om kolumn saknas), till exempel 1993-94 Parkhurst")} aria-label={t("Standardset")} value={defaultSet} onChange={(e) => setDefaultSet(e.target.value)} />
             )}
             <div style={{ overflowX: "auto" }}>
               <table className="mono" style={{ fontSize: 12, borderCollapse: "collapse" }}>
+                <thead>
+                  <tr>
+                    {Array.from({ length: roles.length }, (_, k) => (
+                      <th key={k} style={{ padding: "2px 4px", textAlign: "left" }}>
+                        <select value={roles[k] || ""} onChange={(e) => setRoles((rs) => rs.map((x, i) => (i === k ? e.target.value : x)))} aria-label={`${t("Roll för kolumn")} ${k + 1}`} style={{ maxWidth: 170 }}>
+                          <option value="">{t("(ignorera)")}</option>
+                          {FIELDS.map((f) => (<option key={f.id} value={f.id}>{t(f.label)}</option>))}
+                          <option value="flag">{t("Parallell (rubriken är namnet)")}</option>
+                        </select>
+                        {looksYesNo.includes(k) && <div className="note" style={{ fontWeight: 400 }}>{t("ser ut som ja/nej")}</div>}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
                 <tbody>
                   {table.slice(0, 8).map((r, i) => (
                     <tr key={i} style={{ fontWeight: i === 0 && hasHeader ? 700 : 400 }}>{r.map((c, k) => (<td key={k} style={{ padding: "2px 8px", borderBottom: "1px solid var(--line)", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c}</td>))}</tr>
@@ -359,7 +431,8 @@ export default function SmartImport({ supabase, onClose, onChanged }: { supabase
                 </tbody>
               </table>
             </div>
-            <div className="note">{parsed ? `${parsed.rows.length.toLocaleString("sv-SE")} ${t("rader hittades")}${parsed.skipped ? ` · ${parsed.skipped} ${t("tomma rader hoppades över")}` : ""}${parsed.formulaCells ? ` · ${parsed.formulaCells} ${t("celler började som formler och behandlas som vanlig text")}` : ""}.` : t("Kunde inte läsa raderna.")}</div>
+            {mapping.have === undefined && !flagCols.length && <div className="note warn">{t("Ingen kolumn är vald som Har kortet. Då importeras alla rader som kort du äger. Om listan är en checklista över ett helt set, välj kolumnen som visar vilka kort du har.")}</div>}
+            <div className="note">{parsed ? `${parsed.rows.length.toLocaleString("sv-SE")} ${t("rader hittades")}${parsed.notOwned ? ` · ${parsed.notOwned.toLocaleString("sv-SE")} ${t("rader hoppades över eftersom kortet inte är markerat som ägt")}` : ""}${parsed.skipped ? ` · ${parsed.skipped} ${t("tomma rader hoppades över")}` : ""}${parsed.formulaCells ? ` · ${parsed.formulaCells} ${t("celler började som formler och behandlas som vanlig text")}` : ""}.` : t("Kunde inte läsa raderna.")}</div>
             <div className="row">
               <button className="btn primary" type="button" disabled={!!busy || !parsed || !parsed.rows.length} onClick={() => parsed && review(parsed.rows, source, file?.name ?? null)}>{t("Förhandsgranska")}</button>
               <button className="btn ghost" type="button" onClick={() => setStep("input")}>{t("Tillbaka")}</button>
@@ -387,6 +460,13 @@ export default function SmartImport({ supabase, onClose, onChanged }: { supabase
               <div className="note">{strategy === "add" ? t("Antalet i filen läggs till ditt nuvarande antal.") : strategy === "replace" ? t("Antalet i filen ersätter ditt nuvarande antal.") : t("Ditt nuvarande antal lämnas som det är. Nya kort läggs till.")}</div>
             </div>
 
+            {unresolved.length > 0 && (
+              <div className="wish-box">
+                <div className="label">{t("Delserier som inte hittades. Peka ut vilken delserie de betyder.")}</div>
+                {unresolved.map((u) => (<SectionFix key={u.section_text} supabase={supabase} text={u.section_text} n={u.n} start={defaultSet} onPick={(id) => setSectionFor(u.section_text, id)} t={t} />))}
+              </div>
+            )}
+
             {ambiguousSets.length > 0 && (
               <div className="wish-box">
                 <div className="label">{t("Flera set passar. Välj rätt.")}</div>
@@ -410,7 +490,7 @@ export default function SmartImport({ supabase, onClose, onChanged }: { supabase
                   <span className="mono note">#{r.row_no}</span>
                   <span className="grow">
                     <b>{String(r.norm.name || "") || "–"}</b>
-                    <span className="note"> · {String(r.norm.set || t("(inget set)"))}{r.norm.code ? ` · ${r.norm.code}` : ""}{r.norm.no != null ? ` ${r.norm.no}` : ""}{r.norm.parallel ? ` · ${r.norm.parallel}` : ""} · ×{String(r.norm.qty ?? "?")}</span>
+                    <span className="note"> · {String(r.norm.set || t("(inget set)"))}{r.norm.section ? ` · ${r.norm.section}` : ""}{r.norm.code ? ` · ${r.norm.code}` : ""}{r.norm.no != null ? ` ${r.norm.no}` : ""}{r.norm.parallel ? ` · ${r.norm.parallel}` : ""} · ×{String(r.norm.qty ?? "?")}</span>
                   </span>
                   <span className="note">{t(RESULT_LABEL[r.result || ""] || "–")}{r.reason && REASON_LABEL[r.reason] ? ` (${t(REASON_LABEL[r.reason])})` : ""}</span>
                   {ok && r.prev_qty != null && (
