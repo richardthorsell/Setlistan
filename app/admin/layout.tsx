@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   description: "Administration av Setlistan.",
   manifest: "/admin/manifest.webmanifest",
   robots: { index: false, follow: false },
-  icons: { icon: "/admin/pwa-icon?s=192", apple: "/admin/pwa-icon?s=180" },
+  icons: { icon: "/admin/pwa-icon", apple: "/admin/pwa-icon" },
   appleWebApp: { capable: true, title: "Setlistan Admin", statusBarStyle: "black-translucent" },
   openGraph: { title: "Setlistan Admin", siteName: "Setlistan Admin" },
 };
