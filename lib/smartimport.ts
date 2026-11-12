@@ -5,11 +5,12 @@ export const LIMITS = { bytes: 5 * 1024 * 1024, rows: 20000, sheets: 20, cell: 3
 
 export type Table = string[][];
 export type Source = "xlsx" | "csv" | "tsv" | "paste" | "list";
-export type Field = "set" | "year" | "code" | "no" | "name" | "team" | "qty" | "parallel" | "serial" | "status";
+// `have` is a yes/no (or a number) column that says whether the card is owned. `section` is a subset given by name ("Vintage"), `code` by its code ("PB").
+export type Field = "set" | "year" | "code" | "section" | "no" | "name" | "team" | "qty" | "have" | "parallel" | "serial" | "status";
 export type Mapping = Partial<Record<Field, number>>;
 
 // One normalized row. `n` is the row number in the source, `o` the original values as text.
-export type NormRow = { set: string; year: number | null; code: string; no: number | null; name: string; team: string; qty: number | null; parallel: string; serial: string; status: string };
+export type NormRow = { set: string; year: number | null; code: string; section: string; no: number | null; name: string; team: string; qty: number | null; parallel: string; serial: string; status: string };
 export type Row = { n: number; r: NormRow; o: Record<string, string> };
 
 export class ImportError extends Error {}
@@ -114,11 +115,13 @@ export function tableFromSheet(rows: unknown[][]): Table {
 const SYNONYMS: Record<Field, string[]> = {
   set: ["set", "set name", "setnamn", "serie", "series", "product", "produkt", "checklist", "samling", "collection", "album", "brand set"],
   year: ["year", "ar", "season", "sasong", "ar sasong", "years"],
-  code: ["subset", "delset", "insert", "insert set", "prefix", "card prefix", "section", "code", "kod", "typ"],
+  code: ["prefix", "card prefix", "code", "kod"],
+  section: ["typ", "type", "subset", "delset", "delserie", "insert", "insert set", "section", "kategori", "category"],
   no: ["number", "no", "nr", "num", "#", "card number", "card no", "card #", "kortnummer", "nummer", "card nr", "cardnumber"],
   name: ["player", "name", "spelare", "namn", "athlete", "player name", "card name", "kortnamn", "title"],
   team: ["team", "lag", "klubb", "club", "team name", "organization"],
-  qty: ["quantity", "qty", "antal", "count", "owned", "copies", "have", "agda", "ex", "exemplar", "amount"],
+  qty: ["quantity", "qty", "antal", "count", "copies", "ex", "exemplar", "amount"],
+  have: ["har", "har kortet", "har jag", "owned", "have", "agd", "agda", "ager", "collected", "samlad", "mina"],
   parallel: ["parallel", "parallell", "variant", "version", "color", "colour", "farg", "refractor", "finish"],
   serial: ["serial", "serial number", "serienummer", "numbered", "print run", "serial no", "sn"],
   status: ["status", "condition", "skick", "grade", "graded"],
@@ -177,25 +180,76 @@ export function seasonYear(text: string): { year: number | null; rest: string } 
   return { year: null, rest: t };
 }
 
+// ---------- yes/no columns ----------
+
+// A "have it" cell: yes/true/x/1 or a number is owned (the number is the quantity), no/false/0/empty is not owned, anything else is unclear (null).
+const YES = /^(true|sant|ja|yes|y|x|ok|✓|✔|✅|har|finns)$/i;
+const NO = /^(false|falskt|nej|no|n|-|–|✗|✘|❌)$/i;
+export function parseHave(s: string): number | null {
+  const v = cleanCell(s);
+  if (v === "" || NO.test(v)) return 0;
+  if (YES.test(v)) return 1;
+  const m = v.match(/^(?:[x×]\s*)?(\d{1,4})(?:\s*[x×])?$/i);
+  if (!m) return null;
+  const n = parseInt(m[1], 10);
+  return n === 0 ? 0 : n <= 999 ? n : null;
+}
+
+// Columns that look like yes/no columns: at least one "yes" and nothing but yes/no/empty. Used to suggest parallel columns.
+export function flagColumns(table: Table, hasHeader: boolean): number[] {
+  const body = hasHeader ? table.slice(1) : table;
+  const width = Math.max(0, ...table.slice(0, 50).map((r) => r.length));
+  const out: number[] = [];
+  for (let k = 0; k < width; k++) {
+    let yes = 0;
+    let ok = true;
+    for (const r of body.slice(0, 2000)) {
+      const v = r[k] ?? "";
+      if (v === "") continue;
+      if (YES.test(v) || v === "1") yes++;
+      else if (!NO.test(v) && v !== "0") {
+        ok = false;
+        break;
+      }
+    }
+    if (ok && yes > 0) out.push(k);
+  }
+  return out;
+}
+
 // ---------- tables ----------
 
-export type TableResult = { rows: Row[]; formulaCells: number; skipped: number };
+export type TableResult = { rows: Row[]; formulaCells: number; skipped: number; notOwned: number };
+export type TableOptions = {
+  defaultSet?: string;
+  hasHeader?: boolean;
+  // Columns whose yes/no values mean "I have this parallel". The column heading is the name of the parallel.
+  flagCols?: number[];
+};
 
 // Rows from a table with a mapping from columns to fields. `defaultSet` is used when there is no set column.
-export function rowsFromTable(table: Table, mapping: Mapping, opts: { defaultSet?: string; hasHeader?: boolean } = {}): TableResult {
+// With a `have` column only rows marked as owned become rows; without one every row is owned, unless parallel columns are given (then only the parallels are).
+export function rowsFromTable(table: Table, mapping: Mapping, opts: TableOptions = {}): TableResult {
   const header = opts.hasHeader === false ? [] : table[0] || [];
   const body = opts.hasHeader === false ? table : table.slice(1);
   if (body.length > LIMITS.rows) throw new ImportError("too_many_rows");
   const get = (r: string[], f: Field) => (mapping[f] === undefined ? "" : r[mapping[f] as number] ?? "");
+  const flagCols = (opts.flagCols || []).filter((k) => !Object.values(mapping).includes(k));
   const rows: Row[] = [];
   let formulaCells = 0;
   let skipped = 0;
+  let notOwned = 0;
+  let extra = 0;
   body.forEach((r, i) => {
     for (const c of r) if (looksLikeFormula(c)) formulaCells++;
     const n = i + (opts.hasHeader === false ? 1 : 2);
     const o: Record<string, string> = {};
+    const seen: Record<string, number> = {};
     r.forEach((c, k) => {
-      const key = header[k] || `col${k + 1}`;
+      let key = header[k] || `col${k + 1}`;
+      // two columns with the same heading must not overwrite each other
+      seen[key] = (seen[key] || 0) + 1;
+      if (seen[key] > 1) key = `${key} (${seen[key]})`;
       if (c !== "") o[key] = c;
     });
     const setCell = get(r, "set") || opts.defaultSet || "";
@@ -210,24 +264,43 @@ export function rowsFromTable(table: Table, mapping: Mapping, opts: { defaultSet
       skipped++;
       return;
     }
-    rows.push({
-      n,
-      o,
-      r: {
-        set: sy.rest || setCell,
-        year: yearFromCol ?? sy.year,
-        code: (explicitCode ? explicitCode.toUpperCase().replace(/\s+/g, "") : parsed?.code) || "",
-        no: parsed ? parsed.no : null,
-        name,
-        team: get(r, "team"),
-        qty: mapping.qty === undefined ? 1 : parseQty(get(r, "qty")),
-        parallel: get(r, "parallel"),
-        serial: get(r, "serial").slice(0, 20),
-        status: get(r, "status"),
-      },
-    });
+    const base: NormRow = {
+      set: sy.rest || setCell,
+      year: yearFromCol ?? sy.year,
+      code: (explicitCode ? explicitCode.toUpperCase().replace(/\s+/g, "") : parsed?.code) || "",
+      section: get(r, "section"),
+      no: parsed ? parsed.no : null,
+      name,
+      team: get(r, "team"),
+      qty: 1,
+      parallel: get(r, "parallel"),
+      serial: get(r, "serial").slice(0, 20),
+      status: get(r, "status"),
+    };
+    const plainQty = mapping.qty === undefined ? null : parseQty(get(r, "qty"));
+    let emitted = 0;
+    // the card itself
+    const haveCell = mapping.have === undefined ? null : parseHave(get(r, "have"));
+    if (mapping.have !== undefined) {
+      if (haveCell === 0) notOwned++;
+      else rows.push({ n, o, r: { ...base, qty: mapping.qty !== undefined ? plainQty : haveCell === null ? null : haveCell } }), emitted++;
+    } else if (!flagCols.length) {
+      rows.push({ n, o, r: { ...base, qty: mapping.qty === undefined ? 1 : plainQty } });
+      emitted++;
+    }
+    // the parallels: one row for each yes in a parallel column
+    for (const k of flagCols) {
+      const have = parseHave(r[k] ?? "");
+      if (have === 0) continue;
+      if (rows.length >= LIMITS.rows) throw new ImportError("too_many_rows");
+      // rows made from one source row get numbers above 100000, so every row has its own number
+      rows.push({ n: 100000 + ++extra, o: { ...o, rad: String(n) }, r: { ...base, parallel: cleanCell(header[k] || `col${k + 1}`), qty: have === null ? null : have } });
+      emitted++;
+    }
+    if (!emitted && mapping.have === undefined) notOwned++;
   });
-  return { rows, formulaCells, skipped };
+  if (rows.length > LIMITS.rows) throw new ImportError("too_many_rows");
+  return { rows, formulaCells, skipped, notOwned };
 }
 
 // ---------- lists with a set heading ----------
@@ -271,11 +344,11 @@ export function parseList(text: string, opts: { defaultSet?: string } = {}): Tab
     rows.push({
       n: i + 1,
       o: { rad: line },
-      r: { set: sy.rest || heading, year: sy.year, code, no: parseInt(m[3], 10), name: parts[0] || "", team: parts.slice(1).join(", "), qty, parallel: "", serial: "", status: "" },
+      r: { set: sy.rest || heading, year: sy.year, code, section: "", no: parseInt(m[3], 10), name: parts[0] || "", team: parts.slice(1).join(", "), qty, parallel: "", serial: "", status: "" },
     });
   });
   skipped = 0;
-  return { rows, formulaCells, skipped };
+  return { rows, formulaCells, skipped, notOwned: 0 };
 }
 
 // ---------- pasted text: a table or a list ----------
