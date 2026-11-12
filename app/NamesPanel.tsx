@@ -6,7 +6,7 @@ import "./panels.css";
 
 type Kind = "set" | "player" | "team";
 type Hit = { value: string; cards: number; sets: number; id?: string; short?: string | null };
-type Log = { id: number; kind: Kind; old_value: string; new_value: string; affected: number; created_at: string; undone_at: string | null };
+type Log = { id: number; kind: Kind | "card"; old_value: string; new_value: string; affected: number; created_at: string; undone_at: string | null };
 
 const KIND: Record<Kind, string> = { set: "Set", player: "Spelare", team: "Lag" };
 const PLACEHOLDER: Record<Kind, string> = { set: "Sök set, till exempel Prizm eller Bundesliga", player: "Sök spelare, minst tre tecken", team: "Sök lag, minst tre tecken" };
@@ -173,7 +173,7 @@ export default function NamesPanel({ supabase, onClose }: { supabase: SupabaseCl
         {log.map((l) => (
           <div key={l.id} className="par-row">
             <span className="grow">
-              <b>{KIND[l.kind]}:</b> {l.old_value} → {l.new_value}
+              <b>{l.kind === "card" ? "Kort" : KIND[l.kind]}:</b> {l.old_value} → {l.new_value}
               <span className="note"> · {l.affected.toLocaleString("sv-SE")} kort · {new Date(l.created_at).toLocaleString("sv-SE", { dateStyle: "short", timeStyle: "short" })}{l.undone_at ? " · ångrad" : ""}</span>
             </span>
             {!l.undone_at && (undoId === l.id ? (
