@@ -202,6 +202,39 @@ export default function AdminPanel({
     await load();
     say(`Inbjudan skickad till ${w.email}`);
   };
+  // Waitlist against accounts (by e-mail, case-insensitive): who has an account, and who was invited but has not made one.
+  const accountEmails = new Set(accounts.map((x) => x.email.toLowerCase()));
+  const hasAccount = (w: Wait) => accountEmails.has(w.email.toLowerCase());
+  const noAccount = (w: Wait) => !!w.invited_at && !hasAccount(w);
+  const [onlyNoAccount, setOnlyNoAccount] = useState(false);
+  const [reminding, setReminding] = useState(false);
+  const sendReminder = async (w: Wait) => {
+    const r = await fetch("/api/invite", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: w.id, reminder: true }) });
+    const j = await r.json().catch(() => ({}));
+    return r.ok ? "" : String(j.error || "Kunde inte skicka.");
+  };
+  const remindOne = async (w: Wait) => {
+    if (!window.confirm(`Skicka en påminnelse till ${w.email}? Personen är inbjuden men har inte skapat något konto.`)) return;
+    const err = await sendReminder(w);
+    say(err || `Påminnelse skickad till ${w.email}`);
+  };
+  const remindAll = async () => {
+    const list = wait.filter(noAccount);
+    if (!list.length || !window.confirm(`Skicka en påminnelse till ${list.length} inbjudna som inte har skapat konto?`)) return;
+    setReminding(true);
+    let ok = 0;
+    let fail = "";
+    for (const w of list) {
+      const err = await sendReminder(w);
+      if (err) {
+        fail = err;
+        break;
+      }
+      ok++;
+    }
+    setReminding(false);
+    say(fail ? `${ok} av ${list.length} skickade. ${fail}` : `${ok} påminnelser skickade`);
+  };
   const NUDGE_DAYS = 7;
   const [nudging, setNudging] = useState(false);
   // Signed in at least once, nothing ticked off yet, and not nudged within the last week. Admins are left out.
@@ -565,13 +598,30 @@ export default function AdminPanel({
       )}
 
       <div className="label">Väntelista ({wait.length})</div>
+      <div className="stats">
+        <div><b className="mono">{wait.length}</b><span>på väntelistan</span></div>
+        <div><b className="mono">{wait.filter((w) => w.invited_at).length}</b><span>har fått inbjudan</span></div>
+        <div><b className="mono">{wait.filter(hasAccount).length}</b><span>har skapat konto</span></div>
+        <div><b className="mono">{wait.filter(noAccount).length}</b><span>inbjudna utan konto</span></div>
+      </div>
+      {wait.some(noAccount) && (
+        <div className="row" style={{ flexWrap: "wrap" }}>
+          <button className="btn small" type="button" disabled={reminding} onClick={remindAll}>Påminn alla inbjudna utan konto ({wait.filter(noAccount).length})</button>
+          <label className="row" style={{ gap: 6 }}>
+            <input type="checkbox" checked={onlyNoAccount} onChange={(e) => setOnlyNoAccount(e.target.checked)} />
+            <span>Visa bara dem</span>
+          </label>
+        </div>
+      )}
       {wait.length ? (
         <div className="admin-table">
-          {wait.map((w) => (
+          {wait.filter((w) => !onlyNoAccount || noAccount(w)).map((w) => (
             <div key={w.id} className="admin-row">
               <span className="mono note">{when(w.created_at)}</span>
               <span className="grow">{w.name} · {w.email} {collectMark(w.email)}</span>
-              {w.invited_at ? <span className="pill src">Inbjuden</span> : null}
+              {w.invited_at ? <span className="pill src" title={`Inbjuden ${when(w.invited_at)}`}>Inbjuden</span> : null}
+              {hasAccount(w) ? <span className="pill src">Har konto</span> : w.invited_at ? <span className="pill" style={{ borderColor: "var(--warn, #b45309)", color: "var(--warn, #b45309)" }}>Inget konto</span> : null}
+              {noAccount(w) && <button className="btn small" type="button" disabled={reminding} onClick={() => remindOne(w)}>Skicka påminnelse</button>}
               <button className="btn small" type="button" onClick={() => invite(w)}>{w.invited_at ? "Bjud in igen" : "Bjud in"}</button>
               <button className="btn small ghost danger" type="button" onClick={() => delWait(w.id)}>Ta bort</button>
             </div>
