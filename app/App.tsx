@@ -159,6 +159,7 @@ export default function App({ signedOut = false }: { signedOut?: boolean }) {
   const aiOn = featureOn(flags.assistant_ai, role);
   const tradeOn = featureOn(flags.trade_matching, role);
   const importOn = featureOn(flags.smart_import, role);
+  const intelligentOn = importOn && featureOn(flags.intelligent_import, role);
   const [showImport, setShowImport] = useState(false);
   const [showTrade, setShowTrade] = useState(false);
   const [showMsgs, setShowMsgs] = useState(false);
@@ -1058,7 +1059,7 @@ export default function App({ signedOut = false }: { signedOut?: boolean }) {
       {showNews && user && <WhatsNew updates={updates} since={newsSince} onClose={() => setShowNews(false)} />}
       {user && !showWelcome && !showNews && <QuestionPrompt supabase={supabase} />}
       {assistantOn && user && <CollectorAssistant supabase={supabase} advisor={advisorOn} ai={aiOn} onOpenSet={(id) => openSet(id)} />}
-      {showImport && importOn && user && <SmartImport supabase={supabase} onClose={() => setShowImport(false)} onChanged={() => { loadCounts(user); loadSets(); }} />}
+      {showImport && importOn && user && <SmartImport supabase={supabase} ai={intelligentOn} onClose={() => setShowImport(false)} onChanged={() => { loadCounts(user); loadSets(); }} />}
       {showTrade && tradeOn && user && <TradePanel supabase={supabase} onClose={() => setShowTrade(false)} onOpenSet={(id) => { setShowTrade(false); openSet(id); }} />}
       {showAuth && !user && <AuthBox supabase={supabase} onClose={() => setShowAuth(false)} />}
       {parCard && (
