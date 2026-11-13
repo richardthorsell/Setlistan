@@ -314,6 +314,32 @@ export default function SmartImport({ supabase, onClose, onChanged }: { supabase
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
+  // match the pending rows again against the catalogue as it is now; the result is an ordinary import that is reviewed and approved
+  const resume = async () => {
+    if (lock.current) return;
+    lock.current = true;
+    setBusy(t("Matchar om väntande rader …"));
+    setMsg(null);
+    try {
+      const { data, error } = await supabase.rpc("import_resume");
+      if (error) throw error;
+      const r = data as { job: string; counts: Record<string, number> };
+      setJobId(r.job);
+      setCounts(r.counts || {});
+      setFilter("all");
+      setPage(0);
+      setOverrides({});
+      setWarn(null);
+      await loadRows(r.job, "all", 0);
+      await loadUnresolved(r.job);
+      setStep("review");
+    } catch (e) {
+      setMsg(/nothing pending/.test((e as { message?: string })?.message || "") ? t("Inget väntar som kan matchas.") : errText(e));
+    }
+    lock.current = false;
+    setBusy(null);
+  };
+
   const undo = async (id: string) => {
     setBusy(t("Ångrar …"));
     const { data, error } = await supabase.rpc("import_undo", { p_job: id });
@@ -568,6 +594,12 @@ export default function SmartImport({ supabase, onClose, onChanged }: { supabase
           <>
             <div className="note">{t("Det här är rader från dina importer som inte finns i katalogen (eller som var osäkra). De är privata, räknas inte som dina kort och sparas åt dig tills katalogen har dem.")}</div>
             {!pending.length && <div className="note">{t("Inget väntar.")}</div>}
+            {pending.length > 0 && (
+              <div className="row">
+                <button className="btn small primary" type="button" disabled={!!busy} onClick={resume}>{t("Matcha väntande rader igen")}</button>
+                <span className="note">{t("Använd den när ett set har lagts in i katalogen. Du granskar och godkänner innan något läggs till.")}</span>
+              </div>
+            )}
             {pending.map((p, i) => (
               <div key={i} className="par-row">
                 <span className="mono note">{p.subset_code ? `${p.subset_code} ` : ""}{p.card_no ?? ""}</span>
