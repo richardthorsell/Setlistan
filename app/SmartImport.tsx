@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import "./panels.css";
+import { sampleForHint } from "@/lib/importhint";
 import { useT } from "@/lib/i18n";
 import {
   LIMITS, ImportError, type Field, type Mapping, type Row, type Source, type Table,
@@ -66,7 +67,7 @@ function SectionFix({ supabase, text, n, start, onPick, t }: { supabase: Supabas
 
 // Smart Import: read a collection from a file or pasted text (in the browser), check how it matches the catalogue, and only after your approval
 // add it to your collection. Rows that do not match are kept privately as pending. Everything can be undone while it is unchanged.
-export default function SmartImport({ supabase, onClose, onChanged }: { supabase: SupabaseClient; onClose: () => void; onChanged: () => void }) {
+export default function SmartImport({ supabase, onClose, onChanged, ai }: { supabase: SupabaseClient; onClose: () => void; onChanged: () => void; ai?: boolean }) {
   const t = useT();
   const [step, setStep] = useState<Step>("input");
   const [mode, setMode] = useState<"file" | "paste">("file");
@@ -314,6 +315,22 @@ export default function SmartImport({ supabase, onClose, onChanged }: { supabase
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
+  // Intelligent Import: the headings and a few cut-short rows are sent only when the user presses the button; the answer fills in the roles, which can still be changed
+  const suggest = async () => {
+    setBusy(t("AI föreslår roller …"));
+    setMsg(null);
+    try {
+      const r = await fetch("/api/import-hint", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(sampleForHint(table, hasHeader)) });
+      const j = (await r.json()) as { roles?: string[]; error?: string };
+      if (!r.ok || !j.roles) throw new Error(j.error || "");
+      setRoles((old) => old.map((_, i) => j.roles![i] ?? ""));
+      setMsg(t("Rollerna är föreslagna av AI. Kontrollera dem och ändra det som är fel."));
+    } catch (e) {
+      setMsg((e as Error).message || t("Något gick fel. Försök igen."));
+    }
+    setBusy(null);
+  };
+
   // match the pending rows again against the catalogue as it is now; the result is an ordinary import that is reviewed and approved
   const resume = async () => {
     if (lock.current) return;
@@ -426,6 +443,12 @@ export default function SmartImport({ supabase, onClose, onChanged }: { supabase
               <span>{t("Första raden är rubriker")}</span>
             </label>
             <div className="note">{t("Välj en roll för varje kolumn som du vill använda. Kolumner du inte förstår eller inte behöver låter du stå som (ignorera). Ja/nej-kolumner kan vara parallellvarianter: då är kolumnrubriken parallellens namn.")}</div>
+            {ai && (
+              <div className="row">
+                <button className="btn small" type="button" disabled={!!busy} onClick={suggest}>{t("Föreslå roller med AI")}</button>
+                <span className="note">{t("Rubrikerna och några exempelrader skickas till en AI-tjänst, bara när du trycker på knappen.")}</span>
+              </div>
+            )}
             {looksYesNo.some((k) => !roles[k]) && (
               <div className="row">
                 <button className="btn small" type="button" onClick={() => setRoles((rs) => rs.map((r, i) => (!r && looksYesNo.includes(i) ? "flag" : r)))}>{t("Använd alla ja/nej-kolumner som parallellvarianter")}</button>

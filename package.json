@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "seed": "node scripts/build-seed.mjs",
-    "test": "node --experimental-strip-types --disable-warning=ExperimentalWarning --test lib/checklist.test.ts lib/waitlist.test.ts lib/assistant.test.ts lib/smartimport.test.ts"
+    "test": "node --experimental-strip-types --disable-warning=ExperimentalWarning --test lib/checklist.test.ts lib/waitlist.test.ts lib/assistant.test.ts lib/smartimport.test.ts lib/importhint.test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.136.0",

@@ -1,6 +1,10 @@
 // Newer texts, keyed by the Swedish source text, per language. Checked before the main dictionaries.
 export const EXTRA: Record<string, Record<string, string>> = {
   en: {
+    "AI föreslår roller …": "AI is suggesting roles …",
+    "Rollerna är föreslagna av AI. Kontrollera dem och ändra det som är fel.": "The roles were suggested by AI. Check them and change what is wrong.",
+    "Föreslå roller med AI": "Suggest roles with AI",
+    "Rubrikerna och några exempelrader skickas till en AI-tjänst, bara när du trycker på knappen.": "The headings and a few example rows are sent to an AI service, only when you press the button.",
     "Matcha väntande rader igen": "Match pending rows again",
     "Matchar om väntande rader …": "Matching pending rows again …",
     "Inget väntar som kan matchas.": "Nothing pending can be matched.",
