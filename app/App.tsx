@@ -20,6 +20,7 @@ import QuestionPrompt from "./QuestionPrompt";
 import CollectorAssistant from "./CollectorAssistant";
 import TradePanel from "./TradePanel";
 import SmartImport from "./SmartImport";
+import PulsePanel from "./PulsePanel";
 import { type FeatureMode, featureOn } from "@/lib/features";
 import Messages from "./Messages";
 import SellPanel from "./SellPanel";
@@ -160,6 +161,7 @@ export default function App({ signedOut = false }: { signedOut?: boolean }) {
   const tradeOn = featureOn(flags.trade_matching, role);
   const importOn = featureOn(flags.smart_import, role);
   const intelligentOn = importOn && featureOn(flags.intelligent_import, role);
+  const pulseOn = featureOn(flags.pulse, role);
   const [showImport, setShowImport] = useState(false);
   const [showTrade, setShowTrade] = useState(false);
   const [showMsgs, setShowMsgs] = useState(false);
@@ -1103,6 +1105,8 @@ export default function App({ signedOut = false }: { signedOut?: boolean }) {
         </div>
         <Overview supabase={supabase} sets={sets} counts={counts} favs={favs} followed={followed} refreshKey={`${showSell}${showWish}${showMySets}${playerSet ? 1 : 0}${openId ?? ""}`} onMySets={() => setShowMySets(true)} onSell={() => setShowSell(true)} onWish={() => setShowWish(true)} onPlayers={() => { setPlayerQ(""); setShowPlayers(true); }} />
       </header>
+
+      {pulseOn && user && <PulsePanel supabase={supabase} onOpenSet={(id) => openSet(id)} onOpenTrade={() => { if (tradeOn) setShowTrade(true); }} />}
 
       {paste && (
         <section className="panel">
