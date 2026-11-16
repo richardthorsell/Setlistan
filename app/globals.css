@@ -21,7 +21,7 @@ body {
   background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.5;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
 }
-.wrap { max-width: 1120px; margin: 0 auto; padding-block: 24px 64px; display: flex; flex-direction: column; gap: 26px; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-block: max(24px, calc(env(safe-area-inset-top, 0px) + 12px)) 64px; display: flex; flex-direction: column; gap: 26px; }
 h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; letter-spacing: 0.01em; line-height: 1.02; }
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; }
