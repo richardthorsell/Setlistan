@@ -206,6 +206,9 @@ export default function AdminPanel({
   const accountEmails = new Set(accounts.map((x) => x.email.toLowerCase()));
   const hasAccount = (w: Wait) => accountEmails.has(w.email.toLowerCase());
   const noAccount = (w: Wait) => !!w.invited_at && !hasAccount(w);
+  // Invited more than 30 days ago and still no account (only trusted when the account list has loaded)
+  const STALE_DAYS = 30;
+  const stale = (w: Wait) => accounts.length > 0 && noAccount(w) && Date.now() - new Date(w.invited_at as string).getTime() > STALE_DAYS * 86400000;
   const [onlyNoAccount, setOnlyNoAccount] = useState(false);
   const [reminding, setReminding] = useState(false);
   const sendReminder = async (w: Wait) => {
@@ -272,6 +275,14 @@ export default function AdminPanel({
     const { error } = await supabase.from("waitlist").delete().eq("id", id);
     if (error) return say("Kunde inte ta bort.");
     await load();
+  };
+  const delStale = async () => {
+    const list = wait.filter(stale);
+    if (!list.length || !window.confirm(`Ta bort ${list.length} personer från väntelistan? De fick sin inbjudan för mer än ${STALE_DAYS} dagar sedan och har inte skapat något konto. Det går inte att ångra.`)) return;
+    const { error } = await supabase.from("waitlist").delete().in("id", list.map((w) => w.id));
+    if (error) return say("Kunde inte ta bort.");
+    await load();
+    say(`${list.length} borttagna från väntelistan`);
   };
   const handled = async (f: Fb) => {
     const { error } = await supabase.from("feedback").update({ handled_at: f.handled_at ? null : new Date().toISOString() }).eq("id", f.id);
@@ -603,10 +614,12 @@ export default function AdminPanel({
         <div><b className="mono">{wait.filter((w) => w.invited_at).length}</b><span>har fått inbjudan</span></div>
         <div><b className="mono">{wait.filter(hasAccount).length}</b><span>har skapat konto</span></div>
         <div><b className="mono">{wait.filter(noAccount).length}</b><span>inbjudna utan konto</span></div>
+        <div><b className="mono">{wait.filter(stale).length}</b><span>utan konto efter {STALE_DAYS} dagar</span></div>
       </div>
       {wait.some(noAccount) && (
         <div className="row" style={{ flexWrap: "wrap" }}>
           <button className="btn small" type="button" disabled={reminding} onClick={remindAll}>Påminn alla inbjudna utan konto ({wait.filter(noAccount).length})</button>
+          {wait.some(stale) && <button className="btn small danger" type="button" onClick={delStale}>Ta bort dem utan konto efter {STALE_DAYS} dagar ({wait.filter(stale).length})</button>}
           <label className="row" style={{ gap: 6 }}>
             <input type="checkbox" checked={onlyNoAccount} onChange={(e) => setOnlyNoAccount(e.target.checked)} />
             <span>Visa bara dem</span>
@@ -620,7 +633,7 @@ export default function AdminPanel({
               <span className="mono note">{when(w.created_at)}</span>
               <span className="grow">{w.name} · {w.email} {collectMark(w.email)}</span>
               {w.invited_at ? <span className="pill src" title={`Inbjuden ${when(w.invited_at)}`}>Inbjuden</span> : null}
-              {hasAccount(w) ? <span className="pill src">Har konto</span> : w.invited_at ? <span className="pill" style={{ borderColor: "var(--warn, #b45309)", color: "var(--warn, #b45309)" }}>Inget konto</span> : null}
+              {hasAccount(w) ? <span className="pill src">Har konto</span> : w.invited_at ? <span className="pill" style={{ borderColor: "var(--warn, #b45309)", color: "var(--warn, #b45309)" }}>{stale(w) ? `Inget konto efter ${STALE_DAYS} dagar` : "Inget konto"}</span> : null}
               {noAccount(w) && <button className="btn small" type="button" disabled={reminding} onClick={() => remindOne(w)}>Skicka påminnelse</button>}
               <button className="btn small" type="button" onClick={() => invite(w)}>{w.invited_at ? "Bjud in igen" : "Bjud in"}</button>
               <button className="btn small ghost danger" type="button" onClick={() => delWait(w.id)}>Ta bort</button>
