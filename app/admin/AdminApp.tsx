@@ -13,11 +13,12 @@ import UsagePanel from "../UsagePanel";
 import EventsPanel from "../EventsPanel";
 import MissingSetsPanel from "../MissingSetsPanel";
 import NewsDraftsPanel from "../NewsDraftsPanel";
+import PulseStats from "../PulseStats";
 import "../panels.css";
 import "./admin.css";
 
 type Role = "admin" | "superuser";
-type Section = "overview" | "questions" | "merge" | "names" | "cards" | "features" | "usage" | "handelser" | "newsdrafts" | "saknade";
+type Section = "overview" | "questions" | "merge" | "names" | "cards" | "features" | "usage" | "handelser" | "newsdrafts" | "saknade" | "pulse";
 
 const SECTIONS: { id: Section; label: string; superOnly?: boolean }[] = [
   { id: "overview", label: "Översikt och drift" },
@@ -25,6 +26,7 @@ const SECTIONS: { id: Section; label: string; superOnly?: boolean }[] = [
   { id: "newsdrafts", label: "Nyhetsförslag", superOnly: true },
   { id: "saknade", label: "Saknade set", superOnly: true },
   { id: "usage", label: "Användning", superOnly: true },
+  { id: "pulse", label: "Pulse", superOnly: true },
   { id: "questions", label: "Frågor", superOnly: true },
   { id: "merge", label: "Slå ihop", superOnly: true },
   { id: "names", label: "Rätta namn", superOnly: true },
@@ -107,6 +109,7 @@ export default function AdminApp({ role, email }: { role: Role; email: string })
         {section === "newsdrafts" && role === "superuser" && <NewsDraftsPanel supabase={supabase} say={say} />}
         {section === "saknade" && role === "superuser" && <MissingSetsPanel supabase={supabase} say={say} />}
         {section === "usage" && role === "superuser" && <UsagePanel supabase={supabase} />}
+        {section === "pulse" && role === "superuser" && <PulseStats supabase={supabase} />}
         {section === "questions" && role === "superuser" && <QuestionsPanel supabase={supabase} onClose={back} />}
         {section === "merge" && role === "superuser" && <MergePanel supabase={supabase} sets={sets} onChanged={loadSets} say={say} onClose={back} />}
         {section === "names" && role === "superuser" && <NamesPanel supabase={supabase} onClose={back} />}
