@@ -20,6 +20,7 @@ import QuestionPrompt from "./QuestionPrompt";
 import CollectorAssistant from "./CollectorAssistant";
 import TradePanel from "./TradePanel";
 import SmartImport from "./SmartImport";
+import ReportCard from "./ReportCard";
 import PulsePanel from "./PulsePanel";
 import { type FeatureMode, featureOn } from "@/lib/features";
 import Messages from "./Messages";
@@ -162,6 +163,7 @@ export default function App({ signedOut = false }: { signedOut?: boolean }) {
   const importOn = featureOn(flags.smart_import, role);
   const intelligentOn = importOn && featureOn(flags.intelligent_import, role);
   const pulseOn = featureOn(flags.pulse, role);
+  const reportOn = featureOn(flags.missing_card_report, role);
   const [showImport, setShowImport] = useState(false);
   const [showTrade, setShowTrade] = useState(false);
   const [showMsgs, setShowMsgs] = useState(false);
@@ -1219,7 +1221,9 @@ export default function App({ signedOut = false }: { signedOut?: boolean }) {
                 <button type="button" onClick={() => setTradera(traderaScope())}>{t("Sålda på Tradera")}</button>
                 <button type="button" onClick={() => setEbay(traderaScope())}>{t("Auktioner på eBay")}</button>
               </div>
-            </details>            {mine && <button className="btn ghost danger" type="button" onClick={() => setConfirmDel(true)}>{t("Ta bort set")}</button>}
+            </details>
+            {reportOn && user && <ReportCard supabase={supabase} setId={current.id} say={say} />}
+            {mine && <button className="btn ghost danger" type="button" onClick={() => setConfirmDel(true)}>{t("Ta bort set")}</button>}
           </div>
           {!user && <div className="note">{t("Du är inte inloggad. Avprickningarna sparas i den här webbläsaren och flyttas till ditt konto när du loggar in.")}</div>}
           {confirmDel && (
