@@ -21,5 +21,6 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/fetch).*)"],
+  // api/hub is protected by HUB_TOKEN, not by a login session, so it needs no session refresh.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/fetch|api/hub).*)"],
 };
