@@ -14,17 +14,19 @@ import EventsPanel from "../EventsPanel";
 import MissingSetsPanel from "../MissingSetsPanel";
 import NewsDraftsPanel from "../NewsDraftsPanel";
 import PulseStats from "../PulseStats";
+import CardReportsPanel from "../CardReportsPanel";
 import "../panels.css";
 import "./admin.css";
 
 type Role = "admin" | "superuser";
-type Section = "overview" | "questions" | "merge" | "names" | "cards" | "features" | "usage" | "handelser" | "newsdrafts" | "saknade" | "pulse";
+type Section = "overview" | "questions" | "merge" | "names" | "cards" | "features" | "usage" | "handelser" | "newsdrafts" | "saknade" | "pulse" | "kortrapporter";
 
 const SECTIONS: { id: Section; label: string; superOnly?: boolean }[] = [
   { id: "overview", label: "Översikt och drift" },
   { id: "handelser", label: "Händelser" },
   { id: "newsdrafts", label: "Nyhetsförslag", superOnly: true },
   { id: "saknade", label: "Saknade set", superOnly: true },
+  { id: "kortrapporter", label: "Kortrapporter", superOnly: true },
   { id: "usage", label: "Användning", superOnly: true },
   { id: "pulse", label: "Pulse", superOnly: true },
   { id: "questions", label: "Frågor", superOnly: true },
@@ -108,6 +110,7 @@ export default function AdminApp({ role, email }: { role: Role; email: string })
         {section === "handelser" && <EventsPanel supabase={supabase} role={role} />}
         {section === "newsdrafts" && role === "superuser" && <NewsDraftsPanel supabase={supabase} say={say} />}
         {section === "saknade" && role === "superuser" && <MissingSetsPanel supabase={supabase} say={say} />}
+        {section === "kortrapporter" && role === "superuser" && <CardReportsPanel supabase={supabase} say={say} />}
         {section === "usage" && role === "superuser" && <UsagePanel supabase={supabase} />}
         {section === "pulse" && role === "superuser" && <PulseStats supabase={supabase} />}
         {section === "questions" && role === "superuser" && <QuestionsPanel supabase={supabase} onClose={back} />}
