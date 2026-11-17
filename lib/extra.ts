@@ -1,6 +1,16 @@
 // Newer texts, keyed by the Swedish source text, per language. Checked before the main dictionaries.
 export const EXTRA: Record<string, Record<string, string>> = {
   en: {
+    "Tack! Rapporten är skickad.": "Thanks! The report has been sent.",
+    "Du har redan rapporterat det här kortet.": "You have already reported this card.",
+    "Du har skickat för många rapporter i dag. Försök igen i morgon.": "You have sent too many reports today. Try again tomorrow.",
+    "Skriv kortnummer eller namn.": "Enter a card number or name.",
+    "Kunde inte skicka. Försök igen.": "Could not send. Try again.",
+    "Saknar du ett kort?": "Is a card missing?",
+    "Berätta vilket kort som saknas i det här setet. Vi lägger inte in något i din samling, men vi granskar rapporten.": "Tell us which card is missing from this set. We do not add anything to your collection, but we will review the report.",
+    "Namn på kortet": "Name of the card",
+    "Något mer vi bör veta? (valfritt)": "Anything else we should know? (optional)",
+    "Skicka": "Send",
     "Nästan komplett": "Almost complete",
     "Milstolpe": "Milestone",
     "Komplett set": "Complete set",
