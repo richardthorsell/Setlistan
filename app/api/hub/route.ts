@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
+import { loadHubDetail, loadTrend } from "@/lib/hubdetail";
 import { loadHubSnapshot } from "@/lib/hubstats";
 import { adminClient } from "@/lib/supabase/admin";
 
@@ -23,7 +24,13 @@ export async function GET(request: Request) {
   const admin = adminClient();
   if (!admin) return Response.json({ error: "SUPABASE_SERVICE_ROLE_KEY is missing" }, { status: 503 });
   try {
-    return Response.json(await loadHubSnapshot(admin), { headers: { "Cache-Control": "no-store" } });
+    const headers = { "Cache-Control": "no-store" };
+    // ?view=detail gives what the Hub shows on its own page for Setlistan.
+    if (new URL(request.url).searchParams.get("view") === "detail") {
+      return Response.json(await loadHubDetail(admin), { headers });
+    }
+    const [snapshot, trend] = await Promise.all([loadHubSnapshot(admin), loadTrend(admin)]);
+    return Response.json(trend ? { ...snapshot, trend } : snapshot, { headers });
   } catch (error) {
     console.error("Hub: could not load numbers", error);
     return Response.json({ error: "could not load numbers" }, { status: 500 });

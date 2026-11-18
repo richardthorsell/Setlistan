@@ -17,4 +17,4 @@ Live: https://setlistan.vercel.app
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` (publik nyckel)
 - `ANTHROPIC_API_KEY` (hemlig, bara på servern)
-- `HUB_TOKEN` (hemlig, minst 32 slumpade tecken): låter Hubben hämta sammanräknade siffror från `/api/hub`. Utan den svarar adressen 401. Kräver `SUPABASE_SERVICE_ROLE_KEY`.
+- `HUB_TOKEN` (hemlig, minst 32 slumpade tecken): låter Hubben hämta sammanräknade siffror från `/api/hub`. Utan den svarar adressen 401. Kräver `SUPABASE_SERVICE_ROLE_KEY`. `?view=detail` ger det Hubben visar på sin egen sida för Setlistan (nyckeltal, utveckling per dag, fördelningar). Bara sammanräkningar; logiken ligger i `lib/hubdetail.ts`.
