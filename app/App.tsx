@@ -1169,7 +1169,7 @@ export default function App({ signedOut = false }: { signedOut?: boolean }) {
         )}
       </section>
 
-      {playerSet && user && <PlayerSet key={playerSet.player_key} supabase={supabase} player={playerSet} onClose={() => setPlayerSet(null)} onOpenSet={(id) => openSet(id)} say={say} />}
+      {playerSet && user && <PlayerSet key={playerSet.player_key} supabase={supabase} reportOn={reportOn} player={playerSet} onClose={() => setPlayerSet(null)} onOpenSet={(id) => openSet(id)} say={say} />}
 
       {current && (
         <section className={`set${selPar ? " onpar" : ""}`} id="set">

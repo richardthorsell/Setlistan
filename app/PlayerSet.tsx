@@ -9,6 +9,7 @@ import PlayerCardPar from "./PlayerCardPar";
 import TraderaPanel, { type TraderaScope } from "./TraderaPanel";
 import EbayPanel from "./EbayPanel";
 import Tip from "./Tip";
+import ReportCard from "./ReportCard";
 
 type Player = { player_key: string; display_name: string };
 type PCard = { card_id: number; set_id: string; set_name: string; sport: string | null; section_code: string; section_name: string; no: number; name: string; team: string | null; qty: number | null };
@@ -24,12 +25,14 @@ export default function PlayerSet({
   onClose,
   onOpenSet,
   say,
+  reportOn,
 }: {
   supabase: SupabaseClient;
   player: Player;
   onClose: () => void;
   onOpenSet: (id: string) => void;
   say: (m: string) => void;
+  reportOn?: boolean;
 }) {
   const t = useT();
   const [cards, setCards] = useState<PCard[] | null>(null);
@@ -332,6 +335,7 @@ export default function PlayerSet({
             <button type="button" onClick={() => setEbay(scopeOf())}>{t("Auktioner på eBay")}</button>
           </div>
         </details>
+        {reportOn && <ReportCard supabase={supabase} player={player.display_name} say={say} />}
       </div>      {copyText && (
         <div className="panel">
           <div className="note">{t("Kopiera texten nedan:")}</div>
