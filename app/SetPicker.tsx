@@ -4,6 +4,7 @@ import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { type SetStat, type Sport, SPORTS, matches, sportLabel } from "@/lib/checklist";
 import "./panels.css";
 import { useT } from "@/lib/i18n";
+import { displayName, seriesOf } from "@/lib/setname";
 
 type Props = {
   sets: SetStat[];
@@ -19,12 +20,16 @@ type Props = {
   libOpen: boolean;
   onLibOpen: (v: boolean) => void;
   before?: ReactNode;
+  advanced?: boolean;
 };
 
 const nameOf = (s: SetStat) => s.short_name || s.name;
 
-type Sort = "fav" | "az" | "new" | "old" | "cards" | "done";
+type Sort = "fav" | "az" | "series" | "new" | "old" | "cards" | "done";
+type Second = "" | "ynew" | "yold" | "series" | "cards" | "done";
 const SORT_KEY = "setlistan:libsort";
+const SECOND_KEY = "setlistan:libsort2";
+const YEARFIRST_KEY = "setlistan:libyearfirst";
 const pctOf = (s: SetStat, n: number) => (s.card_count ? Math.round((n / s.card_count) * 100) : 0);
 
 const Star = ({ on }: { on: boolean }) => (
@@ -34,7 +39,7 @@ const Star = ({ on }: { on: boolean }) => (
 );
 
 // The library: your favourites as cards, and a dropdown with search and sport filter for everything else.
-export default function SetPicker({ sets, counts, openId, favs, sport, setSport, onOpen, onToggleFav, onSuggest, suggested, libOpen, onLibOpen, before }: Props) {
+export default function SetPicker({ sets, counts, openId, favs, sport, setSport, onOpen, onToggleFav, onSuggest, suggested, libOpen, onLibOpen, before, advanced }: Props) {
   const t = useT();
   const open = libOpen;
   const setOpen = onLibOpen;
@@ -42,15 +47,33 @@ export default function SetPicker({ sets, counts, openId, favs, sport, setSport,
   // How the library is ordered; the choice is remembered on this device.
   const [sort, setSortState] = useState<Sort>("fav");
   const [year, setYear] = useState("");
+  // Sorting on two levels and the year first in the names (only when the switch library_sort is on); remembered on this device.
+  const [second, setSecondState] = useState<Second>("");
+  const [yearFirst, setYearFirstState] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     try {
       const v = localStorage.getItem(SORT_KEY);
-      if (v === "fav" || v === "az" || v === "new" || v === "old" || v === "cards" || v === "done") setSortState(v);
+      if (v === "fav" || v === "az" || v === "series" || v === "new" || v === "old" || v === "cards" || v === "done") setSortState(v);
+      const v2 = localStorage.getItem(SECOND_KEY);
+      if (v2 === "ynew" || v2 === "yold" || v2 === "series" || v2 === "cards" || v2 === "done") setSecondState(v2);
+      setYearFirstState(localStorage.getItem(YEARFIRST_KEY) === "1");
     } catch {}
   }, []);
+  const setSecond = (v: Second) => {
+    setSecondState(v);
+    try {
+      localStorage.setItem(SECOND_KEY, v);
+    } catch {}
+  };
+  const setYearFirst = (v: boolean) => {
+    setYearFirstState(v);
+    try {
+      localStorage.setItem(YEARFIRST_KEY, v ? "1" : "0");
+    } catch {}
+  };
   const setSort = (v: Sort) => {
     setSortState(v);
     try {
@@ -79,19 +102,26 @@ export default function SetPicker({ sets, counts, openId, favs, sport, setSport,
   const list = useMemo(() => {
     const byName = (a: SetStat, b: SetStat) => nameOf(a).localeCompare(nameOf(b), "sv");
     const done = (s: SetStat) => pctOf(s, counts[s.id] || 0);
-    const order: Record<Sort, (a: SetStat, b: SetStat) => number> = {
-      fav: (a, b) => (favs.has(b.id) ? 1 : 0) - (favs.has(a.id) ? 1 : 0) || byName(a, b),
+    type Cmp = (a: SetStat, b: SetStat) => number;
+    const base: Record<Sort, Cmp> = {
+      fav: (a, b) => (favs.has(b.id) ? 1 : 0) - (favs.has(a.id) ? 1 : 0),
       az: byName,
-      new: (a, b) => (b.year ?? -1) - (a.year ?? -1) || byName(a, b),
-      old: (a, b) => (a.year ?? 9999) - (b.year ?? 9999) || byName(a, b),
-      cards: (a, b) => b.card_count - a.card_count || byName(a, b),
-      done: (a, b) => done(b) - done(a) || byName(a, b),
+      series: (a, b) => seriesOf(nameOf(a)).localeCompare(seriesOf(nameOf(b)), "sv"),
+      new: (a, b) => (b.year ?? -1) - (a.year ?? -1),
+      old: (a, b) => (a.year ?? 9999) - (b.year ?? 9999),
+      cards: (a, b) => b.card_count - a.card_count,
+      done: (a, b) => done(b) - done(a),
     };
+    const then: Record<Exclude<Second, "">, Cmp> = { ynew: base.new, yold: base.old, series: base.series, cards: base.cards, done: base.done };
+    const primary: Sort = advanced || sort !== "series" ? sort : "fav";
+    const secondary = advanced && second ? then[second] : null;
+    const order: Cmp = (a, b) => base[primary](a, b) || (secondary ? secondary(a, b) : 0) || byName(a, b);
     return (sport ? sets.filter((s) => s.sport === sport) : sets)
       .filter((s) => !year || String(s.year ?? "") === year)
       .filter((s) => !q.trim() || matches(s, q))
-      .sort(order[sort]);
-  }, [sets, sport, q, favs, sort, year, counts]);
+      .sort(order);
+  }, [sets, sport, q, favs, sort, year, counts, advanced, second]);
+  const shown = (s: SetStat) => (advanced && yearFirst ? displayName(nameOf(s), s.year, true) : nameOf(s));
   const favSets = useMemo(() => sets.filter((s) => favs.has(s.id)).sort((a, b) => nameOf(a).localeCompare(nameOf(b), "sv")), [sets, favs]);
   const current = sets.find((s) => s.id === openId);
   const used = SPORTS.filter((s) => sets.some((x) => x.sport === s.id));
@@ -115,6 +145,7 @@ export default function SetPicker({ sets, counts, openId, favs, sport, setSport,
               <select className="sport-select" aria-label={t("Sortera")} value={sort} onChange={(e) => setSort(e.target.value as Sort)}>
                 <option value="fav">{t("Favoriter först")}</option>
                 <option value="az">{t("Namn A–Ö")}</option>
+                {advanced && <option value="series">{t("Serie A–Ö (utan år)")}</option>}
                 {years.length > 0 && <option value="new">{t("Nyast först")}</option>}
                 {years.length > 0 && <option value="old">{t("Äldst först")}</option>}
                 <option value="cards">{t("Flest kort")}</option>
@@ -129,6 +160,22 @@ export default function SetPicker({ sets, counts, openId, favs, sport, setSport,
                 </select>
               )}
             </div>
+            {advanced && (
+              <div className="row">
+                <select className="sport-select" aria-label={t("Sedan efter")} value={second} onChange={(e) => setSecond(e.target.value as Second)}>
+                  <option value="">{t("Sedan: inget")}</option>
+                  <option value="ynew">{t("Sedan: år, nyast först")}</option>
+                  <option value="yold">{t("Sedan: år, äldst först")}</option>
+                  <option value="series">{t("Sedan: serie A–Ö")}</option>
+                  <option value="cards">{t("Sedan: flest kort")}</option>
+                  <option value="done">{t("Sedan: mest komplett")}</option>
+                </select>
+                <label className="row" style={{ gap: 6 }}>
+                  <input type="checkbox" checked={yearFirst} onChange={(e) => setYearFirst(e.target.checked)} />
+                  <span>{t("Visa år först")}</span>
+                </label>
+              </div>
+            )}
             <div className="note mono">{list.length} av {sets.length} set</div>
             <div className="picker-list" role="list" aria-label={t("Album")}>
               {list.map((s) => {
@@ -136,7 +183,7 @@ export default function SetPicker({ sets, counts, openId, favs, sport, setSport,
                 return (
                   <div key={s.id} className={`picker-row ${s.id === openId ? "active" : ""}`} role="listitem" aria-current={s.id === openId ? "true" : undefined}>
                     <button className="picker-pick" type="button" onClick={() => { onOpen(s.id); setOpen(false); setQ(""); }}>
-                      <span className="picker-name">{nameOf(s)}</span>
+                      <span className="picker-name">{shown(s)}</span>
                       <span className="sub mono">{!sport && `${t(sportLabel(s.sport))} · `}{n} / {s.card_count}</span>
                     </button>
                     <button className={`star ${favs.has(s.id) ? "on" : ""}`} type="button" aria-pressed={favs.has(s.id)} aria-label={favs.has(s.id) ? `${t("Ta bort")} ${nameOf(s)} ${t("från favoriter")}` : `${t("Lägg")} ${nameOf(s)} ${t("i favoriter")}`} onClick={() => onToggleFav(s.id)}>
@@ -170,7 +217,7 @@ export default function SetPicker({ sets, counts, openId, favs, sport, setSport,
             return (
               <div key={s.id} className={`shelf-item fav-card ${s.id === openId ? "active" : ""}`}>
                 <button className="fav-open" type="button" onClick={() => onOpen(s.id)}>
-                  <strong>{nameOf(s)}</strong>
+                  <strong>{shown(s)}</strong>
                   <span className="bar"><i style={{ width: `${p}%` }} /></span>
                   <span className="sub mono">{n} / {s.card_count} · {p} %</span>
                 </button>
