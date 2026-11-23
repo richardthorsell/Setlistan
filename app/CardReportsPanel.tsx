@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 type Status = "ny" | "granskas" | "klar" | "avvisad";
-type Report = { id: number; set_id: string; set_name: string; card_no: string | null; card_name: string | null; note: string | null; status: Status; admin_note: string | null; created_at: string; same_count: number };
+type Report = { id: number; set_id: string | null; set_name: string; player: string | null; card_no: string | null; card_name: string | null; note: string | null; status: Status; admin_note: string | null; created_at: string; same_count: number };
 const STATUS: Record<Status, string> = { ny: "Ny", granskas: "Granskas", klar: "Klar", avvisad: "Avvisad" };
 const when = (iso: string) => new Date(iso).toLocaleDateString("sv-SE", { dateStyle: "short" });
 
@@ -47,6 +47,8 @@ export default function CardReportsPanel({ supabase, say }: { supabase: Supabase
             <span className="pill">{STATUS[r.status]}</span>
           </div>
           <div className="note">{when(r.created_at)}{r.same_count > 1 ? ` · ${r.same_count} har rapporterat samma kort` : ""}</div>
+          {!r.set_id && <div className="note">Setet finns inte i katalogen, texten är skriven av användaren.</div>}
+          {r.player && <div className="note">Spelare: {r.player}</div>}
           {r.note && <div className="note">Meddelande: {r.note}</div>}
           <input className="t-input" style={{ width: "100%" }} maxLength={500} placeholder="Anteckning" defaultValue={r.admin_note || ""} onChange={(e) => setNotes((n) => ({ ...n, [r.id]: e.target.value }))} />
           <div className="row" style={{ flexWrap: "wrap" }}>
