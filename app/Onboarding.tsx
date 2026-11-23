@@ -11,7 +11,7 @@ export type Update = { id: string; title: string; body: string; created_at: stri
 const when = (iso: string, lang: Lang) => new Date(iso).toLocaleDateString(localeOf(lang), { year: "numeric", month: "short", day: "numeric" });
 
 // First-run guide, shown once after the first sign-in.
-export function Welcome({ onDone, features }: { onDone: () => void; features?: { importOn?: boolean; assistantOn?: boolean; tradeOn?: boolean } }) {
+export function Welcome({ onDone, features }: { onDone: () => void; features?: { importOn?: boolean; assistantOn?: boolean; tradeOn?: boolean; pulseOn?: boolean; reportOn?: boolean; libSortOn?: boolean } }) {
   const t = useT();
   const STEPS = [
     { t: t("Välkommen till Setlistan"), d: t("Här söker du fram checklistor för samlarkort, prickar av korten du har och ser direkt vilka som saknas. Vi visar dig runt på en minut."), v: <MockSet /> },
@@ -24,6 +24,9 @@ export function Welcome({ onDone, features }: { onDone: () => void; features?: {
   if (features?.importOn) STEPS.push({ t: t("Importera din samling"), d: t("Har du din samling i Excel, en CSV-fil eller en lista? Tryck på Importera högst upp. Du väljer vad varje kolumn betyder, granskar och godkänner, och kan ångra importen efteråt."), v: <MockTick /> });
   if (features?.assistantOn) STEPS.push({ t: t("Samlarassistenten"), d: t("Chatten längst ned till höger svarar på frågor om din samling: vad saknar jag, vilka dubbletter har jag, vilka set är jag nära att fullborda."), v: <MockSet /> });
   if (features?.tradeOn) STEPS.push({ t: t("Hitta bytespartners"), d: t("Under Bytespartners ser du anonymt vilka samlare som har kort du söker. Ni ser inte vem den andra är förrän båda har godkänt."), v: <MockSearch /> });
+  if (features?.pulseOn) STEPS.push({ t: t("Din samlings-Pulse"), d: t("Under sökrutan på startsidan visar Pulse vad som är nytt för din samling: set du nästan har klara, milstolpar och nya set. Allt räknas ut från din egen samling, och du väljer själv vad som ska visas."), v: <MockSet /> });
+  if (features?.libSortOn) STEPS.push({ t: t("Sortera på två saker"), d: t("I listan med album kan du välja Sedan efter, till exempel år och sedan serie, och slå på Visa år först så att årtalet står före namnet."), v: <MockSearch /> });
+  if (features?.reportOn) STEPS.push({ t: t("Saknas ett kort?"), d: t("I ett set och på en spelares sida finns knappen Saknar du ett kort. Skriv nummer och namn, eller klistra in flera rader. Vi granskar och lägger in det, och du ser status under Dina rapporter."), v: <MockMissing /> });
   STEPS.push({ t: t("Nytt i Setlistan"), d: t("Under Meny och Nytt ser du alltid vad som har lagts till. När något nytt kommer får du en förklaring där."), v: <MockSet /> });
   const TONES = ["var(--accent)", "var(--have)", "#E0559A", "var(--rc)", "#2F7FE0"];
   const [i, setI] = useState(0);

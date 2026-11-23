@@ -1,6 +1,13 @@
 // Newer texts, keyed by the Swedish source text, per language. Checked before the main dictionaries.
 export const EXTRA: Record<string, Record<string, string>> = {
   en: {
+    "Nytt sedan sist": "New since your last visit",
+    "Läs": "Read",
+    "Under sökrutan på startsidan visar Pulse vad som är nytt för din samling: set du nästan har klara, milstolpar och nya set. Allt räknas ut från din egen samling, och du väljer själv vad som ska visas.": "Below the search box on the start page, Pulse shows what is new for your collection: sets you have almost completed, milestones and new sets. Everything is worked out from your own collection, and you choose what is shown.",
+    "Sortera på två saker": "Sort on two things",
+    "I listan med album kan du välja Sedan efter, till exempel år och sedan serie, och slå på Visa år först så att årtalet står före namnet.": "In the list of albums you can choose Then by, for example year and then series, and turn on Show year first so the year comes before the name.",
+    "Saknas ett kort?": "Is a card missing?",
+    "I ett set och på en spelares sida finns knappen Saknar du ett kort. Skriv nummer och namn, eller klistra in flera rader. Vi granskar och lägger in det, och du ser status under Dina rapporter.": "In a set and on a player's page there is a button Is a card missing. Enter the number and name, or paste several lines. We review it and add it, and you can see the status under Your reports.",
     "Serie A–Ö (utan år)": "Series A–Z (without year)",
     "Sedan efter": "Then by",
     "Sedan: inget": "Then: nothing",

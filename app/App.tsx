@@ -21,6 +21,7 @@ import CollectorAssistant from "./CollectorAssistant";
 import TradePanel from "./TradePanel";
 import SmartImport from "./SmartImport";
 import ReportCard from "./ReportCard";
+import NewsBanner from "./NewsBanner";
 import PulsePanel from "./PulsePanel";
 import { type FeatureMode, featureOn } from "@/lib/features";
 import Messages from "./Messages";
@@ -1048,13 +1049,24 @@ export default function App({ signedOut = false }: { signedOut?: boolean }) {
         </div>
       </div>
 
+      {user && unseen > 0 && !showNews && !showWelcome && (
+        <NewsBanner
+          updates={updates.filter((u) => seenAt !== null && u.created_at > seenAt)}
+          onOpen={() => {
+            setNewsSince(seenAt);
+            setShowNews(true);
+            markSeen(false);
+          }}
+          onClose={() => markSeen(false)}
+        />
+      )}
       {showWait && !user && <WaitlistBox onClose={() => setShowWait(false)} />}
       {showFeedback && user && <FeedbackBox onClose={() => setShowFeedback(false)} say={say} />}
       {showMsgs && user && <Messages supabase={supabase} userId={user.id} onClose={() => setShowMsgs(false)} onRead={() => setUnreadMsgs(0)} say={say} />}
       {showAccount && user && <AccountPanel supabase={supabase} email={user.email || ""} isAdmin={role !== null} onClose={() => setShowAccount(false)} say={say} />}
       {showWelcome && user && (
         <Welcome
-          features={{ importOn, assistantOn, tradeOn }}
+          features={{ importOn, assistantOn, tradeOn, pulseOn, reportOn, libSortOn }}
           onDone={() => {
             setShowWelcome(false);
             markSeen(true);
