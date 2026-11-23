@@ -211,8 +211,11 @@ export default function AdminPanel({
   const stale = (w: Wait) => accounts.length > 0 && noAccount(w) && Date.now() - new Date(w.invited_at as string).getTime() > STALE_DAYS * 86400000;
   const [onlyNoAccount, setOnlyNoAccount] = useState(false);
   const [reminding, setReminding] = useState(false);
-  const sendReminder = async (w: Wait) => {
-    const r = await fetch("/api/invite", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: w.id, reminder: true }) });
+  // Invited 28 days ago or more, still no account: they get a last warning before the 30-day removal
+  const WARN_DAYS = 28;
+  const warnable = (w: Wait) => accounts.length > 0 && noAccount(w) && Date.now() - new Date(w.invited_at as string).getTime() >= WARN_DAYS * 86400000;
+  const sendReminder = async (w: Wait, final = false) => {
+    const r = await fetch("/api/invite", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: w.id, reminder: final ? "final" : true }) });
     const j = await r.json().catch(() => ({}));
     return r.ok ? "" : String(j.error || "Kunde inte skicka.");
   };
@@ -237,6 +240,23 @@ export default function AdminPanel({
     }
     setReminding(false);
     say(fail ? `${ok} av ${list.length} skickade. ${fail}` : `${ok} påminnelser skickade`);
+  };
+  const warnAll = async () => {
+    const list = wait.filter(warnable);
+    if (!list.length || !window.confirm(`Skicka en sista varning till ${list.length} personer som varit inbjudna i ${WARN_DAYS} dagar eller mer utan konto? Mejlet säger att platsen tas bort. Det går inte att ta tillbaka mejlet.`)) return;
+    setReminding(true);
+    let ok = 0;
+    let fail = "";
+    for (const w of list) {
+      const err = await sendReminder(w, true);
+      if (err) {
+        fail = err;
+        break;
+      }
+      ok++;
+    }
+    setReminding(false);
+    say(fail ? `${ok} av ${list.length} varningar skickade. ${fail}` : `${ok} varningar skickade`);
   };
   const NUDGE_DAYS = 7;
   const [nudging, setNudging] = useState(false);
@@ -619,6 +639,7 @@ export default function AdminPanel({
       {wait.some(noAccount) && (
         <div className="row" style={{ flexWrap: "wrap" }}>
           <button className="btn small" type="button" disabled={reminding} onClick={remindAll}>Påminn alla inbjudna utan konto ({wait.filter(noAccount).length})</button>
+          {wait.some(warnable) && <button className="btn small" type="button" disabled={reminding} onClick={warnAll}>Skicka sista varning efter {WARN_DAYS} dagar ({wait.filter(warnable).length})</button>}
           {wait.some(stale) && <button className="btn small danger" type="button" onClick={delStale}>Ta bort dem utan konto efter {STALE_DAYS} dagar ({wait.filter(stale).length})</button>}
           <label className="row" style={{ gap: 6 }}>
             <input type="checkbox" checked={onlyNoAccount} onChange={(e) => setOnlyNoAccount(e.target.checked)} />

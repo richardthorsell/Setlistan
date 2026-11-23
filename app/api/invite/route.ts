@@ -16,15 +16,19 @@ export async function POST(req: Request) {
   if (!emailEnabled()) return Response.json({ error: "Resend är inte kopplat än (RESEND_API_KEY saknas i Vercel)." }, { status: 503 });
 
   const b = (await req.json().catch(() => null)) as { id?: unknown; reminder?: unknown } | null;
-  const reminder = b?.reminder === true;
+  // reminder: true = friendly reminder, "final" = last warning that the place is removed
+  const final = b?.reminder === "final";
+  const reminder = b?.reminder === true || final;
   const id = String(b?.id ?? "");
   const { data: row } = await supabase.from("waitlist").select("id, name, email").eq("id", id).maybeSingle();
   if (!row) return Response.json({ error: "Hittade inte personen." }, { status: 404 });
 
   const ok = await sendMail(
     row.email,
-    reminder ? "Din plats i betan av Setlistan väntar" : "Du är inbjuden till betan av Setlistan",
-    reminder
+    final ? "Din plats i betan av Setlistan tas snart bort" : reminder ? "Din plats i betan av Setlistan väntar" : "Du är inbjuden till betan av Setlistan",
+    final
+      ? `<p>Hej ${esc(row.name)}!</p><p>Du bjöds in till betan av Setlistan för över fyra veckor sedan, men du har inte skapat något konto. Om du inte skapar ett konto inom några dagar tas din plats bort från väntelistan.</p><p>Vill du behålla platsen, skapa ett konto med den här e-postadressen:</p><p><a href="${siteUrl()}">${siteUrl()}</a></p><p>Vill du inte vara med behöver du inte göra något. Hör gärna av dig om du har frågor, genom att svara på det här mejlet.</p>`
+      : reminder
       ? `<p>Hej ${esc(row.name)}!</p><p>Du fick nyligen en inbjudan till betan av Setlistan, och din plats väntar fortfarande. Skapa ett konto med den här e-postadressen så kommer du igång på någon minut:</p><p><a href="${siteUrl()}">${siteUrl()}</a></p><p>Hör gärna av dig om något är oklart, via knappen i appen eller genom att svara på det här mejlet.</p>`
       : `<p>Hej ${esc(row.name)}!</p><p>Nu finns det en plats åt dig i betan av Setlistan. Skapa ett konto med den här e-postadressen:</p><p><a href="${siteUrl()}">${siteUrl()}</a></p><p>Hör gärna av dig med feedback via knappen i appen.</p>`,
   );
