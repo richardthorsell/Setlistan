@@ -164,6 +164,7 @@ export default function App({ signedOut = false }: { signedOut?: boolean }) {
   const intelligentOn = importOn && featureOn(flags.intelligent_import, role);
   const pulseOn = featureOn(flags.pulse, role);
   const reportOn = featureOn(flags.missing_card_report, role);
+  const libSortOn = featureOn(flags.library_sort, role);
   const [showImport, setShowImport] = useState(false);
   const [showTrade, setShowTrade] = useState(false);
   const [showMsgs, setShowMsgs] = useState(false);
@@ -1140,7 +1141,7 @@ export default function App({ signedOut = false }: { signedOut?: boolean }) {
 
       <section>
         {sets.length ? (
-          <SetPicker sets={sets} counts={counts} openId={openId} favs={favs} sport={sport} setSport={setSport} onOpen={openSet} onToggleFav={toggleFav} onSuggest={suggest} suggested={suggested} libOpen={libOpen} onLibOpen={setLibOpen} before={followed.length > 0 && (
+          <SetPicker advanced={libSortOn} sets={sets} counts={counts} openId={openId} favs={favs} sport={sport} setSport={setSport} onOpen={openSet} onToggleFav={toggleFav} onSuggest={suggest} suggested={suggested} libOpen={libOpen} onLibOpen={setLibOpen} before={followed.length > 0 && (
           <div className="hero-follow" id="followed">
             <div className="label fav-head">{t("Spelare du följer")}</div>
             <div className="shelf">
