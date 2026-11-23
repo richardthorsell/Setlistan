@@ -1,6 +1,15 @@
 // Newer texts, keyed by the Swedish source text, per language. Checked before the main dictionaries.
 export const EXTRA: Record<string, Record<string, string>> = {
   en: {
+    "Serie A–Ö (utan år)": "Series A–Z (without year)",
+    "Sedan efter": "Then by",
+    "Sedan: inget": "Then: nothing",
+    "Sedan: år, nyast först": "Then: year, newest first",
+    "Sedan: år, äldst först": "Then: year, oldest first",
+    "Sedan: serie A–Ö": "Then: series A–Z",
+    "Sedan: flest kort": "Then: most cards",
+    "Sedan: mest komplett": "Then: most complete",
+    "Visa år först": "Show year first",
     "Skriv vilket set kortet saknas i.": "Enter which set the card is missing from.",
     "Skriv minst ett kort, en rad per kort.": "Enter at least one card, one line per card.",
     "rapporter skickade": "reports sent",
